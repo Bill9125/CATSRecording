@@ -21,6 +21,7 @@ class Ui_camcalib(object):
         self.offsets = [(0, 0), (0, 0), (0, 0), (0, 0)]  # Offset for each image
         self.drag_start_position = None  # Drag start position
         self.checkbox_states = {i: False for i in range(4)}  # 初始化每個 Tab 的 QCheckBox 狀態為 False
+        self.pixmap_size = {'width' : 0 , 'height' : 0}
 
         # SpinBox to select keypoint index (initialize it first)
         self.spinBox = QtWidgets.QSpinBox(camcalib)
@@ -151,19 +152,24 @@ class Ui_camcalib(object):
                 if imagelist:
                     self.qpixmaps[x-1].load(imagelist[0])  # Load the first image in the directory
                     self.labels[x-1].setPixmap(self.qpixmaps[x-1])
+                    self.pixmap_size['width'] = self.qpixmaps[x-1].width()
+                    self.pixmap_size['height'] = self.qpixmaps[x-1].height()
                     self.labels[x-1].image_loaded = True  # 圖片加載後設置為 True
                     # 傳遞選擇的路徑給 DraggableLabel
                     self.labels[x-1].set_json_path(self.path)
         elif type == 'cube':
             imagelist = glob.glob(f'{self.path}/{type}/*.jpg')
             for label in self.labels:
+                label.pixmap_offset.setX(0)
+                label.pixmap_offset.setY(0)
                 label.clear_circles()
             for x in range(1, 5):
                 if x-1 < len(imagelist):
                     if not self.qpixmaps[x-1].load(imagelist[x-1]):
                         print(f"Failed to load image for cam_{x}")
-                    else:
-                        self.labels[x-1].setPixmap(self.qpixmaps[x-1])
+                    else:   
+                        scaled_pixmap = self.qpixmaps[x-1].scaled(self.pixmap_size['width'], self.pixmap_size['height'], QtCore.Qt.KeepAspectRatio)
+                        self.labels[x-1].setPixmap(scaled_pixmap)
                 else:
                     print(f"No image available for cam_{x}")
             
