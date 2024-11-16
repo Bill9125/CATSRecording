@@ -28,6 +28,7 @@ class Ui_camcalib(object):
         self.spinBox.setGeometry(QtCore.QRect(660, 250, 70, 25))
         self.spinBox.setObjectName("spinBox")
         self.spinBox.setRange(1, 15)  # Default range, will be updated per JSON
+        self.spinBox.setDisabled(True)
 
         # Initialize 4 tabs and corresponding QLabel and QPixmap
         for i in range(4):
@@ -48,19 +49,22 @@ class Ui_camcalib(object):
         self.reverseCheckBox.setGeometry(QtCore.QRect(590, 273, 190, 31))
         self.reverseCheckBox.setText('Inverse Sequence')
         self.reverseCheckBox.stateChanged.connect(self.toggle_reverse_keypoints)
+        self.reverseCheckBox.setDisabled(True)
         
         # build extri.yml button
         self.buildextriBtn = QtWidgets.QPushButton(camcalib)
         self.buildextriBtn.setGeometry(QtCore.QRect(590, 600, 190, 31))
         self.buildextriBtn.setText("Build extri.yml")
         self.buildextriBtn.clicked.connect(self.buildextri)
+        self.buildextriBtn.setDisabled(True)
 
         # show cube button
         self.showcubeBtn = QtWidgets.QPushButton(camcalib)
         self.showcubeBtn.setGeometry(QtCore.QRect(590, 650, 190, 31))
         self.showcubeBtn.setText("Show Cube")
         self.showcubeBtn.clicked.connect(self.showcube)
-        
+        self.showcubeBtn.setDisabled(True)
+
         # Load data button
         self.LoaddataBtn = QtWidgets.QPushButton(camcalib)
         self.LoaddataBtn.setGeometry(QtCore.QRect(590, 40, 190, 31))
@@ -72,6 +76,7 @@ class Ui_camcalib(object):
         self.loadImage1Btn.setGeometry(QtCore.QRect(590, 90, 190, 31))
         self.loadImage1Btn.setText("Chessboard_Detect")
         self.loadImage1Btn.clicked.connect(self.chessboard_detect)
+        self.loadImage1Btn.setDisabled(True)
 
         # Zoom buttons
         self.pushButton = QtWidgets.QPushButton(camcalib)
@@ -79,12 +84,14 @@ class Ui_camcalib(object):
         self.pushButton.setObjectName("pushButton")
         self.pushButton.setText("Zoom in")
         self.pushButton.clicked.connect(self.Zoomin)
+        self.pushButton.setDisabled(True)
 
         self.pushButton_2 = QtWidgets.QPushButton(camcalib)
         self.pushButton_2.setGeometry(QtCore.QRect(700, 140, 81, 31))
         self.pushButton_2.setObjectName("pushButton_2")
         self.pushButton_2.setText("Zoom out")
         self.pushButton_2.clicked.connect(self.Zoomout)
+        self.pushButton_2.setDisabled(True)
 
         # Keypoint input area
         self.label = QtWidgets.QLabel(camcalib)
@@ -123,6 +130,11 @@ class Ui_camcalib(object):
         camcalib.setWindowTitle(_translate("camcalib", "Camera Calibration"))
 
     def chessboard_detect(self):
+        self.spinBox.setDisabled(False)
+        self.pushButton.setDisabled(False)
+        self.pushButton_2.setDisabled(False)
+        self.buildextriBtn.setDisabled(False)
+        self.reverseCheckBox.setDisabled(False)
         if os.path.isdir(self.path):
             extri_videos_path = join(self.path, 'videos')
             for filename in os.listdir(extri_videos_path):
@@ -140,6 +152,7 @@ class Ui_camcalib(object):
         self.load_image('images')
 
     def load_path(self):
+        self.loadImage1Btn.setDisabled(False)
         path = QtWidgets.QFileDialog.getExistingDirectory(directory='C:/MOCAP/EasyMocap/')
         if path:
             self.path = path  # 儲存路徑
@@ -189,6 +202,7 @@ class Ui_camcalib(object):
         self.load_image('cube')
 
     def buildextri(self):
+        self.showcubeBtn.setDisabled(False)
         cmd_4 = f'python C:/MOCAP/EasyMocap/apps/calibration/calib_extri.py {self.path} --intri {self.path}/intri.yml'
         os.system(cmd_4)
 
