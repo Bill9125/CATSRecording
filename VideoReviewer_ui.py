@@ -16,7 +16,24 @@ import os, sys
 import cv2, time
 import threading
 
-class Ui_myvideoreviewer(object):
+class Ui_myvideoreviewer(QtWidgets.QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setFocusPolicy(QtCore.Qt.StrongFocus)
+        self.setupUi(self)
+    
+    def keyPressEvent(self, event):
+        key = event.key()
+        if key == QtCore.Qt.Key_Space:
+            self.Play_btn.setFocus()
+            self.autoplay()
+        elif key == QtCore.Qt.Key_Right:
+            self.Frameslider.setFocus()
+            self.Frameslider.setValue(self.Frameslider.value() + 1)
+        elif key == QtCore.Qt.Key_Left:
+            self.Frameslider.setFocus()
+            self.Frameslider.setValue(self.Frameslider.value() - 1)
+
     def setupUi(self, myvideoreviewer):
         self.icons = []
         self.cameras = []
@@ -24,10 +41,15 @@ class Ui_myvideoreviewer(object):
         self.Vision_labels = []
         self.threads = []
         self.ocv = True
+        self.firstclicked_D = True
+        self.firstclicked_B = True
+        self.firstclicked_S = True
+        self.folders = {}
+        self.currentsport = ''
         self.index = 0
-
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.nextframe)
+        self.setFocusPolicy(QtCore.Qt.StrongFocus)
 
         # Set icon
         icon_srcs = glob.glob(self.resource_path('ui_src/*.png'))
@@ -90,6 +112,7 @@ class Ui_myvideoreviewer(object):
         font.setPointSize(50)
         font.setBold(True)
         font.setWeight(75)
+        self.TimeCount_LineEdit.setFocusPolicy(QtCore.Qt.NoFocus)
         self.TimeCount_LineEdit.setFont(font)
         self.TimeCount_LineEdit.setCursor(QtGui.QCursor(QtCore.Qt.IBeamCursor))
         self.TimeCount_LineEdit.setMouseTracking(False)
@@ -106,16 +129,36 @@ class Ui_myvideoreviewer(object):
         self.horizontalLayout.setStretch(2,90)
         self.horizontalLayout.setStretch(3,5)
 
-        self.selectFile_btn = QtWidgets.QToolButton(self.groupBox)
-        self.selectFile_btn.setGeometry(QtCore.QRect(20, 10, 71, 21))
+        self.horizontalLayoutWidget_2 = QtWidgets.QWidget(self.groupBox)
+        self.horizontalLayoutWidget_2.setGeometry(QtCore.QRect(10, 10, 1101, 31))
+        self.horizontalLayoutWidget_2.setObjectName("horizontalLayoutWidget_2")
+        self.horizontalLayout_2 = QtWidgets.QHBoxLayout(self.horizontalLayoutWidget_2)
+        self.horizontalLayout_2.setContentsMargins(0, 0, 0, 0)
+        self.horizontalLayout_2.setObjectName("horizontalLayout_2")
+
         font = QtGui.QFont()
         font.setFamily("Yu Gothic")
         font.setPointSize(12)
-        self.selectFile_btn.setFont(font)
-        self.selectFile_btn.setPopupMode(QtWidgets.QToolButton.DelayedPopup)
-        self.selectFile_btn.setToolButtonStyle(QtCore.Qt.ToolButtonIconOnly)
-        self.selectFile_btn.setObjectName("selectFile_btn")
-        self.selectFile_btn.clicked.connect(self.loadfolder)
+        self.Deadlift_btn = QtWidgets.QPushButton(self.horizontalLayoutWidget_2)
+        self.Deadlift_btn.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.Deadlift_btn.setFont(font)
+        self.Deadlift_btn.setObjectName("Deadlift_btn")
+        self.Deadlift_btn.clicked.connect(self.Deadlift_btn_pressed)
+        self.horizontalLayout_2.addWidget(self.Deadlift_btn)
+
+        self.Benchpress_btn = QtWidgets.QPushButton(self.horizontalLayoutWidget_2)
+        self.Benchpress_btn.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.Benchpress_btn.setFont(font)
+        self.Benchpress_btn.setObjectName("Benchpress_btn")
+        self.Benchpress_btn.clicked.connect(self.Benchpress_btn_pressed)
+        self.horizontalLayout_2.addWidget(self.Benchpress_btn)
+
+        self.Squart_btn = QtWidgets.QPushButton(self.horizontalLayoutWidget_2)
+        self.Squart_btn.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.Squart_btn.setFont(font)
+        self.Squart_btn.setObjectName("Squart_btn")
+        self.Squart_btn.clicked.connect(self.Squart_btn_pressed)
+        self.horizontalLayout_2.addWidget(self.Squart_btn)
 
         self.Filelist_comboBox = QtWidgets.QComboBox(self.groupBox)
         self.Filelist_comboBox.setEnabled(True)
@@ -124,7 +167,13 @@ class Ui_myvideoreviewer(object):
         self.Filelist_comboBox.setObjectName("Filelist_comboBox")
         self.Filelist_comboBox.setEditable(False)
         self.Filelist_comboBox.setStyleSheet("font-size:15px; color:yellow;")
-        self.Filelist_comboBox.currentIndexChanged.connect(self.readvideofile)
+        self.Filelist_comboBox.currentTextChanged.connect(lambda :self.readvideofile(self.currentsport))
+        self.horizontalLayout_2.addWidget(self.Filelist_comboBox)
+
+        self.horizontalLayout_2.setStretch(0, 1)
+        self.horizontalLayout_2.setStretch(1, 1)
+        self.horizontalLayout_2.setStretch(2, 1)
+        self.horizontalLayout_2.setStretch(3, 20)
 
         self.gridLayoutWidget = QtWidgets.QWidget(self.groupBox)
         self.gridLayoutWidget.setGeometry(QtCore.QRect(10, 40, 2131, 631))
@@ -135,6 +184,7 @@ class Ui_myvideoreviewer(object):
         self.gridLayout.setObjectName("gridLayout")
 
         self.Vision_lineEdit_2 = QtWidgets.QLineEdit(self.gridLayoutWidget)
+        self.Vision_lineEdit_2.setFocusPolicy(QtCore.Qt.NoFocus)
         font = QtGui.QFont()
         font.setFamily("Times New Roman")
         self.Vision_lineEdit_2.setFont(font)
@@ -147,6 +197,7 @@ class Ui_myvideoreviewer(object):
         self.gridLayout.addWidget(self.Vision_lineEdit_2, 1, 1, 1, 1)
 
         self.Vision_lineEdit_1 = QtWidgets.QLineEdit(self.gridLayoutWidget)
+        self.Vision_lineEdit_1.setFocusPolicy(QtCore.Qt.NoFocus)
         font = QtGui.QFont()
         font.setFamily("Times New Roman")
         font.setPointSize(24)
@@ -162,6 +213,7 @@ class Ui_myvideoreviewer(object):
         self.gridLayout.addWidget(self.Vision_lineEdit_1, 1, 0, 1, 1)
 
         self.Vision_lineEdit_4 = QtWidgets.QLineEdit(self.gridLayoutWidget)
+        self.Vision_lineEdit_4.setFocusPolicy(QtCore.Qt.NoFocus)
         font = QtGui.QFont()
         font.setFamily("Times New Roman")
         font.setPointSize(24)
@@ -175,6 +227,7 @@ class Ui_myvideoreviewer(object):
         self.gridLayout.addWidget(self.Vision_lineEdit_4, 1, 3, 1, 1)
 
         self.Vision_lineEdit_5 = QtWidgets.QLineEdit(self.gridLayoutWidget)
+        self.Vision_lineEdit_5.setFocusPolicy(QtCore.Qt.NoFocus)
         font = QtGui.QFont()
         font.setFamily("Times New Roman")
         font.setPointSize(24)
@@ -188,6 +241,7 @@ class Ui_myvideoreviewer(object):
         self.gridLayout.addWidget(self.Vision_lineEdit_5, 1, 4, 1, 1)
 
         self.Vision_lineEdit_3 = QtWidgets.QLineEdit(self.gridLayoutWidget)
+        self.Vision_lineEdit_3.setFocusPolicy(QtCore.Qt.NoFocus)
         font = QtGui.QFont()
         font.setFamily("Times New Roman")
         font.setPointSize(24)
@@ -240,30 +294,83 @@ class Ui_myvideoreviewer(object):
         self.qpixmap_5 = QtGui.QPixmap()
         self.qpixmaps = [self.qpixmap_1, self.qpixmap_2, self.qpixmap_3, self.qpixmap_4, self.qpixmap_5]
 
+
         self.retranslateUi(myvideoreviewer)
         QtCore.QMetaObject.connectSlotsByName(myvideoreviewer)
 
     def resource_path(self, relative_path):
         base_path = getattr(sys, '_MEIPASS', os.path.abspath("."))
         return os.path.join(base_path, relative_path)
+        
+    def Deadlift_btn_pressed(self):
+        self.Deadlift_btn.setStyleSheet("background-color: #888888")
+        self.Benchpress_btn.setStyleSheet("background-color: #666666")
+        self.Squart_btn.setStyleSheet("background-color: #666666")
+        if self.firstclicked_D == True:
+            folderPath = QtWidgets.QFileDialog.getExistingDirectory(None ,'Open folder', self.resource_path('./'))
+            self.folders['Deadlift'] = folderPath
+            self.firstclicked_D = False
 
-    def loadfolder(self):
-        self.folderPath = QtWidgets.QFileDialog.getExistingDirectory(None ,'Open folder', self.resource_path('./'))
-        self.Frameslider.setEnabled(True)
+        self.currentsport = 'Deadlift'
         self.Play_btn.setEnabled(True)
         self.Stop_btn.setEnabled(True)
+        self.Frameslider.setEnabled(True)
         self.Filelist_comboBox.clear()
-        if self.folderPath:
-            for folder in os.listdir(self.folderPath):
-                self.Filelist_comboBox.addItems([folder])
 
+        list = os.listdir(self.folders['Deadlift'])
+        for folder in list[::-1]:
+            self.Filelist_comboBox.addItems([folder])
+            
+
+    def Benchpress_btn_pressed(self):
+        self.Benchpress_btn.setStyleSheet("background-color: #888888")
+        self.Squart_btn.setStyleSheet("background-color: #666666")
+        self.Deadlift_btn.setStyleSheet("background-color: #666666")
+        if self.firstclicked_B == True:
+            folderPath = QtWidgets.QFileDialog.getExistingDirectory(None ,'Open folder', self.resource_path('./'))
+            self.folders['Benchpress'] = folderPath
+            self.firstclicked_B = False
+
+        self.currentsport = 'Benchpress'
+        self.Play_btn.setEnabled(True)
+        self.Stop_btn.setEnabled(True)
+        self.Frameslider.setEnabled(True)
+        self.Filelist_comboBox.clear()
+
+        list = os.listdir(self.folders['Benchpress'])
+        for folder in list[::-1]:
+            self.Filelist_comboBox.addItems([folder])
+
+
+    def Squart_btn_pressed(self):
+        self.Squart_btn.setStyleSheet("background-color: #888888")
+        self.Benchpress_btn.setStyleSheet("background-color: #666666")
+        self.Deadlift_btn.setStyleSheet("background-color: #666666")
+        if self.firstclicked_S == True:
+            folderPath = QtWidgets.QFileDialog.getExistingDirectory(None ,'Open folder', self.resource_path('./'))
+            self.folders['Squart'] = folderPath
+            self.firstclicked_S = False
+
+        self.currentsport = 'Squart'
+        self.Play_btn.setEnabled(True)
+        self.Stop_btn.setEnabled(True)
+        self.Frameslider.setEnabled(True)
+        self.Filelist_comboBox.clear()
+
+        list = os.listdir(self.folders['Squart'])
+        for folder in list[::-1]:
+            self.Filelist_comboBox.addItems([folder])
+
+        
     # 讀取combobox內的資料夾
-    def readvideofile(self):
+    def readvideofile(self, sport):
         videofolder = self.Filelist_comboBox.currentText()
         self.index = 0
         self.Play_btn.setIcon(self.icons[3])
-        self.videos = glob.glob(f'{self.folderPath}/{videofolder}/*.avi')
+        folder = self.folders[sport]
+        self.videos = glob.glob(f'{folder}/{videofolder}/*.avi')
         self.stop()
+
         # Clear all the Qpixmap
         for i in range(len(self.Vision_labels)):
             self.Vision_labels[i].setPixmap(QtGui.QPixmap())
@@ -354,7 +461,9 @@ class Ui_myvideoreviewer(object):
         _translate = QtCore.QCoreApplication.translate
         myvideoreviewer.setWindowTitle(_translate("myvideoreviewer", "VideoReviewer CATS"))
         self.TimeCount_LineEdit.setPlaceholderText(_translate("myvideoreviewer", "00:00"))
-        self.selectFile_btn.setText(_translate("myvideoreviewer", "File"))
+        self.Deadlift_btn.setText(_translate("myvideoreviewer", "Deadlift"))
+        self.Benchpress_btn.setText(_translate("myvideoreviewer", "Benchpress"))
+        self.Squart_btn.setText(_translate("myvideoreviewer", "Squart"))
 
     def closeEvent(self):
         self.ocv = False
