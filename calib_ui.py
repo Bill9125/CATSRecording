@@ -5,7 +5,9 @@ import sys, os
 import glob
 import json
 from os.path import join
+from qt_material import apply_stylesheet
 from avi_to_mp4 import avi_2_mp4
+import shutil
 
 class Ui_camcalib(object):
     def setupUi(self, camcalib):
@@ -30,6 +32,12 @@ class Ui_camcalib(object):
         self.spinBox.setRange(1, 15)  # Default range, will be updated per JSON
         self.spinBox.setDisabled(True)
 
+        font = QtGui.QFont()
+        font.setFamily("Times New Roman")
+        font.setPointSize(10)
+        font.setBold(True)
+        font.setWeight(75)
+
         # Initialize 4 tabs and corresponding QLabel and QPixmap
         for i in range(4):
             tab = QtWidgets.QWidget()
@@ -37,7 +45,7 @@ class Ui_camcalib(object):
             label = DraggableLabel(self, tab, i)
             label.setGeometry(QtCore.QRect(30, 20, 480, 640))
             label.setObjectName(f"label_{i+1}")
-            self.tabWidget.addTab(tab, f"cam_{i+1}")
+            self.tabWidget.addTab(tab, f"cam {i+1}")
             self.tabs.append(tab)
             self.labels.append(label)
             qpixmap = QtGui.QPixmap()
@@ -47,6 +55,7 @@ class Ui_camcalib(object):
         # sequence inverse checkbox
         self.reverseCheckBox = QtWidgets.QCheckBox(camcalib)
         self.reverseCheckBox.setGeometry(QtCore.QRect(590, 273, 190, 31))
+        self.reverseCheckBox.setFont(font)
         self.reverseCheckBox.setText('Inverse Sequence')
         self.reverseCheckBox.stateChanged.connect(self.toggle_reverse_keypoints)
         self.reverseCheckBox.setDisabled(True)
@@ -54,6 +63,7 @@ class Ui_camcalib(object):
         # build extri.yml button
         self.buildextriBtn = QtWidgets.QPushButton(camcalib)
         self.buildextriBtn.setGeometry(QtCore.QRect(590, 600, 190, 31))
+        self.buildextriBtn.setFont(font)
         self.buildextriBtn.setText("Build extri.yml")
         self.buildextriBtn.clicked.connect(self.buildextri)
         self.buildextriBtn.setDisabled(True)
@@ -61,6 +71,7 @@ class Ui_camcalib(object):
         # show cube button
         self.showcubeBtn = QtWidgets.QPushButton(camcalib)
         self.showcubeBtn.setGeometry(QtCore.QRect(590, 650, 190, 31))
+        self.showcubeBtn.setFont(font)
         self.showcubeBtn.setText("Show Cube")
         self.showcubeBtn.clicked.connect(self.showcube)
         self.showcubeBtn.setDisabled(True)
@@ -68,13 +79,15 @@ class Ui_camcalib(object):
         # Load data button
         self.LoaddataBtn = QtWidgets.QPushButton(camcalib)
         self.LoaddataBtn.setGeometry(QtCore.QRect(590, 40, 190, 31))
-        self.LoaddataBtn.setText("Load extri_data")
+        self.LoaddataBtn.setFont(font)
+        self.LoaddataBtn.setText("Load extri data")
         self.LoaddataBtn.clicked.connect(self.load_path)
 
         # extri_calib button
         self.loadImage1Btn = QtWidgets.QPushButton(camcalib)
         self.loadImage1Btn.setGeometry(QtCore.QRect(590, 90, 190, 31))
-        self.loadImage1Btn.setText("Chessboard_Detect")
+        self.loadImage1Btn.setFont(font)
+        self.loadImage1Btn.setText("Chessboard Detect")
         self.loadImage1Btn.clicked.connect(self.chessboard_detect)
         self.loadImage1Btn.setDisabled(True)
 
@@ -82,6 +95,7 @@ class Ui_camcalib(object):
         self.pushButton = QtWidgets.QPushButton(camcalib)
         self.pushButton.setGeometry(QtCore.QRect(590, 140, 81, 31))
         self.pushButton.setObjectName("pushButton")
+        self.pushButton.setStyleSheet("font-size:10px;")
         self.pushButton.setText("Zoom in")
         self.pushButton.clicked.connect(self.Zoomin)
         self.pushButton.setDisabled(True)
@@ -89,6 +103,7 @@ class Ui_camcalib(object):
         self.pushButton_2 = QtWidgets.QPushButton(camcalib)
         self.pushButton_2.setGeometry(QtCore.QRect(700, 140, 81, 31))
         self.pushButton_2.setObjectName("pushButton_2")
+        self.pushButton_2.setStyleSheet("font-size:10px;")
         self.pushButton_2.setText("Zoom out")
         self.pushButton_2.clicked.connect(self.Zoomout)
         self.pushButton_2.setDisabled(True)
@@ -144,18 +159,17 @@ class Ui_camcalib(object):
 
         cmd_1 = f'python C:/MOCAP/EasyMocap/scripts/preprocess/extract_video.py {self.path} --no2d'
         os.system(cmd_1)
-        cmd_2 = f'python C:/MOCAP/EasyMocap/scripts/preprocess/random_process.py {self.path}'
+        cmd_2 = f'python C:/MOCAP/EasyMocap/apps/calibration/detect_chessboard.py {self.path} --out {self.path}/output/calibration --pattern 5,3 --grid 0.15'
         os.system(cmd_2)
-        chessboard = join(self.path, 'chessboard')
-        cmd_3 = f'python C:/MOCAP/EasyMocap/apps/calibration/detect_chessboard.py {self.path} --out {self.path}/{chessboard} --pattern 5,3 --grid 0.135'
+        cmd_3 = f'python C:/MOCAP/EasyMocap/scripts/preprocess/file_process.py {self.path}'
         os.system(cmd_3)
         self.load_image('images')
 
     def load_path(self):
         self.loadImage1Btn.setDisabled(False)
-        path = QtWidgets.QFileDialog.getExistingDirectory(directory='C:/MOCAP/EasyMocap/')
+        path = QtWidgets.QFileDialog.getExistingDirectory(directory='C:/')
         if path:
-            self.path = path  # 儲存路徑
+            self.path = path  # 儲存外參路徑
 
     def load_image(self, type):
         # Load images and set initial display
@@ -180,11 +194,11 @@ class Ui_camcalib(object):
                 if x-1 < len(imagelist):
                     if not self.qpixmaps[x-1].load(imagelist[x-1]):
                         print(f"Failed to load image for cam_{x}")
-                    else:   
+                    else:
                         scaled_pixmap = self.qpixmaps[x-1].scaled(self.pixmap_size['width'], self.pixmap_size['height'], QtCore.Qt.KeepAspectRatio)
                         self.labels[x-1].setPixmap(scaled_pixmap)
                 else:
-                    print(f"No image available for cam_{x}")
+                    print(f"No image available for cam {x}")
             
         
 

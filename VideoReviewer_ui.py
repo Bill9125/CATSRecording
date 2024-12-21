@@ -13,8 +13,33 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from qt_material import apply_stylesheet
 import glob
 import os, sys
-import cv2, time
+import cv2
 import threading
+import time
+
+# class MyThread(threading.Thread):
+#     def __init__(self, video, num):
+#         threading.Thread.__init__(self)
+#         self.num = num
+#         self.video = video
+#     def run(self):
+#         cap = cv2.VideoCapture(video)
+#         fps = cap.get(cv2.CAP_PROP_FPS)
+#         while True:
+#             time.sleep(0.001*fps)
+#             ret , frame = cap.read()
+#             if ret and self.pause_sig:
+#                 frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+#                 image = QtGui.QImage(frame_rgb.data, frame_rgb.shape[1], frame_rgb.shape[0], QtGui.QImage.Format_RGB888)
+#                 self.qpixmaps[index] = QtGui.QPixmap.fromImage(image)
+#                 scaled_pixmap = self.qpixmaps[index].scaled(self.Vision_labels[index].size(), QtCore.Qt.KeepAspectRatio)
+#                 self.Vision_labels[index].setPixmap(scaled_pixmap)
+#             else:
+#                 break
+#     def pause(self):
+
+#     def resume(self):
+      
 
 class Ui_myvideoreviewer(QtWidgets.QWidget):
     def __init__(self):
@@ -47,9 +72,10 @@ class Ui_myvideoreviewer(QtWidgets.QWidget):
         self.folders = {}
         self.currentsport = ''
         self.index = 0
-        self.timer = QtCore.QTimer()
-        self.timer.timeout.connect(self.nextframe)
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
+        self.rates = [1.5, 1, 0.8, 0.5]
+        self.pause_sig = bool
+        self.threads = []
 
         # Set icon
         icon_srcs = glob.glob(self.resource_path('ui_src/*.png'))
@@ -94,6 +120,13 @@ class Ui_myvideoreviewer(QtWidgets.QWidget):
         self.Stop_btn.clicked.connect(self.stop)
         self.horizontalLayout.addWidget(self.Stop_btn)
 
+        self.fast_forward_combobox = QtWidgets.QComboBox(self.horizontalLayoutWidget)
+        self.fast_forward_combobox.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.fast_forward_combobox.setObjectName("fast_forward_combobox")
+        for rate in self.rates:
+            self.fast_forward_combobox.addItems([str(rate)])
+        self.horizontalLayout.addWidget(self.fast_forward_combobox)
+
         self.Frameslider = QtWidgets.QSlider(self.horizontalLayoutWidget)
         self.Frameslider.setEnabled(False)
         self.Frameslider.setSingleStep(1)
@@ -101,8 +134,8 @@ class Ui_myvideoreviewer(QtWidgets.QWidget):
         self.Frameslider.setTracking(True)
         self.Frameslider.setOrientation(QtCore.Qt.Horizontal)
         self.Frameslider.setObjectName("Frameslider")
-        self.Frameslider.valueChanged.connect(self.sliding)
-        self.Frameslider.sliderMoved.connect(self.interupsliding)
+        # self.Frameslider.valueChanged.connect(self.sliding)
+        # self.Frameslider.sliderMoved.connect(self.interupsliding)
         self.horizontalLayout.addWidget(self.Frameslider)
 
         self.TimeCount_LineEdit = QtWidgets.QLineEdit(self.horizontalLayoutWidget)
@@ -126,8 +159,9 @@ class Ui_myvideoreviewer(QtWidgets.QWidget):
         self.horizontalLayout.addWidget(self.TimeCount_LineEdit)
         self.horizontalLayout.setStretch(0,0)
         self.horizontalLayout.setStretch(1,0)
-        self.horizontalLayout.setStretch(2,90)
-        self.horizontalLayout.setStretch(3,5)
+        self.horizontalLayout.setStretch(2,0)
+        self.horizontalLayout.setStretch(3,90)
+        self.horizontalLayout.setStretch(4,5)
 
         self.horizontalLayoutWidget_2 = QtWidgets.QWidget(self.groupBox)
         self.horizontalLayoutWidget_2.setGeometry(QtCore.QRect(10, 10, 1101, 31))
@@ -138,24 +172,24 @@ class Ui_myvideoreviewer(QtWidgets.QWidget):
 
         font = QtGui.QFont()
         font.setFamily("Yu Gothic")
-        font.setPointSize(12)
+        font.setPointSize(15)
         self.Deadlift_btn = QtWidgets.QPushButton(self.horizontalLayoutWidget_2)
         self.Deadlift_btn.setFocusPolicy(QtCore.Qt.NoFocus)
-        self.Deadlift_btn.setFont(font)
+        self.Deadlift_btn.setStyleSheet("font-size:18px;")
         self.Deadlift_btn.setObjectName("Deadlift_btn")
         self.Deadlift_btn.clicked.connect(self.Deadlift_btn_pressed)
         self.horizontalLayout_2.addWidget(self.Deadlift_btn)
 
         self.Benchpress_btn = QtWidgets.QPushButton(self.horizontalLayoutWidget_2)
         self.Benchpress_btn.setFocusPolicy(QtCore.Qt.NoFocus)
-        self.Benchpress_btn.setFont(font)
+        self.Benchpress_btn.setStyleSheet("font-size:18px;")
         self.Benchpress_btn.setObjectName("Benchpress_btn")
         self.Benchpress_btn.clicked.connect(self.Benchpress_btn_pressed)
         self.horizontalLayout_2.addWidget(self.Benchpress_btn)
 
         self.Squart_btn = QtWidgets.QPushButton(self.horizontalLayoutWidget_2)
         self.Squart_btn.setFocusPolicy(QtCore.Qt.NoFocus)
-        self.Squart_btn.setFont(font)
+        self.Squart_btn.setStyleSheet("font-size:18px;")
         self.Squart_btn.setObjectName("Squart_btn")
         self.Squart_btn.clicked.connect(self.Squart_btn_pressed)
         self.horizontalLayout_2.addWidget(self.Squart_btn)
@@ -307,7 +341,7 @@ class Ui_myvideoreviewer(QtWidgets.QWidget):
         self.Benchpress_btn.setStyleSheet("background-color: #666666")
         self.Squart_btn.setStyleSheet("background-color: #666666")
         if self.firstclicked_D == True:
-            folderPath = QtWidgets.QFileDialog.getExistingDirectory(None ,'Open folder', self.resource_path('./'))
+            folderPath = QtWidgets.QFileDialog.getExistingDirectory(None ,'Open folder', self.resource_path('C:/'))
             self.folders['Deadlift'] = folderPath
             self.firstclicked_D = False
 
@@ -327,7 +361,7 @@ class Ui_myvideoreviewer(QtWidgets.QWidget):
         self.Squart_btn.setStyleSheet("background-color: #666666")
         self.Deadlift_btn.setStyleSheet("background-color: #666666")
         if self.firstclicked_B == True:
-            folderPath = QtWidgets.QFileDialog.getExistingDirectory(None ,'Open folder', self.resource_path('./'))
+            folderPath = QtWidgets.QFileDialog.getExistingDirectory(None ,'Open folder', self.resource_path('C:/'))
             self.folders['Benchpress'] = folderPath
             self.firstclicked_B = False
 
@@ -347,7 +381,7 @@ class Ui_myvideoreviewer(QtWidgets.QWidget):
         self.Benchpress_btn.setStyleSheet("background-color: #666666")
         self.Deadlift_btn.setStyleSheet("background-color: #666666")
         if self.firstclicked_S == True:
-            folderPath = QtWidgets.QFileDialog.getExistingDirectory(None ,'Open folder', self.resource_path('./'))
+            folderPath = QtWidgets.QFileDialog.getExistingDirectory(None ,'Open folder', self.resource_path('C:/'))
             self.folders['Squart'] = folderPath
             self.firstclicked_S = False
 
@@ -361,9 +395,9 @@ class Ui_myvideoreviewer(QtWidgets.QWidget):
         for folder in list[::-1]:
             self.Filelist_comboBox.addItems([folder])
 
-        
     # 讀取combobox內的資料夾
     def readvideofile(self, sport):
+        self.file_change = True
         videofolder = self.Filelist_comboBox.currentText()
         self.index = 0
         self.Play_btn.setIcon(self.icons[3])
@@ -398,16 +432,40 @@ class Ui_myvideoreviewer(QtWidgets.QWidget):
             scaled_pixmap = qpixmap.scaled(label.size(), QtCore.Qt.KeepAspectRatio)
             label.setPixmap(scaled_pixmap)
 
-    def nextframe(self):
-        # slider value +1
-        val = self.Frameslider.value()
-        self.Frameslider.setSliderPosition(val+1)
+
+    
+    class MyThread(threading.Thread):
+        def __init__(self, target, args=()):
+            super().__init__()
+            self._pause_event = threading.Event()
+            self._pause_event.set()
+            self._stop_event = threading.Event()
+            self.target = target
+            self.args = args
+
+        def run(self):
+            while not self._stop_event.is_set():
+                self._pause_event.wait()
+                self.target(*self.args)
+
+        def pause(self):
+            self._pause_event.clear()
+
+        def is_pause(self):
+            return not self._pause_event.is_set()
+
+        def resume(self):
+            self._pause_event.set()
+
+        def stop(self):
+            self._stop_event.set()
+            self.resume() 
 
     def autoplay(self):
-        self.start = time.time()
         self.index += 1
         # play
         if self.index % 2 == 1: 
+            self.pause_sig = True
             self.Play_btn.setIcon(self.icons[2])
             f_num = []
             for video in self.videos:
@@ -415,47 +473,68 @@ class Ui_myvideoreviewer(QtWidgets.QWidget):
                 f_num.append(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
             framenumber = min(f_num)
-            # FPS = 30
-            self.timer.start(1)
             self.Frameslider.setMaximum(int(framenumber))
-
+            if self.file_change:
+                self.threads = []
+                for i, video in enumerate(self.videos):
+                    thread_1 = self.MyThread(target=self._play, args=(video, i))
+                    thread_1.start()
+                    self.threads.append(thread_1)
+                self.file_change = False
+            else:
+                for thread in self.threads:
+                    thread.resume()
         # pause
         elif self.index % 2 == 0:
+            self.pause_sig = False
             self.Play_btn.setIcon(self.icons[3])
-            self.timer.stop()
-        
+            for thread in self.threads:
+                thread.pause()
+
+    def _play(self, video, index):
+        cap = cv2.VideoCapture(video)
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        while True:
+            if self.threads[index].is_pause():
+                continue
+            time.sleep(0.001 * fps)
+            ret , frame = cap.read()
+            if ret and self.pause_sig:
+                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                image = QtGui.QImage(frame_rgb.data, frame_rgb.shape[1], frame_rgb.shape[0], QtGui.QImage.Format_RGB888)
+                self.qpixmaps[index] = QtGui.QPixmap.fromImage(image)
+                scaled_pixmap = self.qpixmaps[index].scaled(self.Vision_labels[index].size(), QtCore.Qt.KeepAspectRatio)
+                self.Vision_labels[index].setPixmap(scaled_pixmap)
+            elif self.file_change:
+                break
+            else:
+                continue
+
     def stop(self):
-        self.timer.stop()
         self.Frameslider.setSliderPosition(0)
         self.Play_btn.setIcon(self.icons[3])
         self.index = 0
 
     def interupsliding(self):
-        self.timer.stop()
         self.Play_btn.setIcon(self.icons[3])
         self.index = 0
 
-    def sliding(self):
-        val = self.Frameslider.value()
-        sec = val/30
-        minute = "%02d" % int(sec / 60)
-        second = "%02d" % int(sec % 60)
-        self.TimeCount_LineEdit.setText(f'{minute}:{second}')
+    def _sliding(self, video):
+        cap = cv2.VideoCapture(video)
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        while True:
+            time.sleep(0.001 * fps)
+            if self.pause_sig:
+                val = self.Frameslider.value()
+                print(val)
+                self.Frameslider.setValue(val + 1)
+                sec = val / fps
+                minute = "%02d" % int(sec / 60)
+                second = "%02d" % int(sec % 60)
+                self.TimeCount_LineEdit.setText(f'{minute}:{second}')
+            else:
+                break
 
-        if val < self.Frameslider.maximum():
-            for i in range(len(self.videos)):
-                cap = cv2.VideoCapture(self.videos[i])
-                cap.set(cv2.CAP_PROP_POS_FRAMES, val)
-                _ , frame = cap.read()
-                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                image = QtGui.QImage(frame_rgb.data, frame_rgb.shape[1], frame_rgb.shape[0], QtGui.QImage.Format_RGB888)
-                self.qpixmaps[i] = QtGui.QPixmap.fromImage(image)
-                scaled_pixmap = self.qpixmaps[i].scaled(self.Vision_labels[i].size(), QtCore.Qt.KeepAspectRatio)
-                self.Vision_labels[i].setPixmap(scaled_pixmap)
-        else:
-            self.Play_btn.setIcon(self.icons[3])
-            self.index = 0
-            print(f'It actually took {time.time() - self.start} seconds.')
 
     def retranslateUi(self, myvideoreviewer):
         _translate = QtCore.QCoreApplication.translate
