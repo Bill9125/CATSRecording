@@ -294,6 +294,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.ui.fast_forward_combobox.addItems([str(rate)])
         self.ui.Frameslider.valueChanged.connect(self.sliding)
         self.ui.Frameslider.sliderMoved.connect(self.interupsliding)
+        self.ui.Frameslider.sliderReleased.connect(self.slider_released)
         self.ui.Deadlift_btn.clicked.connect(self.Deadlift_btn_pressed)
         self.ui.Benchpress_btn.clicked.connect(self.Benchpress_btn_pressed)
         self.ui.Squat_btn.clicked.connect(self.Squat_btn_pressed)
@@ -484,11 +485,15 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.ui.Frameslider.setMaximum(int(self.framenumber))
             fps = 30 / float(self.speed_rate)
             time.sleep(0.001 * fps)
+            val = self.ui.Frameslider.value()
+            cap.set(cv2.CAP_PROP_POS_FRAMES, val)
             ret , frame = cap.read()
 
+            # 迴圈暫停條件
             if self.threads[index].is_pause():
                 continue
-
+            
+            # 迴圈終止條件
             if self.is_stop: # 按下暫停，迴圈終止
                 cap.release()
                 break
@@ -499,20 +504,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     self.Vision_labels[i].setPixmap(qpixmap)
                 cap.release()
                 break
-
-            if ret and self.is_slide:
-                val = self.ui.Frameslider.value()
-                cap.set(cv2.CAP_PROP_POS_FRAMES, val)
-                ret , frame = cap.read()
-                if index == 0: # slider 跟著影片的幀數做移動
-                    val = self.ui.Frameslider.value()
-                    self.ui.Frameslider.setValue(val + 1)
-                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                image = QtGui.QImage(frame_rgb.data, frame_rgb.shape[1], frame_rgb.shape[0], QtGui.QImage.Format_RGB888)
-                self.qpixmaps[index] = QtGui.QPixmap.fromImage(image)
-                scaled_pixmap = self.qpixmaps[index].scaled(self.Vision_labels[index].size(), QtCore.Qt.KeepAspectRatio)
-                self.Vision_labels[index].setPixmap(scaled_pixmap)
-
+            
             if (ret and self.pause_sig and not self.is_stop and not self.is_slide):
                 if index == 0: # slider 跟著影片的幀數做移動
                     val = self.ui.Frameslider.value()
@@ -533,6 +525,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.index = 0
         self.is_stop = True
 
+    def slider_released(self):
+        self.is_slide = False
+
     def interupsliding(self):
         self.is_slide = True 
 
@@ -547,6 +542,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def closeEvent(self, event):
         self.exited = True
         event.accept()
+
 
 if __name__ == "__main__":
     import sys
