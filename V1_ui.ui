@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>2485</width>
+    <height>798</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>CATS Webcamviewer</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <widget class="QTabWidget" name="tabWidget">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>10</y>
+      <width>2471</width>
+      <height>1000</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>Times New Roman</family>
+      <pointsize>16</pointsize>
+     </font>
+    </property>
+    <property name="currentIndex">
+     <number>1</number>
+    </property>
+    <widget class="QWidget" name="Recording_tab">
+     <attribute name="title">
+      <string>Recording</string>
+     </attribute>
+     <widget class="QWidget" name="horizontalLayoutWidget">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>10</y>
+        <width>2441</width>
+        <height>711</height>
+       </rect>
+      </property>
+      <layout class="QHBoxLayout" name="horizontalLayout_Recording" stretch="10,10,10">
+       <property name="spacing">
+        <number>500</number>
+       </property>
+       <property name="leftMargin">
+        <number>500</number>
+       </property>
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="rightMargin">
+        <number>500</number>
+       </property>
+       <item>
+        <widget class="QPushButton" name="Deadlift_btn">
+         <property name="font">
+          <font>
+           <family>Times New Roman</family>
+           <pointsize>26</pointsize>
+          </font>
+         </property>
+         <property name="autoFillBackground">
+          <bool>false</bool>
+         </property>
+         <property name="text">
+          <string>Deadlift</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="Benchpress_btn">
+         <property name="font">
+          <font>
+           <family>Times New Roman</family>
+           <pointsize>26</pointsize>
+          </font>
+         </property>
+         <property name="text">
+          <string>Benchpress</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="Squat_btn">
+         <property name="font">
+          <font>
+           <family>Times New Roman</family>
+           <pointsize>26</pointsize>
+          </font>
+         </property>
+         <property name="text">
+          <string>Squat</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+      <zorder>Benchpress_btn</zorder>
+      <zorder>Squat_btn</zorder>
+      <zorder>Deadlift_btn</zorder>
+     </widget>
+    </widget>
+    <widget class="QWidget" name="Review_tab">
+     <attribute name="title">
+      <string>Replay</string>
+     </attribute>
+     <widget class="QWidget" name="horizontalLayoutWidget_2">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>10</y>
+        <width>2441</width>
+        <height>711</height>
+       </rect>
+      </property>
+      <layout class="QHBoxLayout" name="horizontalLayout_Recording_2" stretch="10,10,10">
+       <property name="spacing">
+        <number>500</number>
+       </property>
+       <property name="leftMargin">
+        <number>500</number>
+       </property>
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="rightMargin">
+        <number>500</number>
+       </property>
+       <item>
+        <widget class="QPushButton" name="Deadlift_btn_2">
+         <property name="font">
+          <font>
+           <family>Times New Roman</family>
+           <pointsize>26</pointsize>
+          </font>
+         </property>
+         <property name="autoFillBackground">
+          <bool>false</bool>
+         </property>
+         <property name="text">
+          <string>Deadlift</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="Benchpress_btn_2">
+         <property name="font">
+          <font>
+           <family>Times New Roman</family>
+           <pointsize>26</pointsize>
+          </font>
+         </property>
+         <property name="text">
+          <string>Benchpress</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="Squat_btn_2">
+         <property name="font">
+          <font>
+           <family>Times New Roman</family>
+           <pointsize>26</pointsize>
+          </font>
+         </property>
+         <property name="text">
+          <string>Squat</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </widget>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
