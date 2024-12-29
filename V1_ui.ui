@@ -6,177 +6,545 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>2485</width>
-    <height>798</height>
+    <width>2171</width>
+    <height>843</height>
    </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>1292</width>
+    <height>500</height>
+   </size>
   </property>
   <property name="windowTitle">
    <string>CATS Webcamviewer</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <widget class="QTabWidget" name="tabWidget">
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+     <horstretch>3</horstretch>
+     <verstretch>2</verstretch>
+    </sizepolicy>
+   </property>
+   <property name="maximumSize">
+    <size>
+     <width>2171</width>
+     <height>826</height>
+    </size>
+   </property>
+   <widget class="QWidget" name="verticalLayoutWidget">
     <property name="geometry">
      <rect>
-      <x>10</x>
-      <y>10</y>
-      <width>2471</width>
-      <height>1000</height>
+      <x>0</x>
+      <y>0</y>
+      <width>2171</width>
+      <height>821</height>
      </rect>
     </property>
-    <property name="font">
-     <font>
-      <family>Times New Roman</family>
-      <pointsize>16</pointsize>
-     </font>
-    </property>
-    <property name="currentIndex">
-     <number>1</number>
-    </property>
-    <widget class="QWidget" name="Recording_tab">
-     <attribute name="title">
-      <string>Recording</string>
-     </attribute>
-     <widget class="QWidget" name="horizontalLayoutWidget">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>10</y>
-        <width>2441</width>
-        <height>711</height>
-       </rect>
-      </property>
-      <layout class="QHBoxLayout" name="horizontalLayout_Recording" stretch="10,10,10">
-       <property name="spacing">
-        <number>500</number>
+    <layout class="QVBoxLayout" name="verticalLayout">
+     <item>
+      <widget class="QTabWidget" name="replay_tabWidget">
+       <property name="enabled">
+        <bool>true</bool>
        </property>
-       <property name="leftMargin">
-        <number>500</number>
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
        </property>
-       <property name="topMargin">
+       <property name="minimumSize">
+        <size>
+         <width>2151</width>
+         <height>811</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>2151</width>
+         <height>811</height>
+        </size>
+       </property>
+       <property name="font">
+        <font>
+         <family>Times New Roman</family>
+         <pointsize>16</pointsize>
+        </font>
+       </property>
+       <property name="currentIndex">
         <number>0</number>
        </property>
-       <property name="rightMargin">
-        <number>500</number>
-       </property>
-       <item>
-        <widget class="QPushButton" name="Deadlift_btn">
+       <widget class="QWidget" name="Recording_tab">
+        <attribute name="title">
+         <string>Recording</string>
+        </attribute>
+        <widget class="QWidget" name="gridLayoutWidget_2">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>10</y>
+           <width>2121</width>
+           <height>761</height>
+          </rect>
+         </property>
+         <layout class="QGridLayout" name="grid_Layout_recording">
+          <property name="sizeConstraint">
+           <enum>QLayout::SetDefaultConstraint</enum>
+          </property>
+          <property name="leftMargin">
+           <number>950</number>
+          </property>
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <property name="rightMargin">
+           <number>950</number>
+          </property>
+          <property name="bottomMargin">
+           <number>500</number>
+          </property>
+          <item row="2" column="0">
+           <widget class="QPushButton" name="Benchpress_btn_3">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="font">
+             <font>
+              <family>Times New Roman</family>
+              <pointsize>26</pointsize>
+             </font>
+            </property>
+            <property name="text">
+             <string>Benchpress</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0">
+           <widget class="QPushButton" name="Squat_btn_3">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="font">
+             <font>
+              <family>Times New Roman</family>
+              <pointsize>26</pointsize>
+             </font>
+            </property>
+            <property name="text">
+             <string>Squat</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QPushButton" name="Deadlift_btn_3">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="font">
+             <font>
+              <family>Times New Roman</family>
+              <pointsize>26</pointsize>
+             </font>
+            </property>
+            <property name="autoFillBackground">
+             <bool>false</bool>
+            </property>
+            <property name="text">
+             <string>Deadlift</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="0">
+           <widget class="QCheckBox" name="manual_checkbox">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="text">
+             <string>manual recording</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </widget>
+       <widget class="QWidget" name="Replay_tab">
+        <attribute name="title">
+         <string>Replay</string>
+        </attribute>
+        <widget class="QLineEdit" name="Vision_lineEdit_5">
+         <property name="geometry">
+          <rect>
+           <x>1713</x>
+           <y>580</y>
+           <width>406</width>
+           <height>38</height>
+          </rect>
+         </property>
          <property name="font">
           <font>
            <family>Times New Roman</family>
-           <pointsize>26</pointsize>
+           <pointsize>24</pointsize>
           </font>
          </property>
-         <property name="autoFillBackground">
+         <property name="styleSheet">
+          <string notr="true">background-color: rgb(255, 255, 255, 0);</string>
+         </property>
+         <property name="frame">
           <bool>false</bool>
          </property>
-         <property name="text">
-          <string>Deadlift</string>
+         <property name="readOnly">
+          <bool>true</bool>
          </property>
         </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="Benchpress_btn">
+        <widget class="QLineEdit" name="Vision_lineEdit_2">
+         <property name="geometry">
+          <rect>
+           <x>434</x>
+           <y>580</y>
+           <width>406</width>
+           <height>38</height>
+          </rect>
+         </property>
          <property name="font">
           <font>
            <family>Times New Roman</family>
-           <pointsize>26</pointsize>
+           <pointsize>24</pointsize>
           </font>
          </property>
-         <property name="text">
-          <string>Benchpress</string>
+         <property name="styleSheet">
+          <string notr="true">background-color: rgb(255, 255, 255, 0);</string>
          </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="Squat_btn">
-         <property name="font">
-          <font>
-           <family>Times New Roman</family>
-           <pointsize>26</pointsize>
-          </font>
-         </property>
-         <property name="text">
-          <string>Squat</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
-      <zorder>Benchpress_btn</zorder>
-      <zorder>Squat_btn</zorder>
-      <zorder>Deadlift_btn</zorder>
-     </widget>
-    </widget>
-    <widget class="QWidget" name="Review_tab">
-     <attribute name="title">
-      <string>Replay</string>
-     </attribute>
-     <widget class="QWidget" name="horizontalLayoutWidget_2">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>10</y>
-        <width>2441</width>
-        <height>711</height>
-       </rect>
-      </property>
-      <layout class="QHBoxLayout" name="horizontalLayout_Recording_2" stretch="10,10,10">
-       <property name="spacing">
-        <number>500</number>
-       </property>
-       <property name="leftMargin">
-        <number>500</number>
-       </property>
-       <property name="topMargin">
-        <number>0</number>
-       </property>
-       <property name="rightMargin">
-        <number>500</number>
-       </property>
-       <item>
-        <widget class="QPushButton" name="Deadlift_btn_2">
-         <property name="font">
-          <font>
-           <family>Times New Roman</family>
-           <pointsize>26</pointsize>
-          </font>
-         </property>
-         <property name="autoFillBackground">
+         <property name="frame">
           <bool>false</bool>
          </property>
-         <property name="text">
-          <string>Deadlift</string>
+         <property name="readOnly">
+          <bool>true</bool>
          </property>
         </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="Benchpress_btn_2">
+        <widget class="QWidget" name="horizontalLayoutWidget">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>690</y>
+           <width>2131</width>
+           <height>73</height>
+          </rect>
+         </property>
+         <layout class="QHBoxLayout" name="Play_Controll_horizontalLayout" stretch="0,0,90,5">
+          <property name="spacing">
+           <number>10</number>
+          </property>
+          <property name="sizeConstraint">
+           <enum>QLayout::SetDefaultConstraint</enum>
+          </property>
+          <property name="leftMargin">
+           <number>5</number>
+          </property>
+          <property name="rightMargin">
+           <number>10</number>
+          </property>
+          <item>
+           <widget class="QToolButton" name="Play_btn">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Maximum">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="text">
+             <string/>
+            </property>
+            <property name="autoRaise">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QToolButton" name="Stop_btn">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Maximum">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="text">
+             <string/>
+            </property>
+            <property name="autoRaise">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QSlider" name="Frameslider">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="maximum">
+             <number>99</number>
+            </property>
+            <property name="singleStep">
+             <number>1</number>
+            </property>
+            <property name="pageStep">
+             <number>2</number>
+            </property>
+            <property name="value">
+             <number>0</number>
+            </property>
+            <property name="tracking">
+             <bool>true</bool>
+            </property>
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="TimeCount_LineEdit">
+            <property name="enabled">
+             <bool>true</bool>
+            </property>
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="font">
+             <font>
+              <family>Times New Roman</family>
+              <pointsize>14</pointsize>
+              <weight>75</weight>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="cursor">
+             <cursorShape>IBeamCursor</cursorShape>
+            </property>
+            <property name="mouseTracking">
+             <bool>false</bool>
+            </property>
+            <property name="acceptDrops">
+             <bool>true</bool>
+            </property>
+            <property name="layoutDirection">
+             <enum>Qt::LeftToRight</enum>
+            </property>
+            <property name="autoFillBackground">
+             <bool>true</bool>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">background-color: rgb(255, 255, 255, 0);</string>
+            </property>
+            <property name="frame">
+             <bool>false</bool>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+            <property name="dragEnabled">
+             <bool>false</bool>
+            </property>
+            <property name="readOnly">
+             <bool>true</bool>
+            </property>
+            <property name="placeholderText">
+             <string>00:00</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="horizontalLayoutWidget_2">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>10</y>
+           <width>1101</width>
+           <height>33</height>
+          </rect>
+         </property>
+         <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="1,1,1,20">
+          <item>
+           <widget class="QPushButton" name="Deadlift_play_btn">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="text">
+             <string>Deadlift</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="Benchpress_play_btn">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="text">
+             <string>Benchpress</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="Squat_play_btn">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="text">
+             <string>Squat</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="File_comboBox">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QLineEdit" name="Vision_lineEdit_1">
+         <property name="geometry">
+          <rect>
+           <x>8</x>
+           <y>580</y>
+           <width>406</width>
+           <height>38</height>
+          </rect>
+         </property>
          <property name="font">
           <font>
            <family>Times New Roman</family>
-           <pointsize>26</pointsize>
+           <pointsize>24</pointsize>
           </font>
          </property>
-         <property name="text">
-          <string>Benchpress</string>
+         <property name="styleSheet">
+          <string notr="true">background-color: rgb(255, 255, 255, 0);</string>
+         </property>
+         <property name="frame">
+          <bool>false</bool>
+         </property>
+         <property name="dragEnabled">
+          <bool>false</bool>
+         </property>
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
+         <property name="clearButtonEnabled">
+          <bool>false</bool>
          </property>
         </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="Squat_btn_2">
+        <widget class="QLineEdit" name="Vision_lineEdit_4">
+         <property name="geometry">
+          <rect>
+           <x>1287</x>
+           <y>580</y>
+           <width>406</width>
+           <height>38</height>
+          </rect>
+         </property>
          <property name="font">
           <font>
            <family>Times New Roman</family>
-           <pointsize>26</pointsize>
+           <pointsize>24</pointsize>
           </font>
          </property>
-         <property name="text">
-          <string>Squat</string>
+         <property name="styleSheet">
+          <string notr="true">background-color: rgb(255, 255, 255, 0);</string>
+         </property>
+         <property name="frame">
+          <bool>false</bool>
+         </property>
+         <property name="readOnly">
+          <bool>true</bool>
          </property>
         </widget>
-       </item>
-      </layout>
-     </widget>
-    </widget>
+        <widget class="QLineEdit" name="Vision_lineEdit_3">
+         <property name="geometry">
+          <rect>
+           <x>860</x>
+           <y>580</y>
+           <width>407</width>
+           <height>38</height>
+          </rect>
+         </property>
+         <property name="font">
+          <font>
+           <family>Times New Roman</family>
+           <pointsize>24</pointsize>
+          </font>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">background-color: rgb(255, 255, 255, 0);</string>
+         </property>
+         <property name="frame">
+          <bool>false</bool>
+         </property>
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
+        </widget>
+        <widget class="QGroupBox" name="play_groupBox">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>50</y>
+           <width>2121</width>
+           <height>631</height>
+          </rect>
+         </property>
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="title">
+          <string/>
+         </property>
+        </widget>
+       </widget>
+      </widget>
+     </item>
+    </layout>
    </widget>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>

@@ -1,7 +1,8 @@
 from ui import Ui_MainWindow
+from ui_backend import backend
 from PyQt5 import QtCore, QtGui, QtWidgets
 from qt_material import apply_stylesheet
-import os, glob
+import os, glob, sys
 
 # frontend logic
 class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
@@ -68,6 +69,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.rc_Benchpress_btn.setFont(QtGui.QFont("Times New Roman", 26))
         self.ui.rc_Benchpress_btn.setText("Benchpress")
         self.ui.rc_Benchpress_btn.setObjectName("rc_Benchpress_btn")
+        self.ui.rc_Benchpress_btn.clicked.connect(self.rc_Benchpress_clicked)
         grid_layout.addWidget(self.ui.rc_Benchpress_btn, 2, 0, 1, 1)
 
         # 添加 Squat 按鈕
@@ -75,6 +77,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.rc_Squat_btn.setFont(QtGui.QFont("Times New Roman", 26))
         self.ui.rc_Squat_btn.setText("Squat")
         self.ui.rc_Squat_btn.setObjectName("rc_Squat_btn")
+        self.ui.rc_Squat_btn.setEnabled(False)
         grid_layout.addWidget(self.ui.rc_Squat_btn, 3, 0, 1, 1)
 
         # 確保佈局刷新
@@ -109,10 +112,8 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.recording_layout.addLayout(self.Deadlift_vision_layout)
 
         labelsize = [420, 560]
-        self.Vision_label_1 = self.creat_vision_label(labelsize, self.Deadlift_vision_layout)
-        self.Vision_label_2 = self.creat_vision_label(labelsize, self.Deadlift_vision_layout)
-        self.Vision_label_3 = self.creat_vision_label(labelsize, self.Deadlift_vision_layout)
-        self.Vision_label_4 = self.creat_vision_label(labelsize, self.Deadlift_vision_layout)
+        self.Vision_labels = self.creat_vision_labels(labelsize, self.Deadlift_vision_layout, 5)
+        # self.recording_ctrl_btn.clicked.connect(ui_backend.recording_ctrl())
     
     def Benchpress_layout_set(self):
         # clear recording layout
@@ -141,31 +142,26 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.Benchpress_vision_layout = QtWidgets.QHBoxLayout()
         self.ui.recording_layout.addLayout(self.Benchpress_vision_layout)
-
         labelsize = [640, 480]
-        self.Vision_label_1 = self.creat_vision_label(labelsize, self.Benchpress_vision_layout)
-        self.Vision_label_2 = self.creat_vision_label(labelsize, self.Benchpress_vision_layout)
-        self.Vision_label_3 = self.creat_vision_label(labelsize, self.Benchpress_vision_layout)
-        self.Vision_label_4 = self.creat_vision_label(labelsize, self.Benchpress_vision_layout)
-        self.Vision_label_5 = self.creat_vision_label(labelsize, self.Benchpress_vision_layout)
+        
+        self.Vision_labels = self.creat_vision_labels(labelsize, self.Benchpress_vision_layout, 3)
+        self.recording_ctrl_btn.clicked.connect(lambda: backend.recording_ctrl(self.Vision_labels))
 
-    def creat_vision_label(self, labelsize, sublayout):
-        Vision_label = QtWidgets.QLabel(self.ui.Recording_tab)
-        Vision_label.setFrameShape(QtWidgets.QFrame.Panel)
-        Vision_label.setText('')
-        Vision_label.setMinimumSize(labelsize[0], labelsize[1])
-        Vision_label.setMaximumSize(labelsize[0], labelsize[1])
-        sublayout.addWidget(Vision_label)
-        return Vision_label
+        
+
+    def creat_vision_labels(self, labelsize, sublayout, num):
+        Vision_labels = []
+        for i in range(num):
+            Vision_label = QtWidgets.QLabel(self.ui.Recording_tab)
+            Vision_label.setFrameShape(QtWidgets.QFrame.Panel)
+            Vision_label.setText('11111111111111111111111111111111111111111111111111111111111111111111111')
+            Vision_label.setMinimumSize(labelsize[0], labelsize[1])
+            Vision_label.setMaximumSize(labelsize[0], labelsize[1])
+            sublayout.addWidget(Vision_label)
+            Vision_labels.append(Vision_label)
+        return Vision_labels
 
     def resource_path(self, relative_path):
         base_path = getattr(sys, '_MEIPASS', os.path.abspath("."))
         return os.path.join(base_path, relative_path)
 
-if __name__ == "__main__":
-    import sys
-    app = QtWidgets.QApplication(sys.argv)
-    apply_stylesheet(app, theme='dark_amber.xml')
-    win = Mainwindow()
-    win.show()
-    sys.exit(app.exec_())
