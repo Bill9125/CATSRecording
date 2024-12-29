@@ -9,6 +9,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def __init__(self, *args, obj=None, **kwargs):
         super(Mainwindow, self).__init__(*args, **kwargs)
         self.ui = Ui_MainWindow()
+        self.bf = backend()
         self.ui.setupUi(self)
         self.ui.rc_Squat_btn.setEnabled(False)
         self.icons = []
@@ -113,7 +114,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         labelsize = [420, 560]
         self.Vision_labels = self.creat_vision_labels(labelsize, self.Deadlift_vision_layout, 5)
-        # self.recording_ctrl_btn.clicked.connect(ui_backend.recording_ctrl())
+        self.recording_ctrl_btn.clicked.connect(lambda: self.bf.recording_ctrl(self.Vision_labels))
     
     def Benchpress_layout_set(self):
         # clear recording layout
@@ -131,12 +132,12 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.recording_ctrl_btn = QtWidgets.QToolButton(self.ui.Recording_tab)
         self.recording_ctrl_btn.setIcon(self.icons[0])
-        self.recording_ctrl_btn.setIconSize(QtCore.QSize(64, 64))
+        self.recording_ctrl_btn.setIconSize(QtCore.QSize(128, 128))
         self.ctrl_layout.addWidget(self.recording_ctrl_btn)
 
         self.back_toolbtn = QtWidgets.QToolButton(self.ui.Recording_tab)
         self.back_toolbtn.setIcon(self.icons[1])
-        self.back_toolbtn.setIconSize(QtCore.QSize(64, 64))
+        self.back_toolbtn.setIconSize(QtCore.QSize(128, 128))
         self.back_toolbtn.clicked.connect(self.back_toolbtn_clicked)
         self.ctrl_layout.addWidget(self.back_toolbtn)
 
@@ -145,7 +146,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         labelsize = [640, 480]
         
         self.Vision_labels = self.creat_vision_labels(labelsize, self.Benchpress_vision_layout, 3)
-        self.recording_ctrl_btn.clicked.connect(lambda: backend.recording_ctrl(self.Vision_labels))
+        self.recording_ctrl_btn.clicked.connect(lambda: self.bf.recording_ctrl(self.Vision_labels))
 
         
 

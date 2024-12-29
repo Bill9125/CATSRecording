@@ -32,23 +32,21 @@ class MyVideoCapture:
         if self.vid.isOpened():
             self.vid.release()
 
-class backend(QtWidgets.QMainWindow, Ui_MainWindow):
-    def __init__(self, *args, obj=None, **kwargs):
-        super(backend, self).__init__(*args, **kwargs)
-        self.ui = Ui_MainWindow()
-        self.ui.setupUi(self)
-        self.vid1 = MyVideoCapture(2)
-        self.vid2 = MyVideoCapture(4)
-        self.vid3 = MyVideoCapture(0)
-        self.vid4 = MyVideoCapture(1)
-        self.vid5 = MyVideoCapture(3)
+class backend():
+    def __init__(self):
+        super(backend, self).__init__()
+        # self.vid1 = MyVideoCapture(2)
+        # self.vid2 = MyVideoCapture(4)
+        # self.vid3 = MyVideoCapture(0)
+        # self.vid4 = MyVideoCapture(1)
+        # self.vid5 = MyVideoCapture(3)
         # Initialize YOLO model
-        self.yolov8_model = YOLO("yolo_bar_model/best.pt")
+        self.yolov8_model = YOLO("../model/yolo_bar_model/best.pt")
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
         print('yolo device:', device)
         self.yolov8_model.to(device)
 
-        self.yolov8_model1 = YOLO("C:\\Users\\92A27\\MOCAP\\yolov8n-pose.pt")
+        self.yolov8_model1 = YOLO("../model/yolov8_model/yolov8n-pose.pt")
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
         print('yolo device:', device)
         self.yolov8_model1.to(device)
