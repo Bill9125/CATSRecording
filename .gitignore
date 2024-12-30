@@ -2,3 +2,7 @@ __pycache__
 test.py
 env
 model
+auto_start_interpolate_origin_video_edit_1.py
+auto_start.py
+replay.ui
+V1_ui.ui
