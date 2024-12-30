@@ -22,8 +22,13 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.rp_Deadlift_btn.clicked.connect(lambda: self.bf.Deadlift_btn_pressed(
             self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.ui.Stop_btn, 
             self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox))
-        # self.ui.rp_Benchpress_btn.clicked.connect(self.bf.)
-        # self.ui.rp_Squat_btn.clicked.connect(self.bf.)
+        self.ui.rp_Benchpress_btn.clicked.connect(lambda: self.bf.Benchpress_btn_pressed(
+            self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.ui.Stop_btn, 
+            self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox))
+        self.ui.rp_Squat_btn.clicked.connect(lambda: self.bf.Squat_btn_pressed(
+            self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.ui.Stop_btn, 
+            self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox))
+        
 
         
 

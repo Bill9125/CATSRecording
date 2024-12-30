@@ -69,43 +69,75 @@ class backend():
             mbox.warning(Form, 'warning', f'{text}')
 
     def recording_ctrl(self, Vision_labels):
-        if self.vid1.isOpened():
-            ret1, frame1 = self.vid1.get_frame()
-            if ret1:
-                # Detect the barbell position (YOLO model output)
-                results = self.yolov8_model.predict(source=frame1, imgsz=320, conf=0.5)
-                boxes = results[0].boxes
-                if len(boxes.xywh) > 0:
-                    self.initial_position = boxes.xywh[0]  # Capture the first detected box as the initial position
-                    self.messagebox("Info", "Initial position captured.")
-                    self.recording = False  # Ensure recording is off initially
-                    self.auto_recording = True  # Enable automatic recording trigger
-                    self.threshold = 50  # Set a threshold for starting and stopping recording (can be adjusted)
-                else:
-                    self.messagebox("Error", "No detection found. Try again.")
+        print(Vision_labels[0].size())
+        # if self.vid1.isOpened():
+        #     ret1, frame1 = self.vid1.get_frame()
+        #     if ret1:
+        #         # Detect the barbell position (YOLO model output)
+        #         results = self.yolov8_model.predict(source=frame1, imgsz=320, conf=0.5)
+        #         boxes = results[0].boxes
+        #         if len(boxes.xywh) > 0:
+        #             self.initial_position = boxes.xywh[0]  # Capture the first detected box as the initial position
+        #             self.messagebox("Info", "Initial position captured.")
+        #             self.recording = False  # Ensure recording is off initially
+        #             self.auto_recording = True  # Enable automatic recording trigger
+        #             self.threshold = 50  # Set a threshold for starting and stopping recording (can be adjusted)
+        #         else:
+        #             self.messagebox("Error", "No detection found. Try again.")
 
-    def Deadlift_btn_pressed(self, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, Stop_btn, Frameslider, fast_forward_combobox, File_comboBox):
-        Deadlift_btn.setStyleSheet("font-size:18px;background-color: #888888")
-        Benchpress_btn.setStyleSheet("font-size:18px;background-color: #666666")
-        Squat_btn.setStyleSheet("font-size:18px;background-color: #666666")
-        if self.firstclicked_D == True:
+    def Deadlift_btn_pressed(self, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn,
+                            Stop_btn, Frameslider, fast_forward_combobox, File_comboBox):
+        currentsport = 'Deadlift'
+        self.rp_btn_press(currentsport, self.firstclicked_D, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn,
+                              Stop_btn, Frameslider, fast_forward_combobox, File_comboBox)
+        
+    def Benchpress_btn_pressed(self, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn,
+                            Stop_btn, Frameslider, fast_forward_combobox, File_comboBox):
+        currentsport = 'Benchpress'
+        self.rp_btn_press(currentsport, self.firstclicked_B, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn,
+                              Stop_btn, Frameslider, fast_forward_combobox, File_comboBox)
+        
+    def Squat_btn_pressed(self, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn,
+                            Stop_btn, Frameslider, fast_forward_combobox, File_comboBox):
+        currentsport = 'Squat'
+        self.rp_btn_press(currentsport, self.firstclicked_S, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn,
+                              Stop_btn, Frameslider, fast_forward_combobox, File_comboBox)
+        
+
+    def rp_btn_press(self, sport, firstclicked, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn,
+                              Stop_btn, Frameslider, fast_forward_combobox, File_comboBox):
+        if sport == 'Deadlift':
+            Deadlift_btn.setStyleSheet("font-size:18px;background-color: #888888")
+            Benchpress_btn.setStyleSheet("font-size:18px;background-color: #666666")
+            Squat_btn.setStyleSheet("font-size:18px;background-color: #666666")
+        
+        elif sport == 'Benchpress':
+            Benchpress_btn.setStyleSheet("font-size:18px;background-color: #888888")
+            Squat_btn.setStyleSheet("font-size:18px;background-color: #666666")
+            Deadlift_btn.setStyleSheet("font-size:18px;background-color: #666666")
+
+        elif sport == 'Squat':
+            Squat_btn.setStyleSheet("font-size:18px;background-color: #888888")
+            Benchpress_btn.setStyleSheet("font-size:18px;background-color: #666666")
+            Deadlift_btn.setStyleSheet("font-size:18px;background-color: #666666")
+            
+        if firstclicked == True:
             for thread in self.threads:
                 thread.ended = True
-            folderPath = QtWidgets.QFileDialog.getExistingDirectory(None ,'Open folder', self.resource_path('C:/'))
-            self.folders['Deadlift'] = folderPath
-            self.firstclicked_D = False
+            folderPath = self.resource_path(f'C:/jinglun/recording_{sport}')
+            self.folders[sport] = folderPath
+            firstclicked = False
 
-        self.currentsport = 'Deadlift'
+        File_comboBox.clear()
+        list = os.listdir(self.folders[sport])
+        for folder in list[::-1]:
+            File_comboBox.addItems([folder])
+
         Play_btn.setEnabled(True)
         Stop_btn.setEnabled(True)
         Frameslider.setEnabled(True)
         fast_forward_combobox.setEnabled(True)
-        File_comboBox.clear()
-
-        list = os.listdir(self.folders['Deadlift'])
-        for folder in list[::-1]:
-            File_comboBox.addItems([folder])
-
+        
     def resource_path(self, relative_path):
         base_path = getattr(sys, '_MEIPASS', os.path.abspath("."))
         return os.path.join(base_path, relative_path)
