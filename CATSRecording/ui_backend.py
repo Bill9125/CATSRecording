@@ -62,7 +62,13 @@ class backend():
             mbox.warning(Form, 'warning', f'{text}')
 
     def recording_ctrl(self, Vision_labels):
-        print(Vision_labels[0].size())
+        
+        
+        
+        
+        
+        
+        # print(Vision_labels[0].size())
         # if self.vid1.isOpened():
         #     ret1, frame1 = self.vid1.get_frame()
         #     if ret1:
