@@ -13,12 +13,18 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.setupUi(self)
         self.ui.rc_Squat_btn.setEnabled(False)
         self.icons = []
-        icon_srcs = glob.glob(self.resource_path('ui_src/*.png'))
+        icon_srcs = glob.glob(self.bf.resource_path('ui_src/*.png'))
         for icon in icon_srcs:
             self.icons.append(QtGui.QIcon(icon))
 
         self.ui.rc_Deadlift_btn.clicked.connect(self.rc_Deadlift_clicked)
         self.ui.rc_Benchpress_btn.clicked.connect(self.rc_Benchpress_clicked)
+        self.ui.rp_Deadlift_btn.clicked.connect(lambda: self.bf.Deadlift_btn_pressed(
+            self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.ui.Stop_btn, 
+            self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox))
+        # self.ui.rp_Benchpress_btn.clicked.connect(self.bf.)
+        # self.ui.rp_Squat_btn.clicked.connect(self.bf.)
+
         
 
         
@@ -161,8 +167,3 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
             sublayout.addWidget(Vision_label)
             Vision_labels.append(Vision_label)
         return Vision_labels
-
-    def resource_path(self, relative_path):
-        base_path = getattr(sys, '_MEIPASS', os.path.abspath("."))
-        return os.path.join(base_path, relative_path)
-

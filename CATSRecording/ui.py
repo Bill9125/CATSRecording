@@ -80,13 +80,13 @@ class Ui_MainWindow(object):
         self.rp_Deadlift_btn.setObjectName("Deadlift_play_btn")
         self.top_controls_layout.addWidget(self.rp_Deadlift_btn)
 
-        self.rp_Benchpress_play = QtWidgets.QPushButton(self.Replay_tab)
-        self.rp_Benchpress_play.setObjectName("Benchpress_play_btn")
-        self.top_controls_layout.addWidget(self.rp_Benchpress_play)
+        self.rp_Benchpress_btn = QtWidgets.QPushButton(self.Replay_tab)
+        self.rp_Benchpress_btn.setObjectName("Benchpress_play_btn")
+        self.top_controls_layout.addWidget(self.rp_Benchpress_btn)
 
-        self.rp_Squat_play_btn = QtWidgets.QPushButton(self.Replay_tab)
-        self.rp_Squat_play_btn.setObjectName("Squat_play_btn")
-        self.top_controls_layout.addWidget(self.rp_Squat_play_btn)
+        self.rp_Squat_btn = QtWidgets.QPushButton(self.Replay_tab)
+        self.rp_Squat_btn.setObjectName("Squat_play_btn")
+        self.top_controls_layout.addWidget(self.rp_Squat_btn)
 
         self.File_comboBox = QtWidgets.QComboBox(self.Replay_tab)
         self.File_comboBox.setObjectName("File_comboBox")
@@ -167,6 +167,6 @@ class Ui_MainWindow(object):
         self.replay_tabWidget.setTabText(self.replay_tabWidget.indexOf(self.Recording_tab), _translate("MainWindow", "Recording"))
         self.TimeCount_LineEdit.setPlaceholderText(_translate("MainWindow", "00:00"))
         self.rp_Deadlift_btn.setText(_translate("MainWindow", "Deadlift"))
-        self.rp_Benchpress_play.setText(_translate("MainWindow", "Benchpress"))
-        self.rp_Squat_play_btn.setText(_translate("MainWindow", "Squat"))
+        self.rp_Benchpress_btn.setText(_translate("MainWindow", "Benchpress"))
+        self.rp_Squat_btn.setText(_translate("MainWindow", "Squat"))
         self.replay_tabWidget.setTabText(self.replay_tabWidget.indexOf(self.Replay_tab), _translate("MainWindow", "Replay"))
