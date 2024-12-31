@@ -69,6 +69,7 @@ class Ui_MainWindow(object):
         self.replay_tabWidget.addTab(self.Recording_tab, "")
 
         # Replay tab
+        font.setPointSize(18)
         self.Replay_tab = QtWidgets.QWidget()
         self.Replay_tab.setObjectName("Replay_tab")
         self.replay_layout = QtWidgets.QVBoxLayout(self.Replay_tab)
@@ -77,14 +78,17 @@ class Ui_MainWindow(object):
         self.top_controls_layout = QtWidgets.QHBoxLayout()
 
         self.rp_Deadlift_btn = QtWidgets.QPushButton(self.Replay_tab)
+        self.rp_Deadlift_btn.setStyleSheet("font-size:18px")
         self.rp_Deadlift_btn.setObjectName("Deadlift_play_btn")
         self.top_controls_layout.addWidget(self.rp_Deadlift_btn)
 
         self.rp_Benchpress_btn = QtWidgets.QPushButton(self.Replay_tab)
+        self.rp_Benchpress_btn.setStyleSheet("font-size:18px")
         self.rp_Benchpress_btn.setObjectName("Benchpress_play_btn")
         self.top_controls_layout.addWidget(self.rp_Benchpress_btn)
 
         self.rp_Squat_btn = QtWidgets.QPushButton(self.Replay_tab)
+        self.rp_Squat_btn.setStyleSheet("font-size:18px")
         self.rp_Squat_btn.setObjectName("Squat_play_btn")
         self.top_controls_layout.addWidget(self.rp_Squat_btn)
 
@@ -102,7 +106,7 @@ class Ui_MainWindow(object):
 
         self.play_groupBox = QtWidgets.QGroupBox(self.Replay_tab)
         self.play_groupBox.setObjectName("play_groupBox")
-        self.play_layout = QtWidgets.QVBoxLayout(self.play_groupBox)
+        self.play_layout = QtWidgets.QHBoxLayout(self.play_groupBox)
 
         self.replay_layout.addWidget(self.play_groupBox)
 

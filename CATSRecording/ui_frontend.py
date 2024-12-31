@@ -19,20 +19,21 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.ui.rc_Deadlift_btn.clicked.connect(self.rc_Deadlift_clicked)
         self.ui.rc_Benchpress_btn.clicked.connect(self.rc_Benchpress_clicked)
+
         self.ui.rp_Deadlift_btn.clicked.connect(lambda: self.bf.Deadlift_btn_pressed(
             self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.ui.Stop_btn, 
-            self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox))
+            self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox, self.ui.Replay_tab, self.ui.play_layout))
         self.ui.rp_Benchpress_btn.clicked.connect(lambda: self.bf.Benchpress_btn_pressed(
             self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.ui.Stop_btn, 
-            self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox))
+            self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox, self.ui.Replay_tab, self.ui.play_layout))
         self.ui.rp_Squat_btn.clicked.connect(lambda: self.bf.Squat_btn_pressed(
             self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.ui.Stop_btn, 
-            self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox))
+            self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox, self.ui.Replay_tab, self.ui.play_layout))
         
+        self.ui.File_comboBox.currentTextChanged.connect(lambda: self.bf.File_combobox_TextChanged(
+            self.ui.Frameslider, self.ui.File_comboBox, self.ui.Play_btn,
+            self.ui.fast_forward_combobox, self.icons))
 
-        
-
-        
     def rc_Deadlift_clicked(self):
         self.Deadlift_layout_set()
 
@@ -110,12 +111,12 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.recording_layout.addLayout(self.ctrl_layout)
 
         self.recording_ctrl_btn = QtWidgets.QToolButton(self.ui.Recording_tab)
-        self.recording_ctrl_btn.setIcon(self.icons[0])
+        self.recording_ctrl_btn.setIcon(self.icons[2])
         self.recording_ctrl_btn.setIconSize(QtCore.QSize(64, 64))
         self.ctrl_layout.addWidget(self.recording_ctrl_btn)
 
         self.back_toolbtn = QtWidgets.QToolButton(self.ui.Recording_tab)
-        self.back_toolbtn.setIcon(self.icons[1])
+        self.back_toolbtn.setIcon(self.icons[4])
         self.back_toolbtn.setIconSize(QtCore.QSize(64, 64))
         self.back_toolbtn.clicked.connect(self.back_toolbtn_clicked)
         self.ctrl_layout.addWidget(self.back_toolbtn)
@@ -124,8 +125,8 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.recording_layout.addLayout(self.Deadlift_vision_layout)
 
         labelsize = [420, 560]
-        self.Vision_labels = self.creat_vision_labels(labelsize, self.Deadlift_vision_layout, 5)
-        self.recording_ctrl_btn.clicked.connect(lambda: self.bf.recording_ctrl(self.Vision_labels))
+        self.rc_Vision_labels, self.rc_qpixmaps = self.bf.creat_vision_labels_pixmaps(labelsize, self.Deadlift_vision_layout, 5)
+        self.recording_ctrl_btn.clicked.connect(lambda: self.bf.recording_ctrl(self.rc_Vision_labels))
     
     def Benchpress_layout_set(self):
         # clear recording layout
@@ -142,33 +143,22 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.recording_layout.addLayout(self.ctrl_layout)
 
         self.recording_ctrl_btn = QtWidgets.QToolButton(self.ui.Recording_tab)
-        self.recording_ctrl_btn.setIcon(self.icons[0])
-        self.recording_ctrl_btn.setIconSize(QtCore.QSize(128, 128))
+        self.recording_ctrl_btn.setIcon(self.icons[2])
+        self.recording_ctrl_btn.setIconSize(QtCore.QSize(64, 64))
         self.ctrl_layout.addWidget(self.recording_ctrl_btn)
 
         self.back_toolbtn = QtWidgets.QToolButton(self.ui.Recording_tab)
-        self.back_toolbtn.setIcon(self.icons[1])
-        self.back_toolbtn.setIconSize(QtCore.QSize(128, 128))
+        self.back_toolbtn.setIcon(self.icons[4])
+        self.back_toolbtn.setIconSize(QtCore.QSize(64, 64))
         self.back_toolbtn.clicked.connect(self.back_toolbtn_clicked)
         self.ctrl_layout.addWidget(self.back_toolbtn)
 
         self.Benchpress_vision_layout = QtWidgets.QHBoxLayout()
         self.ui.recording_layout.addLayout(self.Benchpress_vision_layout)
+
         labelsize = [640, 480]
+        self.rc_Vision_labels, self.rc_qpixmaps = self.bf.creat_vision_labels_pixmaps(labelsize, self.Benchpress_vision_layout, 3)
+        self.recording_ctrl_btn.clicked.connect(lambda: self.bf.recording_ctrl(self.rc_Vision_labels))
         
-        self.Vision_labels = self.creat_vision_labels(labelsize, self.Benchpress_vision_layout, 3)
-        self.recording_ctrl_btn.clicked.connect(lambda: self.bf.recording_ctrl(self.Vision_labels))
+       
 
-        
-
-    def creat_vision_labels(self, labelsize, sublayout, num):
-        Vision_labels = []
-        for i in range(num):
-            Vision_label = QtWidgets.QLabel(self.ui.Recording_tab)
-            Vision_label.setFrameShape(QtWidgets.QFrame.Panel)
-            Vision_label.setText('11111111111111111111111111111111111111111111111111111111111111111111111')
-            Vision_label.setMinimumSize(labelsize[0], labelsize[1])
-            Vision_label.setMaximumSize(labelsize[0], labelsize[1])
-            sublayout.addWidget(Vision_label)
-            Vision_labels.append(Vision_label)
-        return Vision_labels
