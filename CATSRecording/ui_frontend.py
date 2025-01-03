@@ -16,10 +16,13 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         icon_srcs = glob.glob(self.bf.resource_path('ui_src/*.png'))
         for icon in icon_srcs:
             self.icons.append(QtGui.QIcon(icon))
+        self.ui.Play_btn.setIcon(self.icons[1])
+        self.ui.Stop_btn.setIcon(self.icons[3])
 
         self.ui.rc_Deadlift_btn.clicked.connect(self.rc_Deadlift_clicked)
         self.ui.rc_Benchpress_btn.clicked.connect(self.rc_Benchpress_clicked)
 
+        # replay top ctrl connection
         self.ui.rp_Deadlift_btn.clicked.connect(lambda: self.bf.Deadlift_btn_pressed(
             self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.ui.Stop_btn, 
             self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox, self.ui.Replay_tab, self.ui.play_layout))
@@ -29,10 +32,19 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.rp_Squat_btn.clicked.connect(lambda: self.bf.Squat_btn_pressed(
             self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.ui.Stop_btn, 
             self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox, self.ui.Replay_tab, self.ui.play_layout))
-        
         self.ui.File_comboBox.currentTextChanged.connect(lambda: self.bf.File_combobox_TextChanged(
             self.ui.Frameslider, self.ui.File_comboBox, self.ui.Play_btn,
             self.ui.fast_forward_combobox, self.icons))
+        
+        # replay bottom ctrl connection
+        rates = [1, 1.5, 0.8, 0.5]
+        for rate in rates:
+            self.ui.fast_forward_combobox.addItems([str(rate)])
+        self.ui.Play_btn.clicked.connect(lambda: self.bf.play_btn_clicked(
+            self.ui.fast_forward_combobox, self.ui.Play_btn, self.icons, self.ui.Frameslider))
+        self.ui.Frameslider.valueChanged.connect(lambda: self.bf.sliding(self.ui.Frameslider, self.ui.TimeCount_LineEdit))
+        self.ui.Frameslider.sliderMoved.connect(self.bf.interupsliding)
+        self.ui.Frameslider.sliderReleased.connect(self.bf.slider_released)
 
     def rc_Deadlift_clicked(self):
         self.Deadlift_layout_set()
@@ -41,21 +53,8 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.Benchpress_layout_set()
 
     def back_toolbtn_clicked(self):
-        # 遍歷 recording_layout，清空所有子佈局和控件
-        def clear_layout(layout):
-            while layout.count():
-                item = layout.takeAt(0)
-                widget = item.widget()
-                if widget:
-                    widget.deleteLater()  # 刪除控件
-                else:
-                    sub_layout = item.layout()
-                    if sub_layout:
-                        clear_layout(sub_layout)  # 遞迴刪除子佈局
-            layout.update()  # 更新佈局，確保視圖刷新
-
         # 清空 recording_layout
-        clear_layout(self.ui.recording_layout)
+        self.bf.clear_layout(self.ui.recording_layout)
         # 重新添加原本的控件
         self.add_original_recording_tab_content()
 
@@ -160,5 +159,5 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.rc_Vision_labels, self.rc_qpixmaps = self.bf.creat_vision_labels_pixmaps(labelsize, self.Benchpress_vision_layout, 3)
         self.recording_ctrl_btn.clicked.connect(lambda: self.bf.recording_ctrl(self.rc_Vision_labels))
         
-       
+    
 
