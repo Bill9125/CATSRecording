@@ -70,6 +70,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.Frameslider.sliderReleased.connect(self.bf.slider_released)
         self.ui.Frameslider.valueChanged.connect(lambda: self.bf.slider_changed(self.ui.Frameslider, self.ui.Play_btn, self.icons))
 
+        # replay top ctrl connection
         self.ui.rp_Deadlift_btn.clicked.connect(lambda: self.bf.Deadlift_btn_pressed(
             self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.ui.Stop_btn, 
             self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox, self.ui.Replay_tab, self.ui.play_layout))
@@ -79,10 +80,19 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.rp_Squat_btn.clicked.connect(lambda: self.bf.Squat_btn_pressed(
             self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.ui.Stop_btn, 
             self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox, self.ui.Replay_tab, self.ui.play_layout))
-        
         self.ui.File_comboBox.currentTextChanged.connect(lambda: self.bf.File_combobox_TextChanged(
             self.ui.Frameslider, self.ui.File_comboBox, self.ui.Play_btn,
             self.ui.fast_forward_combobox, self.icons))
+        
+        # replay bottom ctrl connection
+        rates = [1, 1.5, 0.8, 0.5]
+        for rate in rates:
+            self.ui.fast_forward_combobox.addItems([str(rate)])
+        self.ui.Play_btn.clicked.connect(lambda: self.bf.play_btn_clicked(
+            self.ui.fast_forward_combobox, self.ui.Play_btn, self.icons, self.ui.Frameslider))
+        self.ui.Frameslider.valueChanged.connect(lambda: self.bf.sliding(self.ui.Frameslider, self.ui.TimeCount_LineEdit))
+        self.ui.Frameslider.sliderMoved.connect(self.bf.interupsliding)
+        self.ui.Frameslider.sliderReleased.connect(self.bf.slider_released)
 
     def rc_Deadlift_clicked(self):
         self.Deadlift_layout_set()
@@ -210,4 +220,5 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         return os.path.join(base_path, relative_path)
 
        
+    
 
