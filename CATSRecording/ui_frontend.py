@@ -83,6 +83,8 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.File_comboBox.currentTextChanged.connect(lambda: self.bf.File_combobox_TextChanged(
             self.ui.Frameslider, self.ui.File_comboBox, self.ui.Play_btn,
             self.ui.fast_forward_combobox, self.icons))
+        self.ui.Stop_btn.clicked.connect(lambda: self.bf.stop(self.ui.Frameslider, self.ui.Play_btn, self.ui.fast_forward_combobox, 
+                                                              self.icons))
         
         # replay bottom ctrl connection
         rates = [1, 1.5, 0.8, 0.5]
