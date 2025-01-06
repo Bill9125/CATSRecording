@@ -211,7 +211,9 @@ class backend():
             thread = threading.Thread(target=self.showprevision, args=(self.videos[i], self.rp_qpixmaps[i], self.rp_Vision_labels[i]))
             self.threads.append(thread)
             thread.start()
-        self.threads = []
+        for thread in self.threads:
+            thread.join()
+        self.threads.clear()
     
     def play_btn_clicked(self, fast_forward_combobox, Play_btn, icons, Frameslider):
         self.index += 1
@@ -231,7 +233,7 @@ class backend():
                 self.file_change = False
                 for thread in self.threads:
                     thread.ended = True
-                self.threads = []
+                self.threads.clear()
                 for i, video in enumerate(self.videos):
                     thread_play = self.MyThread(target=self._play,
                                                 args=(video, i, fast_forward_combobox, Frameslider,
