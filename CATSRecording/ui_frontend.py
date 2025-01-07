@@ -45,7 +45,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.Play_btn.clicked.connect(lambda: self.bf.play_btn_clicked(
             self.ui.fast_forward_combobox, self.ui.Play_btn, self.icons, self.ui.Frameslider))
         self.ui.Frameslider.valueChanged.connect(lambda: self.bf.sliding(self.ui.Frameslider, self.ui.TimeCount_LineEdit))
-        self.ui.Frameslider.sliderMoved.connect(self.bf.interupsliding)
+        self.ui.Frameslider.sliderPressed.connect(self.bf.slider_Pressed)
         self.ui.Frameslider.sliderReleased.connect(self.bf.slider_released)
 
     def rc_Deadlift_clicked(self):
