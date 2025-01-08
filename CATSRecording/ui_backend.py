@@ -62,9 +62,9 @@ class backend():
         self.currentsport = ''
         self.ocv = True
         self.index = 0
-        self.is_pause = bool
+        self.is_pause = False
         self.exited = False
-        self.is_stop = bool
+        self.is_stop = False
         self.is_slide = False
     
     class MyThread(threading.Thread):
@@ -175,6 +175,7 @@ class backend():
         
         for thread in self.threads:
             thread.ended = True
+            
         folderPath = self.resource_path(f'C:/jinglun/CATSRecording/data/recording_{sport}')
         self.folders[sport] = folderPath
 
@@ -190,15 +191,14 @@ class backend():
 
 
     # 讀取combobox內的資料夾
-    def File_combobox_TextChanged(self, frameslider, file_comboBox , play_btn,
-                                   fast_forward_combobox, icons):
-        self.is_stop = True
+    def File_combobox_TextChanged(self, file_comboBox, play_btn, icons):
+        self.stop()
         videofolder = file_comboBox.currentText()
         self.index = 0
         play_btn.setIcon(icons[1])
         folder = self.folders[self.currentsport]
         self.videos = glob.glob(f'{folder}/{videofolder}/*.avi')
-        self.stop(frameslider, play_btn, fast_forward_combobox, icons)
+        
         
         # 臥推有六部影片，要抽取三部
         if len(self.videos) >= 6:
@@ -220,8 +220,6 @@ class backend():
         # play
         if self.index % 2 == 1: 
             fast_forward_combobox.setEnabled(False)
-            self.is_pause = False
-            self.is_stop = False
             Play_btn.setIcon(icons[0])
             f_num = []
             for video in self.videos:
@@ -230,10 +228,11 @@ class backend():
             framenumber = min(f_num)
 
             # stop 後播放
-            if not self.is_stop:
+            if self.is_stop:
                 self.is_stop = False
                 if self.threads:
                     self.del_mythreads()
+                self.barrier = threading.Barrier(len(self.videos))
                 for i, video in enumerate(self.videos):
                     thread_play = self.MyThread(target = self._play,
                                                 args = (video, i, Play_btn, icons, fast_forward_combobox, Frameslider,
@@ -242,58 +241,75 @@ class backend():
                     self.threads.append(thread_play)
 
             # pause 後繼續播放
-            else:
+            elif self.is_pause:
+                self.is_pause = False
                 for thread in self.threads:
                     thread.resume()
         # pause
         elif self.index % 2 == 0:
-            fast_forward_combobox.setEnabled(True)
-            self.is_pause = True
-            Play_btn.setIcon(icons[1])
-            for thread in self.threads:
-                thread.pause()
+            self.pause_event(fast_forward_combobox, Play_btn, icons)
+                
+    def pause_event(self, fast_forward_combobox, Play_btn, icons):
+        fast_forward_combobox.setEnabled(True)
+        Play_btn.setIcon(icons[1])
+        for thread in self.threads:
+            thread.pause()
+        self.is_pause = True
                 
     def _play(self, video, index, Play_btn, icons, fast_forward_combobox,
               Frameslider, framenumber, Vision_labels, qpixmaps):
         cap = cv2.VideoCapture(video)
+        Frameslider.setMaximum(int(framenumber))
+        start_time = time.time()
+        
         while True:
-            speed_rate = fast_forward_combobox.currentText()
-            Frameslider.setMaximum(int(framenumber))
-            fps = 30 / float(speed_rate)
-            time.sleep(0.001 * fps * 0.9)
-            # 迴圈暫停條件
-            if self.threads[index].is_pause():
+            speed_rate = fast_forward_combobox.currentText() 
+            val = Frameslider.value()
+            spf = 1 / 30
+            
+            # 迴圈暫停會卡在這
+            if self.is_pause:
+                print('pause')
+                cap.set(cv2.CAP_PROP_POS_FRAMES, val)
                 continue
             
-            if (self.exited or self.threads[index].ended): # 如果退出視窗或thread停止或換資料夾，清空label，迴圈終止
-                for i, qpixmap in enumerate(qpixmaps):
-                    qpixmap = QtGui.QPixmap()
-                    Vision_labels[i].setPixmap(qpixmap)
-                break
-            
             # 迴圈終止條件
-            if Frameslider.value() >= framenumber or self.is_stop:
+            if Frameslider.value() >= framenumber or self.is_stop or self.exited or self.threads[index].ended:
+                print('break')
+                Frameslider.setSliderPosition(0)
+                Play_btn.setIcon(icons[1])
+                fast_forward_combobox.setEnabled(True)
                 break
-            
-            # 讓第 0 個 threading 處理 slider
-            if index == 0 and not self.is_slide:
-                val = Frameslider.value()
-                Frameslider.setValue(val + 1)
                 
-            if self.is_slide:
-                val = Frameslider.value()
-                cap.set(cv2.CAP_PROP_POS_FRAMES, val)
+            if self.is_slide and index == 0:
+                self.pause_event(fast_forward_combobox, Play_btn, icons)
+                self.is_slide = False
+                continue
             
-            _ , frame = cap.read()
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            image = QtGui.QImage(frame_rgb.data, frame_rgb.shape[1], frame_rgb.shape[0], QtGui.QImage.Format_RGB888)
-            qpixmaps[index] = QtGui.QPixmap.fromImage(image)
-            scaled_pixmap = qpixmaps[index].scaled(Vision_labels[index].size(), QtCore.Qt.KeepAspectRatio)
-            Vision_labels[index].setPixmap(scaled_pixmap)
-        
+            self.barrier.wait()
+            if (time.time() - start_time) >= (spf / float(speed_rate)):
+                # 讓第 0 個 threading 處理 slider
+                if index == 0:
+                    Frameslider.setValue(val + 1)
+                _ , frame = cap.read()
+                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                image = QtGui.QImage(frame_rgb.data, frame_rgb.shape[1], frame_rgb.shape[0], QtGui.QImage.Format_RGB888)
+                qpixmaps[index] = QtGui.QPixmap.fromImage(image)
+                scaled_pixmap = qpixmaps[index].scaled(Vision_labels[index].size(), QtCore.Qt.KeepAspectRatio)
+                Vision_labels[index].setPixmap(scaled_pixmap)
+                # 更新時間
+                start_time = time.time()
+               
+        for i, qpixmap in enumerate(qpixmaps):
+            qpixmap = QtGui.QPixmap()
+            Vision_labels[i].setPixmap(qpixmap)
+            
+        self.index = 0 
         Play_btn.setIcon(icons[1])
         cap.release()
         self.del_mythreads()
+        self.is_stop = True
+        return 
         
         
     # threads 全部刪除，重新播放
@@ -317,6 +333,7 @@ class backend():
         TimeCount_LineEdit.setText(f'{minute}:{second}')
 
     def closeEvent(self, event):
+        self.del_mythreads()
         self.exited = True
         event.accept()
         
@@ -347,11 +364,7 @@ class backend():
         return Vision_labels, qpixmaps
 
         
-    def stop(self, frameslider, play_btn, fast_forward_combobox, icons):
-        frameslider.setSliderPosition(0)
-        play_btn.setIcon(icons[1])
-        fast_forward_combobox.setEnabled(True)
-        self.index = 0
+    def stop(self):
         self.is_stop = True
         
     # 遍歷 layout，清空所有子佈局和控件
