@@ -51,7 +51,7 @@ class MyThread(threading.Thread):
         self.barrier = barrier
         self.is_pause = False
         self.is_slide = False
-        self.is_stop = is_stop
+        self.is_stop = False
         self.ended = False
         
     def run(self):
@@ -84,7 +84,7 @@ class MyThread(threading.Thread):
                 self.is_slide = False
                 continue
 
-            # 等待所有线程完成同步
+            # 等待所有 thread 完成同步
             self.barrier.wait()
 
             if (time.time() - start_time) >= (spf / float(speed_rate)):
@@ -104,10 +104,8 @@ class MyThread(threading.Thread):
             qpixmap = QtGui.QPixmap()
             self.Vision_labels[i].setPixmap(qpixmap)
 
-        self.index = 0
         self.Play_btn.setIcon(self.icons[1])
         cap.release()
-        self.is_stop = True
 
     def pause(self):
         self._pause_event.clear()
@@ -121,22 +119,22 @@ class MyThread(threading.Thread):
 class backend():
     def __init__(self):
         super(backend, self).__init__()
-        self.vid1 = MyVideoCapture(2)
-        self.vid2 = MyVideoCapture(4)
-        self.vid3 = MyVideoCapture(0)
-        self.vid4 = MyVideoCapture(1)
-        self.vid5 = MyVideoCapture(3)
+        # self.vid1 = MyVideoCapture(2)
+        # self.vid2 = MyVideoCapture(4)
+        # self.vid3 = MyVideoCapture(0)
+        # self.vid4 = MyVideoCapture(1)
+        # self.vid5 = MyVideoCapture(3)
 
         # Initialize YOLO model
-        self.yolov8_model = YOLO("../model/yolo_bar_model/best.pt")
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        print('yolo device:', device)
-        self.yolov8_model.to(device)
+        # self.yolov8_model = YOLO("../model/yolo_bar_model/best.pt")
+        # device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        # print('yolo device:', device)
+        # self.yolov8_model.to(device)
 
-        self.yolov8_model1 = YOLO("../model/yolov8_model/yolov8n-pose.pt")
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        print('yolo device:', device)
-        self.yolov8_model1.to(device)
+        # self.yolov8_model1 = YOLO("../model/yolov8_model/yolov8n-pose.pt")
+        # device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        # print('yolo device:', device)
+        # self.yolov8_model1.to(device)
 
         # init for replay
         self.firstclicked_D = True
@@ -151,12 +149,9 @@ class backend():
         self.index = 0
         self.is_pause = False
         self.exited = False
-        self.is_stop = False
+        self.is_stop = True
         self.is_slide = False
-    
-    
 
-    
     def messagebox(self, type, text):
         Form = QtWidgets.QWidget()
         Form.setWindowTitle('message')
@@ -238,7 +233,7 @@ class backend():
         for thread in self.threads:
             thread.ended = True
             
-        folderPath = self.resource_path(f'C:/jinglun/CATSRecording/data/recording_{sport}')
+        folderPath = self.resource_path(f'C:/Users/wujinglun/CATSRecording/data/recording_{sport}')
         self.folders[sport] = folderPath
 
         File_comboBox.clear()
@@ -268,14 +263,7 @@ class backend():
                            if os.path.basename(video) in ('original_vision1.avi', 'vision2.avi', 'original_vision3.avi')
                         ]
             self.videos[1], self.videos[2] = self.videos[2], self.videos[1]
-        # show the first frame of videos
-        for i in range(len(self.videos)):
-            thread = threading.Thread(target=self.showprevision, args=(self.videos[i], self.rp_qpixmaps[i], self.rp_Vision_labels[i]))
-            self.threads.append(thread)
-            thread.start()
-        for thread in self.threads:
-            thread.join()
-        self.threads.clear()
+        self.showprevision(self.rp_Vision_labels, self.rp_qpixmaps)
     
     def play_btn_clicked(self, fast_forward_combobox, Play_btn, icons, Frameslider):
         self.index += 1
@@ -345,15 +333,16 @@ class backend():
         event.accept()
         
 
-    def showprevision(self, video, qpixmap, label):
-        cap = cv2.VideoCapture(video)
-        if self.ocv:
-            _ , frame = cap.read()
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            image = QtGui.QImage(frame_rgb.data, frame_rgb.shape[1], frame_rgb.shape[0], QtGui.QImage.Format_RGB888)
-            qpixmap = QtGui.QPixmap.fromImage(image)
-            scaled_pixmap = qpixmap.scaled(label.size(), QtCore.Qt.KeepAspectRatio)
-            label.setPixmap(scaled_pixmap)
+    def showprevision(self, labels, qpixmaps):
+        for i, video in enumerate(self.videos):
+            cap = cv2.VideoCapture(video)
+            if self.ocv:
+                _ , frame = cap.read()
+                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                image = QtGui.QImage(frame_rgb.data, frame_rgb.shape[1], frame_rgb.shape[0], QtGui.QImage.Format_RGB888)
+                qpixmaps[i] = QtGui.QPixmap.fromImage(image)
+                scaled_pixmap = qpixmaps[i].scaled(labels[i].size(), QtCore.Qt.KeepAspectRatio)
+                labels[i].setPixmap(scaled_pixmap)
 
     def creat_vision_labels_pixmaps(self, labelsize, parentlayout, sublayout, num):
         Vision_labels = []
@@ -372,7 +361,10 @@ class backend():
 
         
     def stop(self):
+        for thread in self.threads:
+            thread.is_stop = True
         self.is_stop = True
+        self.index = 0
         
     # 遍歷 layout，清空所有子佈局和控件
     def clear_layout(self, layout):
