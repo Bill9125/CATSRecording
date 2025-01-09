@@ -1,5 +1,6 @@
 from ui import Ui_MainWindow
 from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtCore import QTimer
 import os, glob
 import cv2
 from ultralytics import YOLO
@@ -7,17 +8,22 @@ import torch
 
 class MyVideoCapture:
     def __init__(self, video_source):
-        self.vid = cv2.VideoCapture(video_source)
-        if not self.vid.isOpened():
-            raise ValueError("Unable to open video source", video_source)
-
-        self.width = int(self.vid.get(cv2.CAP_PROP_FRAME_WIDTH))
-        self.height = int(self.vid.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        try:
+            self.vid = cv2.VideoCapture(video_source)
+            if not self.vid.isOpened():
+                raise ValueError(f"Unable to open video source {video_source}")
+            self.width = int(self.vid.get(cv2.CAP_PROP_FRAME_WIDTH))
+            self.height = int(self.vid.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        except ValueError as e:
+            print(f"Error: {e}")
+            self.vid = None  # 無法打開相機時設為 None
+            self.width = 0
+            self.height = 0
 
     def isOpened(self):
         # 檢查視頻是否正確打開
-        return self.vid.isOpened()
-
+        return self.vid is not None and self.vid.isOpened()
+    
     def get_frame(self):
         if self.vid.isOpened():
             ret, frame = self.vid.read()
@@ -50,7 +56,29 @@ class backend():
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
         print('yolo device:', device)
         self.yolov8_model1.to(device)
-    
+        
+        self.cameras = self.initialize_cameras()
+        
+        self.isclicked = False
+        self.recording = False
+        
+        
+    def initialize_cameras(self):
+        cameras = []
+        for i in range(5):
+            try:
+                cam = MyVideoCapture(i)
+                if cam.isOpened():
+                    cameras.append(cam)
+                else:
+                    print(f"Camera {i} is not available.")
+            except Exception as e:
+                print(f"Error opening camera {i}: {e}")
+        
+        if not cameras:
+            print("No cameras connected.")
+        return cameras
+
     def messagebox(self, type, text):
         Form = QtWidgets.QWidget()
         Form.setWindowTitle('message')
@@ -61,7 +89,34 @@ class backend():
         elif type == 'Error':
             mbox.warning(Form, 'warning', f'{text}')
 
-    def recording_ctrl(self, Vision_labels):
+    def manual_checkbox_isclicked(self, state):
+        if state == 2:  
+            self.isclicked = True
+        else:  
+            self.isclicked = False
+        # return self.isclicked
+        print(f"manual recording: {self.isclicked}") 
+        
+        '''get camera id'''
+    def get_frame(self, camera_id):
+        if 0 <= camera_id < len(self.cameras):
+            ret, frame = self.cameras[camera_id].get_frame()
+            if ret:
+                return frame
+        return None
+    
+    def update_camera_layout(self, layout_type):
+        if layout_type == "benchpress_layout":
+            self.cameras = [MyVideoCapture(i) for i in range(3)]
+        elif layout_type == "deadlift_layout":
+            self.cameras = [MyVideoCapture(i) for i in range(5)]
+
+        print(f"Updated to {layout_type} with {len(self.cameras)} cameras.")
+        
+    def recording_ctrl_btn_clicked(self,checkbox):
+        pass
+        
+    # def recording_ctrl(self, Vision_labels):
         
         
         
