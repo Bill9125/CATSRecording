@@ -32,14 +32,14 @@ class MyVideoCapture:
             self.vid.release()
             
 class MyThread(threading.Thread):
-    def __init__(self, video, index, Play_btn, icons, fast_forward_combobox,
-                    Frameslider, framenumber, Vision_labels, qpixmaps, barrier, is_pause, is_stop):
+    def __init__(self, caps, index, Play_btn, icons, fast_forward_combobox,
+                    Frameslider, framenumber, Vision_labels, qpixmaps, barrier):
         threading.Thread.__init__(self, daemon=True)
         self._pause_event = threading.Event()
         self._pause_event.set()
         self._stop_event = threading.Event()
         self._stop_event.clear()
-        self.video = video
+        self.cap = caps[index]
         self.index = index
         self.Play_btn = Play_btn
         self.icons = icons
@@ -50,26 +50,40 @@ class MyThread(threading.Thread):
         self.qpixmaps = qpixmaps
         self.barrier = barrier
         self.is_pause = False
-        self.is_slide = False
         self.is_stop = False
+        self.is_slide_end = False
+        self.is_slide_start = False
         self.ended = False
         
     def run(self):
-        cap = cv2.VideoCapture(self.video)
         self.Frameslider.setMaximum(int(self.framenumber))
         start_time = time.time()
 
         while not self._stop_event.is_set():
             speed_rate = self.fast_forward_combobox.currentText()
-            val = self.Frameslider.value()
             spf = 1 / 30
 
             # 迴圈暫停條件
             if self.is_pause:
-                print('pause')
-                self._pause_event.wait()
-                cap.set(cv2.CAP_PROP_POS_FRAMES, val)
-
+                print(f"{self.index} is pause")
+                continue
+                
+            if self.is_slide_start:
+                print('slide')
+                if self.is_slide_end:
+                    val = self.Frameslider.value()
+                    current_frame = int(self.cap.get(cv2.CAP_PROP_POS_FRAMES))
+                    if val > current_frame:
+                        for _ in range(val - current_frame):
+                            self.cap.grab()
+                    elif val < current_frame:
+                        self.cap.set(cv2.CAP_PROP_POS_FRAMES, val)
+                    print(f'{self.index} cap is set.')
+                    self.is_slide_end = False
+                    self.is_slide_start = False
+                self.barrier.wait() 
+                continue
+                
             # 迴圈終止條件
             if self.Frameslider.value() >= self.framenumber or self.is_stop or self.ended:
                 print('break')
@@ -78,20 +92,15 @@ class MyThread(threading.Thread):
                 self.fast_forward_combobox.setEnabled(True)
                 break
 
-            # 滑塊拖動處理
-            if self.is_slide and self.index == 0:
-                backend.pause_event(self.fast_forward_combobox, self.Play_btn, self.icons)
-                self.is_slide = False
-                continue
-
             # 等待所有 thread 完成同步
             self.barrier.wait()
 
             if (time.time() - start_time) >= (spf / float(speed_rate)):
                 # 讓第 0 個 threading 處理 slider
                 if self.index == 0:
+                    val = self.Frameslider.value()
                     self.Frameslider.setValue(val + 1)
-                _ , frame = cap.read()
+                _ , frame = self.cap.read()
                 frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 image = QtGui.QImage(frame_rgb.data, frame_rgb.shape[1], frame_rgb.shape[0], QtGui.QImage.Format_RGB888)
                 self.qpixmaps[self.index] = QtGui.QPixmap.fromImage(image)
@@ -103,9 +112,7 @@ class MyThread(threading.Thread):
         for i, qpixmap in enumerate(self.qpixmaps):
             qpixmap = QtGui.QPixmap()
             self.Vision_labels[i].setPixmap(qpixmap)
-
-        self.Play_btn.setIcon(self.icons[1])
-        cap.release()
+        self.cap.release()
 
     def pause(self):
         self._pause_event.clear()
@@ -144,13 +151,13 @@ class backend():
         self.threads = []
         self.rp_Vision_labels = []
         self.rp_qpixmaps = []
+        self.caps = []
         self.currentsport = ''
         self.ocv = True
         self.index = 0
         self.is_pause = False
         self.exited = False
         self.is_stop = True
-        self.is_slide = False
 
     def messagebox(self, type, text):
         Form = QtWidgets.QWidget()
@@ -233,7 +240,7 @@ class backend():
         for thread in self.threads:
             thread.ended = True
             
-        folderPath = self.resource_path(f'C:/Users/wujinglun/CATSRecording/data/recording_{sport}')
+        folderPath = self.resource_path(f'C:/jinglun/CATSRecording/data/recording_{sport}')
         self.folders[sport] = folderPath
 
         File_comboBox.clear()
@@ -248,11 +255,9 @@ class backend():
 
 
     # 讀取combobox內的資料夾
-    def File_combobox_TextChanged(self, file_comboBox, play_btn, icons):
-        self.stop()
+    def File_combobox_TextChanged(self, file_comboBox, play_btn, icons, Frameslider):
+        self.stop(Frameslider, play_btn, icons)
         videofolder = file_comboBox.currentText()
-        self.index = 0
-        play_btn.setIcon(icons[1])
         folder = self.folders[self.currentsport]
         self.videos = glob.glob(f'{folder}/{videofolder}/*.avi')
         
@@ -263,7 +268,7 @@ class backend():
                            if os.path.basename(video) in ('original_vision1.avi', 'vision2.avi', 'original_vision3.avi')
                         ]
             self.videos[1], self.videos[2] = self.videos[2], self.videos[1]
-        self.showprevision(self.rp_Vision_labels, self.rp_qpixmaps)
+        self.showprevision()
     
     def play_btn_clicked(self, fast_forward_combobox, Play_btn, icons, Frameslider):
         self.index += 1
@@ -279,19 +284,25 @@ class backend():
 
             # stop 後播放
             if self.is_stop:
+                print('threads created')
                 self.is_stop = False
                 if self.threads:
                     self.del_mythreads()
+                if self.caps:
+                    self.caps.clear()
                 self.barrier = threading.Barrier(len(self.videos))
                 for i, video in enumerate(self.videos):
-                    thread_play = MyThread(video, i, Play_btn, icons, fast_forward_combobox,
-                                            Frameslider, framenumber, self.rp_Vision_labels, self.rp_qpixmaps,
-                                            self.barrier, self.is_pause, self.is_stop)
+                    cap = cv2.VideoCapture(video)
+                    self.caps.append(cap)
+                    thread_play = MyThread(self.caps, i, Play_btn, icons, fast_forward_combobox,
+                                            Frameslider, framenumber, self.rp_Vision_labels,
+                                            self.rp_qpixmaps, self.barrier)
                     thread_play.start()
                     self.threads.append(thread_play)
 
             # pause 後繼續播放
             else:
+                print('resume')
                 for thread in self.threads:
                     thread.is_pause = False
                     thread.resume()
@@ -314,11 +325,11 @@ class backend():
             
     def slider_released(self):
         for thread in self.threads:
-            thread.is_slide = False 
+            thread.is_slide_end = True
 
     def slider_Pressed(self):
         for thread in self.threads:
-            thread.is_slide = True 
+            thread.is_slide_start = True
 
     def sliding(self, Frameslider, TimeCount_LineEdit):
         fps = 30
@@ -333,21 +344,21 @@ class backend():
         event.accept()
         
 
-    def showprevision(self, labels, qpixmaps):
+    def showprevision(self):
         for i, video in enumerate(self.videos):
-            cap = cv2.VideoCapture(video)
+            temp_cap = cv2.VideoCapture(video)
             if self.ocv:
-                _ , frame = cap.read()
+                _ , frame = temp_cap.read()
                 frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 image = QtGui.QImage(frame_rgb.data, frame_rgb.shape[1], frame_rgb.shape[0], QtGui.QImage.Format_RGB888)
-                qpixmaps[i] = QtGui.QPixmap.fromImage(image)
-                scaled_pixmap = qpixmaps[i].scaled(labels[i].size(), QtCore.Qt.KeepAspectRatio)
-                labels[i].setPixmap(scaled_pixmap)
+                self.rp_qpixmaps[i] = QtGui.QPixmap.fromImage(image)
+                scaled_pixmap = self.rp_qpixmaps[i].scaled(self.rp_Vision_labels[i].size(), QtCore.Qt.KeepAspectRatio)
+                self.rp_Vision_labels[i].setPixmap(scaled_pixmap)
 
     def creat_vision_labels_pixmaps(self, labelsize, parentlayout, sublayout, num):
         Vision_labels = []
         qpixmaps = []
-        for i in range(num):
+        for _ in range(num):
             qpixmap = QtGui.QPixmap()
             qpixmaps.append(qpixmap)
             Vision_label = QtWidgets.QLabel(parentlayout)
@@ -360,11 +371,24 @@ class backend():
         return Vision_labels, qpixmaps
 
         
-    def stop(self):
+    def stop(self, Frameslider, Play_btn, icons):
+        Frameslider.setEnabled(False)
         for thread in self.threads:
             thread.is_stop = True
+        self.del_mythreads()
         self.is_stop = True
         self.index = 0
+        Play_btn.setIcon(icons[1])
+        Frameslider.setSliderPosition(0)
+        for i in range(len(self.rp_Vision_labels)):
+            qpixmap = QtGui.QPixmap()
+            self.rp_Vision_labels[i].setPixmap(qpixmap)
+            
+    def slider_changed(self, Frameslider, Play_btn, icons):
+        val = Frameslider.value()
+        if val >= Frameslider.maximum():
+            self.stop(Frameslider, Play_btn, icons)
+        
         
     # 遍歷 layout，清空所有子佈局和控件
     def clear_layout(self, layout):

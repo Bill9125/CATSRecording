@@ -81,8 +81,8 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.ui.Stop_btn, 
             self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox, self.ui.Replay_tab, self.ui.play_layout))
         self.ui.File_comboBox.currentTextChanged.connect(lambda: self.bf.File_combobox_TextChanged(
-            self.ui.File_comboBox, self.ui.Play_btn, self.icons))
-        self.ui.Stop_btn.clicked.connect(self.bf.stop)
+            self.ui.File_comboBox, self.ui.Play_btn, self.icons, self.ui.Frameslider))
+        self.ui.Stop_btn.clicked.connect(lambda: self.bf.stop(self.ui.Frameslider, self.ui.Play_btn, self.icons))
         
         # replay bottom ctrl connection
         rates = [1, 1.5, 0.8, 0.5]
@@ -93,6 +93,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.Frameslider.valueChanged.connect(lambda: self.bf.sliding(self.ui.Frameslider, self.ui.TimeCount_LineEdit))
         self.ui.Frameslider.sliderPressed.connect(self.bf.slider_Pressed)
         self.ui.Frameslider.sliderReleased.connect(self.bf.slider_released)
+        self.ui.Frameslider.valueChanged.connect(lambda: self.bf.slider_changed(self.ui.Frameslider, self.ui.Play_btn, self.icons))
 
     def rc_Deadlift_clicked(self):
         self.Deadlift_layout_set()
