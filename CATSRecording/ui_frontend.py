@@ -159,6 +159,3 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         labelsize = [640, 480]
         self.rc_Vision_labels, self.rc_qpixmaps = self.bf.creat_vision_labels_pixmaps(labelsize, self.Benchpress_vision_layout, 3)
         self.recording_ctrl_btn.clicked.connect(lambda: self.bf.recording_ctrl(self.rc_Vision_labels))
-        
-    
-
