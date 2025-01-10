@@ -223,3 +223,4 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
        
     
 
+        self.recording_ctrl_btn.clicked.connect(lambda: self.bf.recording_ctrl(self.rc_Vision_labels))
