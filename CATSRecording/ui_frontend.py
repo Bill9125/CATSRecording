@@ -1,5 +1,5 @@
 from ui import Ui_MainWindow
-from ui_backend import backend
+from ui_backend import Recordingbackend
 from PyQt5 import QtCore, QtGui, QtWidgets
 from qt_material import apply_stylesheet
 import os, glob, sys
@@ -10,7 +10,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def __init__(self, *args, obj=None, **kwargs):
         super(Mainwindow, self).__init__(*args, **kwargs)
         self.ui = Ui_MainWindow()
-        self.bf = backend()
+        self.rcbf = Recordingbackend()
         self.ui.setupUi(self)
         
         self.ui.rc_Squat_btn.setEnabled(False)
@@ -33,7 +33,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def update_frames(self):
         # Update the camera frames every 30ms
         for i, label in enumerate(self.Vision_labels):
-            frame = self.bf.get_frame(i)
+            frame = self.rcbf.get_frame(i)
             if frame is not None:
                 height, width, channels = frame.shape
                 bytes_per_line = channels * width
@@ -122,7 +122,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.recording_ctrl_btn = QtWidgets.QToolButton(self.ui.Recording_tab)
         self.recording_ctrl_btn.setIcon(self.icons[0])
         self.recording_ctrl_btn.setIconSize(QtCore.QSize(64, 64))
-        self.recording_ctrl_btn.clicked.connect(lambda: self.bf.recording_ctrl_btn_clicked(self.isclicked))
+        self.recording_ctrl_btn.clicked.connect(lambda: self.rcbf.recording_ctrl_btn_clicked(self.isclicked))
         self.ctrl_layout.addWidget(self.recording_ctrl_btn)
 
         self.back_toolbtn = QtWidgets.QToolButton(self.ui.Recording_tab)
@@ -136,7 +136,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         labelsize = [420, 560]
         self.Vision_labels = self.creat_vision_labels(labelsize, self.Deadlift_vision_layout, 5)
-        self.recording_ctrl_btn.clicked.connect(lambda: self.bf.recording_ctrl_btn_clicked(self.Vision_labels))
+        self.recording_ctrl_btn.clicked.connect(lambda: self.rcbf.recording_ctrl_btn_clicked(self.Vision_labels))
     
     def Benchpress_layout_set(self):
         # clear recording layout
@@ -168,7 +168,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         labelsize = [640, 480]
         
         self.Vision_labels = self.creat_vision_labels(labelsize, self.Benchpress_vision_layout, 3)
-        self.recording_ctrl_btn.clicked.connect(lambda: self.bf.recording_ctrl_btn_clicked(self.Vision_labels))
+        self.recording_ctrl_btn.clicked.connect(lambda: self.rcbf.recording_ctrl_btn_clicked(self.Vision_labels))
 
         
 

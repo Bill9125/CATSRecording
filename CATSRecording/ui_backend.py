@@ -38,9 +38,9 @@ class MyVideoCapture:
         if self.vid.isOpened():
             self.vid.release()
 
-class backend():
+class Recordingbackend():
     def __init__(self):
-        super(backend, self).__init__()
+        super(Recordingbackend, self).__init__()
         # self.vid1 = MyVideoCapture(2)
         # self.vid2 = MyVideoCapture(4)
         # self.vid3 = MyVideoCapture(0)
@@ -58,6 +58,7 @@ class backend():
         self.yolov8_model1.to(device)
         
         self.cameras = self.initialize_cameras()
+        self.current_layout = None
         
         self.isclicked = False
         self.recording = False
@@ -98,43 +99,35 @@ class backend():
         print(f"manual recording: {self.isclicked}") 
         
         '''get camera id'''
-    def get_frame(self, camera_id):
-        if 0 <= camera_id < len(self.cameras):
-            ret, frame = self.cameras[camera_id].get_frame()
-            if ret:
-                return frame
-        return None
-    
+
+
     def update_camera_layout(self, layout_type):
         if layout_type == "benchpress_layout":
             self.cameras = [MyVideoCapture(i) for i in range(3)]
         elif layout_type == "deadlift_layout":
             self.cameras = [MyVideoCapture(i) for i in range(5)]
 
+        self.current_layout = layout_type
         print(f"Updated to {layout_type} with {len(self.cameras)} cameras.")
         
     def recording_ctrl_btn_clicked(self,checkbox):
         pass
         
-    # def recording_ctrl(self, Vision_labels):
+    def get_frame(self, camera_id):
+        if 0 <= camera_id < len(self.cameras):
+            ret, frame = self.cameras[camera_id].get_frame()
+            if ret:
+                # 如果是第三個相機，進行 180 度旋轉
+                if camera_id == 2:  # 第三個相機，索引為 2
+                    frame = cv2.rotate(frame, cv2.ROTATE_180)
+                return frame
+        return None
+
+ 
         
         
         
+        # def recording_ctrl(self, Vision_labels):
         
         
         
-        # print(Vision_labels[0].size())
-        # if self.vid1.isOpened():
-        #     ret1, frame1 = self.vid1.get_frame()
-        #     if ret1:
-        #         # Detect the barbell position (YOLO model output)
-        #         results = self.yolov8_model.predict(source=frame1, imgsz=320, conf=0.5)
-        #         boxes = results[0].boxes
-        #         if len(boxes.xywh) > 0:
-        #             self.initial_position = boxes.xywh[0]  # Capture the first detected box as the initial position
-        #             self.messagebox("Info", "Initial position captured.")
-        #             self.recording = False  # Ensure recording is off initially
-        #             self.auto_recording = True  # Enable automatic recording trigger
-        #             self.threshold = 50  # Set a threshold for starting and stopping recording (can be adjusted)
-        #         else:
-        #             self.messagebox("Error", "No detection found. Try again.")
