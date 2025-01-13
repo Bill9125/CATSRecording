@@ -1,5 +1,5 @@
 from ui import Ui_MainWindow
-from ui_backend import backend
+from ui_backend import Replaybackend
 from PyQt5 import QtCore, QtGui, QtWidgets
 from qt_material import apply_stylesheet
 import os, glob, sys
@@ -9,7 +9,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def __init__(self, *args, obj=None, **kwargs):
         super(Mainwindow, self).__init__(*args, **kwargs)
         self.ui = Ui_MainWindow()
-        self.bf = backend()
+        self.bf = Replaybackend()
         self.ui.setupUi(self)
         self.ui.rc_Squat_btn.setEnabled(False)
         self.icons = []
