@@ -1,19 +1,26 @@
 from ui import Ui_MainWindow
-from ui_backend import backend
+from ui_backend import Recordingbackend
 from PyQt5 import QtCore, QtGui, QtWidgets
 from qt_material import apply_stylesheet
 import os, glob, sys
+from PyQt5.QtCore import QTimer
 
 # frontend logic
 class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def __init__(self, *args, obj=None, **kwargs):
         super(Mainwindow, self).__init__(*args, **kwargs)
         self.ui = Ui_MainWindow()
-        self.bf = backend()
+        self.rcbf = Recordingbackend()
         self.ui.setupUi(self)
+        
         self.ui.rc_Squat_btn.setEnabled(False)
         self.icons = []
+<<<<<<< HEAD
         icon_srcs = glob.glob(self.bf.resource_path('ui_src/*.png'))
+=======
+        self.isclicked = False
+        icon_srcs = glob.glob(self.resource_path('ui_src/*.png'))
+>>>>>>> kadyT
         for icon in icon_srcs:
             self.icons.append(QtGui.QIcon(icon))
         self.ui.Play_btn.setIcon(self.icons[1])
@@ -21,6 +28,27 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.ui.rc_Deadlift_btn.clicked.connect(self.rc_Deadlift_clicked)
         self.ui.rc_Benchpress_btn.clicked.connect(self.rc_Benchpress_clicked)
+<<<<<<< HEAD
+=======
+        
+            # Initialize QTimer for updating frames
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.update_frames)
+        self.timer.start(30)  # Update frames every 30ms
+
+        self.Vision_labels = []  # Store QLabel for camera frames
+    
+    def update_frames(self):
+        # Update the camera frames every 30ms
+        for i, label in enumerate(self.Vision_labels):
+            frame = self.rcbf.get_frame(i)
+            if frame is not None:
+                height, width, channels = frame.shape
+                bytes_per_line = channels * width
+                q_image = QtGui.QImage(frame.data, width, height, bytes_per_line, QtGui.QImage.Format_BGR888)
+                pixmap = QtGui.QPixmap.fromImage(q_image)
+                label.setPixmap(pixmap)
+>>>>>>> kadyT
 
         # replay top ctrl connection
         self.ui.rp_Deadlift_btn.clicked.connect(lambda: self.bf.Deadlift_btn_pressed(
@@ -67,6 +95,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.manual_checkbox = QtWidgets.QCheckBox(self.ui.Recording_tab)
         self.ui.manual_checkbox.setObjectName("manual_checkbox")
         self.ui.manual_checkbox.setText("manual recording")
+        self.isclicked = self.ui.manual_checkbox.stateChanged.connect(self.bf.manual_checkbox_isclicked)
         grid_layout.addWidget(self.ui.manual_checkbox, 0, 0, 1, 1)
 
         # 添加 Deadlift 按鈕
@@ -113,6 +142,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.recording_ctrl_btn = QtWidgets.QToolButton(self.ui.Recording_tab)
         self.recording_ctrl_btn.setIcon(self.icons[2])
         self.recording_ctrl_btn.setIconSize(QtCore.QSize(64, 64))
+        self.recording_ctrl_btn.clicked.connect(lambda: self.rcbf.recording_ctrl_btn_clicked(self.isclicked))
         self.ctrl_layout.addWidget(self.recording_ctrl_btn)
 
         self.back_toolbtn = QtWidgets.QToolButton(self.ui.Recording_tab)
@@ -125,8 +155,13 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.recording_layout.addLayout(self.Deadlift_vision_layout)
 
         labelsize = [420, 560]
+<<<<<<< HEAD
         self.rc_Vision_labels, self.rc_qpixmaps = self.bf.creat_vision_labels_pixmaps(labelsize, self.ui.Replay_tab, self.Deadlift_vision_layout, 5)
         self.recording_ctrl_btn.clicked.connect(lambda: self.bf.recording_ctrl(self.rc_Vision_labels))
+=======
+        self.Vision_labels = self.creat_vision_labels(labelsize, self.Deadlift_vision_layout, 5)
+        self.recording_ctrl_btn.clicked.connect(lambda: self.rcbf.recording_ctrl_btn_clicked(self.Vision_labels))
+>>>>>>> kadyT
     
     def Benchpress_layout_set(self):
         # clear recording layout
@@ -157,5 +192,30 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.recording_layout.addLayout(self.Benchpress_vision_layout)
 
         labelsize = [640, 480]
+<<<<<<< HEAD
         self.rc_Vision_labels, self.rc_qpixmaps = self.bf.creat_vision_labels_pixmaps(labelsize, self.ui.Replay_tab, self.Benchpress_vision_layout, 3)
         self.recording_ctrl_btn.clicked.connect(lambda: self.bf.recording_ctrl(self.rc_Vision_labels))
+=======
+        
+        self.Vision_labels = self.creat_vision_labels(labelsize, self.Benchpress_vision_layout, 3)
+        self.recording_ctrl_btn.clicked.connect(lambda: self.rcbf.recording_ctrl_btn_clicked(self.Vision_labels))
+
+        
+
+    def creat_vision_labels(self, labelsize, sublayout, num):
+        Vision_labels = []
+        for i in range(num):
+            Vision_label = QtWidgets.QLabel(self.ui.Recording_tab)
+            Vision_label.setFrameShape(QtWidgets.QFrame.Panel)
+            Vision_label.setText('11111111111111111111111111111111111111111111111111111111111111111111111')
+            Vision_label.setMinimumSize(labelsize[0], labelsize[1])
+            Vision_label.setMaximumSize(labelsize[0], labelsize[1])
+            sublayout.addWidget(Vision_label)
+            Vision_labels.append(Vision_label)
+        return Vision_labels
+
+    def resource_path(self, relative_path):
+        base_path = getattr(sys, '_MEIPASS', os.path.abspath("."))
+        return os.path.join(base_path, relative_path)
+
+>>>>>>> kadyT
