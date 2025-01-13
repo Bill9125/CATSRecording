@@ -72,13 +72,13 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         # replay top ctrl connection
         self.ui.rp_Deadlift_btn.clicked.connect(lambda: self.bf.Deadlift_btn_pressed(
-            self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.ui.Stop_btn, 
+            self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.icons, self.ui.Stop_btn, 
             self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox, self.ui.Replay_tab, self.ui.play_layout))
         self.ui.rp_Benchpress_btn.clicked.connect(lambda: self.bf.Benchpress_btn_pressed(
-            self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.ui.Stop_btn, 
+            self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.icons, self.ui.Stop_btn, 
             self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox, self.ui.Replay_tab, self.ui.play_layout))
         self.ui.rp_Squat_btn.clicked.connect(lambda: self.bf.Squat_btn_pressed(
-            self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.ui.Stop_btn, 
+            self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.icons, self.ui.Stop_btn, 
             self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox, self.ui.Replay_tab, self.ui.play_layout))
         self.ui.File_comboBox.currentTextChanged.connect(lambda: self.bf.File_combobox_TextChanged(
             self.ui.File_comboBox, self.ui.Play_btn, self.icons, self.ui.Frameslider))
@@ -175,9 +175,13 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.recording_layout.addLayout(self.Deadlift_vision_layout)
 
         labelsize = [420, 560]
+<<<<<<< HEAD
         self.Vision_labels = self.creat_vision_labels(labelsize, self.Deadlift_vision_layout, 5)
         self.recording_ctrl_btn.clicked.connect(lambda: self.rcbf.recording_ctrl_btn_clicked(self.Vision_labels))
         self.rc_Vision_labels, self.rc_qpixmaps = self.bf.creat_vision_labels_pixmaps(labelsize, self.Deadlift_vision_layout, 5)
+=======
+        self.rc_Vision_labels, self.rc_qpixmaps = self.bf.creat_vision_labels_pixmaps(labelsize, self.ui.Replay_tab, self.Deadlift_vision_layout, 5)
+>>>>>>> 68f8225 (replay功能無bug最終版)
         self.recording_ctrl_btn.clicked.connect(lambda: self.bf.recording_ctrl(self.rc_Vision_labels))
     
     def Benchpress_layout_set(self):
@@ -223,4 +227,6 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
        
     
 
+        self.recording_ctrl_btn.clicked.connect(lambda: self.bf.recording_ctrl(self.rc_Vision_labels))
+        self.rc_Vision_labels, self.rc_qpixmaps = self.bf.creat_vision_labels_pixmaps(labelsize, self.ui.Replay_tab, self.Benchpress_vision_layout, 3)
         self.recording_ctrl_btn.clicked.connect(lambda: self.bf.recording_ctrl(self.rc_Vision_labels))

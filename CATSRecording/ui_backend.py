@@ -46,8 +46,8 @@ class MyThread(threading.Thread):
         self.fast_forward_combobox = fast_forward_combobox
         self.Frameslider = Frameslider
         self.framenumber = framenumber
-        self.Vision_labels = Vision_labels
-        self.qpixmaps = qpixmaps
+        self.Vision_label = Vision_labels[self.index]
+        self.qpixmap = qpixmaps[self.index]
         self.barrier = barrier
         self.is_pause = False
         self.is_stop = False
@@ -65,7 +65,6 @@ class MyThread(threading.Thread):
 
             # 迴圈暫停條件
             if self.is_pause:
-                print(f"{self.index} is pause")
                 continue
                 
             if self.is_slide_start:
@@ -102,17 +101,34 @@ class MyThread(threading.Thread):
                     self.Frameslider.setValue(val + 1)
                 _ , frame = self.cap.read()
                 frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                image = QtGui.QImage(frame_rgb.data, frame_rgb.shape[1], frame_rgb.shape[0], QtGui.QImage.Format_RGB888)
-                self.qpixmaps[self.index] = QtGui.QPixmap.fromImage(image)
-                scaled_pixmap = self.qpixmaps[self.index].scaled(self.Vision_labels[self.index].size(), QtCore.Qt.KeepAspectRatio)
-                self.Vision_labels[self.index].setPixmap(scaled_pixmap)
+                h, w, ch = frame.shape
+                self.qpixmap = QtGui.QPixmap.fromImage(QtGui.QImage(frame_rgb.data, w, h, ch*w, QtGui.QImage.Format_RGB888))
+                scale_qpixmap = self.qpixmap.scaled(self.Vision_label.width(), self.Vision_label.height(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
+                self.Vision_label.setPixmap(scale_qpixmap)
                 # 更新時間
                 start_time = time.time()
 
-        for i, qpixmap in enumerate(self.qpixmaps):
-            qpixmap = QtGui.QPixmap()
-            self.Vision_labels[i].setPixmap(qpixmap)
+        qpixmap = QtGui.QPixmap()
+        self.Vision_label.setPixmap(qpixmap)
         self.cap.release()
+        
+    def resize_frame(self, frame, max_width, max_height):
+        # Get the original dimensions
+        h, w = frame.shape[:2]
+        
+        # Calculate scaling factors
+        scale_w = max_width / w
+        scale_h = max_height / h
+        scale = min(scale_w, scale_h)  # Maintain aspect ratio
+        
+        # Calculate new dimensions
+        new_width = int(w * scale)
+        new_height = int(h * scale)
+        
+        # Resize the frame while maintaining aspect ratio
+        resized_frame = cv2.resize(frame, (new_width, new_height), interpolation=cv2.INTER_AREA)
+        
+        return resized_frame
 
     def pause(self):
         self._pause_event.clear()
@@ -151,6 +167,7 @@ class backend():
         self.threads = []
         self.rp_Vision_labels = []
         self.rp_qpixmaps = []
+        self.videos = []
         self.caps = []
         self.currentsport = ''
         self.ocv = True
@@ -186,35 +203,35 @@ class backend():
         #         else:
         #             self.messagebox("Error", "No detection found. Try again.")
 
-    def Deadlift_btn_pressed(self, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn,
+    def Deadlift_btn_pressed(self, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons,
                             Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout):
         self.currentsport = 'Deadlift'
         self.clear_layout(play_layout)
         self.rp_btn_press(self.currentsport,
-                            Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn,
+                            Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons,
                             Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout)
        
 
-    def Benchpress_btn_pressed(self, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn,
+    def Benchpress_btn_pressed(self, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons,
                             Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout):
         self.currentsport = 'Benchpress'
         self.clear_layout(play_layout)
         self.rp_btn_press(self.currentsport, 
-                            Deadlift_btn,Benchpress_btn, Squat_btn, Play_btn,
+                            Deadlift_btn,Benchpress_btn, Squat_btn, Play_btn, icons,
                             Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout)
         
         
-    def Squat_btn_pressed(self, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn,
+    def Squat_btn_pressed(self, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons,
                             Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout):
         self.currentsport = 'Squat'
         self.clear_layout(play_layout)
         self.rp_btn_press(self.currentsport, 
-                            Deadlift_btn,Benchpress_btn, Squat_btn, Play_btn,
+                            Deadlift_btn,Benchpress_btn, Squat_btn, Play_btn, icons,
                             Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout)
         
         
         
-    def rp_btn_press(self, sport, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn,
+    def rp_btn_press(self, sport, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons, 
                               Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout):
         # Clear all the Qpixmap
         self.clear_layout(play_layout)
@@ -237,8 +254,7 @@ class backend():
             Deadlift_btn.setStyleSheet("font-size:18px;background-color: #666666")
             
         
-        for thread in self.threads:
-            thread.ended = True
+        self.stop(Frameslider, Play_btn, icons)
             
         folderPath = self.resource_path(f'C:/jinglun/CATSRecording/data/recording_{sport}')
         self.folders[sport] = folderPath
@@ -275,6 +291,7 @@ class backend():
         # play
         if self.index % 2 == 1: 
             fast_forward_combobox.setEnabled(False)
+            Frameslider.setEnabled(True)
             Play_btn.setIcon(icons[0])
             f_num = []
             for video in self.videos:
@@ -345,15 +362,16 @@ class backend():
         
 
     def showprevision(self):
-        for i, video in enumerate(self.videos):
-            temp_cap = cv2.VideoCapture(video)
-            if self.ocv:
-                _ , frame = temp_cap.read()
-                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                image = QtGui.QImage(frame_rgb.data, frame_rgb.shape[1], frame_rgb.shape[0], QtGui.QImage.Format_RGB888)
-                self.rp_qpixmaps[i] = QtGui.QPixmap.fromImage(image)
-                scaled_pixmap = self.rp_qpixmaps[i].scaled(self.rp_Vision_labels[i].size(), QtCore.Qt.KeepAspectRatio)
-                self.rp_Vision_labels[i].setPixmap(scaled_pixmap)
+        if self.videos:
+            for i, video in enumerate(self.videos):
+                temp_cap = cv2.VideoCapture(video)
+                if self.ocv:
+                    _ , frame = temp_cap.read()
+                    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                    image = QtGui.QImage(frame_rgb.data, frame_rgb.shape[1], frame_rgb.shape[0], QtGui.QImage.Format_RGB888)
+                    self.rp_qpixmaps[i] = QtGui.QPixmap.fromImage(image)
+                    scaled_pixmap = self.rp_qpixmaps[i].scaled(self.rp_Vision_labels[i].size(), QtCore.Qt.KeepAspectRatio)
+                    self.rp_Vision_labels[i].setPixmap(scaled_pixmap)
 
     def creat_vision_labels_pixmaps(self, labelsize, parentlayout, sublayout, num):
         Vision_labels = []
@@ -373,16 +391,12 @@ class backend():
         
     def stop(self, Frameslider, Play_btn, icons):
         Frameslider.setEnabled(False)
-        for thread in self.threads:
-            thread.is_stop = True
         self.del_mythreads()
         self.is_stop = True
         self.index = 0
         Play_btn.setIcon(icons[1])
         Frameslider.setSliderPosition(0)
-        for i in range(len(self.rp_Vision_labels)):
-            qpixmap = QtGui.QPixmap()
-            self.rp_Vision_labels[i].setPixmap(qpixmap)
+        self.showprevision()
             
     def slider_changed(self, Frameslider, Play_btn, icons):
         val = Frameslider.value()
