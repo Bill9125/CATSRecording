@@ -219,9 +219,6 @@ class Replaybackend():
             Benchpress_btn.setStyleSheet("font-size:18px;background-color: #666666")
             Deadlift_btn.setStyleSheet("font-size:18px;background-color: #666666")
             
-        
-        self.stop(Frameslider, Play_btn, icons)
-            
         folderPath = self.resource_path(f'C:/jinglun/CATSRecording/data/recording_{sport}')
         self.folders[sport] = folderPath
 
@@ -238,7 +235,6 @@ class Replaybackend():
 
     # 讀取combobox內的資料夾
     def File_combobox_TextChanged(self, file_comboBox, play_btn, icons, Frameslider):
-        self.stop(Frameslider, play_btn, icons)
         videofolder = file_comboBox.currentText()
         folder = self.folders[self.currentsport]
         self.videos = glob.glob(f'{folder}/{videofolder}/*.avi')
@@ -250,6 +246,7 @@ class Replaybackend():
                            if os.path.basename(video) in ('original_vision1.avi', 'vision2.avi', 'original_vision3.avi')
                         ]
             self.videos[1], self.videos[2] = self.videos[2], self.videos[1]
+        self.stop(Frameslider, play_btn, icons)
         self.showprevision()
     
     def play_btn_clicked(self, fast_forward_combobox, Play_btn, icons, Frameslider):

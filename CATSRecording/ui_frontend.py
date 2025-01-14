@@ -27,49 +27,13 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.rc_Deadlift_btn.clicked.connect(self.rc_Deadlift_clicked)
         self.ui.rc_Benchpress_btn.clicked.connect(self.rc_Benchpress_clicked)
         
-            # Initialize QTimer for updating frames
+        # Initialize QTimer for updating frames
         self.timer = QTimer(self)
-        self.timer.timeout.connect(self.update_frames)
+        # self.timer.timeout.connect(self.update_frames)
         self.timer.start(30)  # Update frames every 30ms
-
-        self.Vision_labels = []  # Store QLabel for camera frames
-    
-    def update_frames(self):
-        # Update the camera frames every 30ms
-        for i, label in enumerate(self.Vision_labels):
-            frame = self.rcbf.get_frame(i)
-            if frame is not None:
-                height, width, channels = frame.shape
-                bytes_per_line = channels * width
-                q_image = QtGui.QImage(frame.data, width, height, bytes_per_line, QtGui.QImage.Format_BGR888)
-                pixmap = QtGui.QPixmap.fromImage(q_image)
-                label.setPixmap(pixmap)
-
-        # replay top ctrl connection
-        self.ui.rp_Deadlift_btn.clicked.connect(lambda: self.rpbf.Deadlift_btn_pressed(
-            self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.icons, self.ui.Stop_btn, 
-            self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox, self.ui.Replay_tab, self.ui.play_layout))
-        self.ui.rp_Benchpress_btn.clicked.connect(lambda: self.rpbf.Benchpress_btn_pressed(
-            self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.icons, self.ui.Stop_btn, 
-            self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox, self.ui.Replay_tab, self.ui.play_layout))
-        self.ui.rp_Squat_btn.clicked.connect(lambda: self.rpbf.Squat_btn_pressed(
-            self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.icons, self.ui.Stop_btn, 
-            self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox, self.ui.Replay_tab, self.ui.play_layout))
-        self.ui.File_comboBox.currentTextChanged.connect(lambda: self.rpbf.File_combobox_TextChanged(
-            self.ui.File_comboBox, self.ui.Play_btn, self.icons, self.ui.Frameslider))
-        self.ui.Stop_btn.clicked.connect(lambda: self.rpbf.stop(self.ui.Frameslider, self.ui.Play_btn, self.icons))
         
-        # replay bottom ctrl connection
-        rates = [1, 1.5, 0.8, 0.5]
-        for rate in rates:
-            self.ui.fast_forward_combobox.addItems([str(rate)])
-        self.ui.Play_btn.clicked.connect(lambda: self.rpbf.play_btn_clicked(
-            self.ui.fast_forward_combobox, self.ui.Play_btn, self.icons, self.ui.Frameslider))
-        self.ui.Frameslider.valueChanged.connect(lambda: self.rpbf.sliding(self.ui.Frameslider, self.ui.TimeCount_LineEdit))
-        self.ui.Frameslider.sliderPressed.connect(self.rpbf.slider_Pressed)
-        self.ui.Frameslider.sliderReleased.connect(self.rpbf.slider_released)
-        self.ui.Frameslider.valueChanged.connect(lambda: self.rpbf.slider_changed(self.ui.Frameslider, self.ui.Play_btn, self.icons))
-
+        self.Vision_labels = []  # Store QLabel for camera frames
+        
         # replay top ctrl connection
         self.ui.rp_Deadlift_btn.clicked.connect(lambda: self.rpbf.Deadlift_btn_pressed(
             self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.icons, self.ui.Stop_btn, 
@@ -98,6 +62,17 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def rc_Deadlift_clicked(self):
         self.Deadlift_layout_set()
 
+    def update_frames(self):
+        # Update the camera frames every 30ms
+        for i, label in enumerate(self.Vision_labels):
+            frame = self.rcbf.get_frame(i)
+            if frame is not None:
+                height, width, channels = frame.shape
+                bytes_per_line = channels * width
+                q_image = QtGui.QImage(frame.data, width, height, bytes_per_line, QtGui.QImage.Format_BGR888)
+                pixmap = QtGui.QPixmap.fromImage(q_image)
+                label.setPixmap(pixmap)
+
     def rc_Benchpress_clicked(self):
         self.Benchpress_layout_set()
 
@@ -115,7 +90,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.manual_checkbox = QtWidgets.QCheckBox(self.ui.Recording_tab)
         self.ui.manual_checkbox.setObjectName("manual_checkbox")
         self.ui.manual_checkbox.setText("manual recording")
-        self.isclicked = self.ui.manual_checkbox.stateChanged.connect(self.rcbf.manual_checkbox_isclicked)
+        # self.isclicked = self.ui.manual_checkbox.stateChanged.connect(self.rcbf.manual_checkbox_isclicked)
         grid_layout.addWidget(self.ui.manual_checkbox, 0, 0, 1, 1)
 
         # 添加 Deadlift 按鈕
@@ -162,7 +137,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.recording_ctrl_btn = QtWidgets.QToolButton(self.ui.Recording_tab)
         self.recording_ctrl_btn.setIcon(self.icons[2])
         self.recording_ctrl_btn.setIconSize(QtCore.QSize(64, 64))
-        self.recording_ctrl_btn.clicked.connect(lambda: self.rcbf.recording_ctrl_btn_clicked(self.isclicked))
+        # self.recording_ctrl_btn.clicked.connect(lambda: self.rcbf.recording_ctrl_btn_clicked(self.isclicked))
         self.ctrl_layout.addWidget(self.recording_ctrl_btn)
 
         self.back_toolbtn = QtWidgets.QToolButton(self.ui.Recording_tab)
