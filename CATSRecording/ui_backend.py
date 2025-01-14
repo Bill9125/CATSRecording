@@ -50,7 +50,6 @@ class MyThread(threading.Thread):
         self.qpixmap = qpixmaps[self.index]
         self.barrier = barrier
         self.is_pause = False
-        self.is_stop = False
         self.is_slide_end = False
         self.is_slide_start = False
         self.ended = False
@@ -68,7 +67,6 @@ class MyThread(threading.Thread):
                 continue
                 
             if self.is_slide_start:
-                print('slide')
                 if self.is_slide_end:
                     val = self.Frameslider.value()
                     current_frame = int(self.cap.get(cv2.CAP_PROP_POS_FRAMES))
@@ -84,11 +82,7 @@ class MyThread(threading.Thread):
                 continue
                 
             # 迴圈終止條件
-            if self.Frameslider.value() >= self.framenumber or self.is_stop or self.ended:
-                print('break')
-                self.Frameslider.setSliderPosition(0)
-                self.Play_btn.setIcon(self.icons[1])
-                self.fast_forward_combobox.setEnabled(True)
+            if self.Frameslider.value() >= self.framenumber or self.ended:
                 break
 
             # 等待所有 thread 完成同步
@@ -107,7 +101,8 @@ class MyThread(threading.Thread):
                 self.Vision_label.setPixmap(scale_qpixmap)
                 # 更新時間
                 start_time = time.time()
-
+                
+        print('break')
         qpixmap = QtGui.QPixmap()
         self.Vision_label.setPixmap(qpixmap)
         self.cap.release()
@@ -139,26 +134,9 @@ class MyThread(threading.Thread):
     def stop(self):
         self._stop_event.set()
             
-class backend():
+class Replaybackend():
     def __init__(self):
-        super(backend, self).__init__()
-        # self.vid1 = MyVideoCapture(2)
-        # self.vid2 = MyVideoCapture(4)
-        # self.vid3 = MyVideoCapture(0)
-        # self.vid4 = MyVideoCapture(1)
-        # self.vid5 = MyVideoCapture(3)
-
-        # Initialize YOLO model
-        # self.yolov8_model = YOLO("../model/yolo_bar_model/best.pt")
-        # device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        # print('yolo device:', device)
-        # self.yolov8_model.to(device)
-
-        # self.yolov8_model1 = YOLO("../model/yolov8_model/yolov8n-pose.pt")
-        # device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        # print('yolo device:', device)
-        # self.yolov8_model1.to(device)
-
+        super(Replaybackend, self).__init__()
         # init for replay
         self.firstclicked_D = True
         self.firstclicked_B = True
@@ -175,33 +153,6 @@ class backend():
         self.is_pause = False
         self.exited = False
         self.is_stop = True
-
-    def messagebox(self, type, text):
-        Form = QtWidgets.QWidget()
-        Form.setWindowTitle('message')
-        Form.resize(300, 300)
-        mbox = QtWidgets.QMessageBox(Form)
-        if type == 'Info':
-            mbox.information(Form, 'info', f'{text}')
-        elif type == 'Error':
-            mbox.warning(Form, 'warning', f'{text}')
-
-    def recording_ctrl(self, Vision_labels):
-        print(Vision_labels[0].size())
-        # if self.vid1.isOpened():
-        #     ret1, frame1 = self.vid1.get_frame()
-        #     if ret1:
-        #         # Detect the barbell position (YOLO model output)
-        #         results = self.yolov8_model.predict(source=frame1, imgsz=320, conf=0.5)
-        #         boxes = results[0].boxes
-        #         if len(boxes.xywh) > 0:
-        #             self.initial_position = boxes.xywh[0]  # Capture the first detected box as the initial position
-        #             self.messagebox("Info", "Initial position captured.")
-        #             self.recording = False  # Ensure recording is off initially
-        #             self.auto_recording = True  # Enable automatic recording trigger
-        #             self.threshold = 50  # Set a threshold for starting and stopping recording (can be adjusted)
-        #         else:
-        #             self.messagebox("Error", "No detection found. Try again.")
 
     def Deadlift_btn_pressed(self, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons,
                             Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout):
@@ -253,9 +204,6 @@ class backend():
             Benchpress_btn.setStyleSheet("font-size:18px;background-color: #666666")
             Deadlift_btn.setStyleSheet("font-size:18px;background-color: #666666")
             
-        
-        self.stop(Frameslider, Play_btn, icons)
-            
         folderPath = self.resource_path(f'C:/jinglun/CATSRecording/data/recording_{sport}')
         self.folders[sport] = folderPath
 
@@ -272,7 +220,6 @@ class backend():
 
     # 讀取combobox內的資料夾
     def File_combobox_TextChanged(self, file_comboBox, play_btn, icons, Frameslider):
-        self.stop(Frameslider, play_btn, icons)
         videofolder = file_comboBox.currentText()
         folder = self.folders[self.currentsport]
         self.videos = glob.glob(f'{folder}/{videofolder}/*.avi')
@@ -284,6 +231,7 @@ class backend():
                            if os.path.basename(video) in ('original_vision1.avi', 'vision2.avi', 'original_vision3.avi')
                         ]
             self.videos[1], self.videos[2] = self.videos[2], self.videos[1]
+        self.stop(Frameslider, play_btn, icons)
         self.showprevision()
     
     def play_btn_clicked(self, fast_forward_combobox, Play_btn, icons, Frameslider):
@@ -390,6 +338,7 @@ class backend():
 
         
     def stop(self, Frameslider, Play_btn, icons):
+        print('stop')
         Frameslider.setEnabled(False)
         self.del_mythreads()
         self.is_stop = True
@@ -421,3 +370,95 @@ class backend():
     def resource_path(self, relative_path):
         base_path = getattr(sys, '_MEIPASS', os.path.abspath("."))
         return os.path.join(base_path, relative_path)
+
+class Recordingbackend():
+    def __init__(self):
+        super(Recordingbackend, self).__init__()
+        # self.vid1 = MyVideoCapture(2)
+        # self.vid2 = MyVideoCapture(4)
+        # self.vid3 = MyVideoCapture(0)
+        # self.vid4 = MyVideoCapture(1)
+        # self.vid5 = MyVideoCapture(3)
+        # Initialize YOLO model
+        self.yolov8_model = YOLO("../model/yolo_bar_model/best.pt")
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        print('yolo device:', device)
+        self.yolov8_model.to(device)
+
+        self.yolov8_model1 = YOLO("../model/yolov8_model/yolov8n-pose.pt")
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        print('yolo device:', device)
+        self.yolov8_model1.to(device)
+
+        self.cameras = self.initialize_cameras()
+        self.current_layout = None
+
+        self.isclicked = False
+        self.recording = False
+
+
+    def initialize_cameras(self):
+        cameras = []
+        for i in range(5):
+            try:
+                cam = MyVideoCapture(i)
+                if cam.isOpened():
+                    cameras.append(cam)
+                else:
+                    print(f"Camera {i} is not available.")
+            except Exception as e:
+                print(f"Error opening camera {i}: {e}")
+
+        if not cameras:
+            print("No cameras connected.")
+        return cameras
+
+    def messagebox(self, type, text):
+        Form = QtWidgets.QWidget()
+        Form.setWindowTitle('message')
+        Form.resize(300, 300)
+        mbox = QtWidgets.QMessageBox(Form)
+        if type == 'Info':
+            mbox.information(Form, 'info', f'{text}')
+        elif type == 'Error':
+            mbox.warning(Form, 'warning', f'{text}')
+
+    def manual_checkbox_isclicked(self, state):
+        if state == 2:  
+            self.isclicked = True
+        else:  
+            self.isclicked = False
+        # return self.isclicked
+        print(f"manual recording: {self.isclicked}") 
+
+        '''get camera id'''
+    def get_frame(self, camera_id):
+        if 0 <= camera_id < len(self.cameras):
+            ret, frame = self.cameras[camera_id].get_frame()
+            if ret:
+                return frame
+        return None
+    
+    def update_camera_layout(self, layout_type):
+        if layout_type == "benchpress_layout":
+            self.cameras = [MyVideoCapture(i) for i in range(3)]
+        elif layout_type == "deadlift_layout":
+            self.cameras = [MyVideoCapture(i) for i in range(5)]
+
+        self.current_layout = layout_type
+        print(f"Updated to {layout_type} with {len(self.cameras)} cameras.")
+
+    def recording_ctrl_btn_clicked(self,checkbox):
+        pass
+
+    # def recording_ctrl(self, Vision_labels):
+        
+    def get_frame(self, camera_id):
+        if 0 <= camera_id < len(self.cameras):
+            ret, frame = self.cameras[camera_id].get_frame()
+            if ret:
+                # 如果是第三個相機，進行 180 度旋轉
+                if camera_id == 2:  # 第三個相機，索引為 2
+                    frame = cv2.rotate(frame, cv2.ROTATE_180)
+                return frame
+        return None
