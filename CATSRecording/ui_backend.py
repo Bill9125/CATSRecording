@@ -50,7 +50,6 @@ class MyThread(threading.Thread):
         self.qpixmap = qpixmaps[self.index]
         self.barrier = barrier
         self.is_pause = False
-        self.is_stop = False
         self.is_slide_end = False
         self.is_slide_start = False
         self.ended = False
@@ -68,7 +67,6 @@ class MyThread(threading.Thread):
                 continue
                 
             if self.is_slide_start:
-                print('slide')
                 if self.is_slide_end:
                     val = self.Frameslider.value()
                     current_frame = int(self.cap.get(cv2.CAP_PROP_POS_FRAMES))
@@ -84,11 +82,7 @@ class MyThread(threading.Thread):
                 continue
                 
             # 迴圈終止條件
-            if self.Frameslider.value() >= self.framenumber or self.is_stop or self.ended:
-                print('break')
-                self.Frameslider.setSliderPosition(0)
-                self.Play_btn.setIcon(self.icons[1])
-                self.fast_forward_combobox.setEnabled(True)
+            if self.Frameslider.value() >= self.framenumber or self.ended:
                 break
 
             # 等待所有 thread 完成同步
@@ -107,7 +101,8 @@ class MyThread(threading.Thread):
                 self.Vision_label.setPixmap(scale_qpixmap)
                 # 更新時間
                 start_time = time.time()
-
+                
+        print('break')
         qpixmap = QtGui.QPixmap()
         self.Vision_label.setPixmap(qpixmap)
         self.cap.release()
@@ -158,16 +153,6 @@ class Replaybackend():
         self.is_pause = False
         self.exited = False
         self.is_stop = True
-
-    def messagebox(self, type, text):
-        Form = QtWidgets.QWidget()
-        Form.setWindowTitle('message')
-        Form.resize(300, 300)
-        mbox = QtWidgets.QMessageBox(Form)
-        if type == 'Info':
-            mbox.information(Form, 'info', f'{text}')
-        elif type == 'Error':
-            mbox.warning(Form, 'warning', f'{text}')
 
     def Deadlift_btn_pressed(self, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons,
                             Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout):
@@ -353,6 +338,7 @@ class Replaybackend():
 
         
     def stop(self, Frameslider, Play_btn, icons):
+        print('stop')
         Frameslider.setEnabled(False)
         self.del_mythreads()
         self.is_stop = True
