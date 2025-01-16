@@ -78,24 +78,6 @@ class MyThread(threading.Thread):
         qpixmap = QtGui.QPixmap()
         self.Vision_label.setPixmap(qpixmap)
         self.cap.release()
-        
-    def resize_frame(self, frame, max_width, max_height):
-        # Get the original dimensions
-        h, w = frame.shape[:2]
-        
-        # Calculate scaling factors
-        scale_w = max_width / w
-        scale_h = max_height / h
-        scale = min(scale_w, scale_h)  # Maintain aspect ratio
-        
-        # Calculate new dimensions
-        new_width = int(w * scale)
-        new_height = int(h * scale)
-        
-        # Resize the frame while maintaining aspect ratio
-        resized_frame = cv2.resize(frame, (new_width, new_height), interpolation=cv2.INTER_AREA)
-        
-        return resized_frame
 
     def pause(self):
         self._pause_event.clear()

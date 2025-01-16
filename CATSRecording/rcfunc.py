@@ -45,25 +45,34 @@ class Recordingbackend():
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
         print('yolo device:', device)
         self.yolov8_model1.to(device)
+        self.threads = []
 
+        self.struct = {'Deadlift': 5, 'Benchpress': 3, 'Squat': 5}
         self.cameras = self.initialize_cameras()
         self.current_layout = None
         self.recording = False
         
         self.stop_event = threading.Event()
 
+    def creat_threads(self, sport, Vision_labels):
         # Start YOLO and MediaPipe threads
-        self.yolo_thread = threading.Thread(target=self.process_vision1, daemon=True)
-        self.mediapipe_thread = threading.Thread(target=self.process_vision2, daemon=True)
-        self.mediapipe_thread_2 = threading.Thread(target=self.process_vision3, daemon=True)
-        self.mediapipe_thread_4 = threading.Thread(target=self.process_vision4, daemon=True)
-        self.mediapipe_thread_5 = threading.Thread(target=self.process_vision5, daemon=True)
-        self.yolo_thread.start()
-        self.mediapipe_thread.start()
-        self.mediapipe_thread_2.start()
-        self.mediapipe_thread_4.start()
-        self.mediapipe_thread_5.start()
+        for i in range(self.struct[sport]):
+            thread = threading.Thread(target=self.process_vision,
+                                      args = (i, sport, Vision_labels[i]) , daemon=True)
+            self.threads.append(thread)
+            thread.start()
 
+    def process_vision(self, i, sport, label):
+        while True:
+            ret, frame = self.cameras[i].getframe()
+            if ret:
+                cv2.putText(frame, f'FPS: {self.fps3:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
+                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                h, w, ch = frame.shape
+                qpixmap = QtGui.QPixmap.fromImage(QtGui.QImage(frame_rgb.data, w, h, ch*w, QtGui.QImage.Format_RGB888))
+                scale_qpixmap = qpixmap.scaled(label.width(), label.height(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
+                label.setPixmap(scale_qpixmap)
+                
 
     def initialize_cameras(self):
         cameras = []
@@ -102,14 +111,6 @@ class Recordingbackend():
             self.isclicked = False
         # return self.isclicked
         print(f"manual recording: {self.isclicked}") 
-
-        '''get camera id'''
-    # def get_frame(self, camera_id):
-    #     if 0 <= camera_id < len(self.cameras):
-    #         ret, frame = self.cameras[camera_id].get_frame()
-    #         if ret:
-    #             return frame
-    #     return None
     
     def update_camera_layout(self, layout_type):
         if layout_type == "benchpress_layout":
