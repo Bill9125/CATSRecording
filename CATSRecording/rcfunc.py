@@ -48,6 +48,10 @@ class Recordingbackend():
         self.threads = []
 
         self.struct = {'Deadlift': 5, 'Benchpress': 3, 'Squat': 5}
+        dir = 'C:/Users/92A27'
+        self.save_path = {'Deadlift': os.path.join(dir, 'MOCAP', 'recordings'),
+                          'Benchpress': os.path.join(dir, 'benchpress', 'recordings'),
+                          'Squat': os.path.join(dir, 'barbell_squat', 'recordings')}
         self.cameras = self.initialize_cameras()
         self.current_layout = None
         self.recording = False
@@ -65,8 +69,10 @@ class Recordingbackend():
     def process_vision(self, i, sport, label):
         start_time = time.time()  
         frame_count = 0
+        fps = 0
+        cap = self.cameras[i]
         while True:
-            ret, frame = self.cameras[i].get_frame()
+            ret, frame = cap.get_frame()
             if ret:
                 frame_count += 1
                 elapsed_time = time.time() - start_time
@@ -74,6 +80,11 @@ class Recordingbackend():
                     fps = frame_count / elapsed_time
                     frame_count = 0
                     start_time = time.time()
+                
+                if self.recording:
+                    file = os.path.join(self.folder, f'vision{i}.avi')
+                    out = cv2.VideoWriter(file, cv2.VideoWriter_fourcc(*'XVID'), 29, (int(cap.height), int(cap.width)))
+                    out.write(frame)
                     
                 cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
                 frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -130,67 +141,19 @@ class Recordingbackend():
         self.current_layout = layout_type
         print(f"Updated to {layout_type} with {len(self.cameras)} cameras.")
 
-    def recording_ctrl_btn_clicked(self):
+    def recording_ctrl_btn_clicked(self, sport):
         if not self.recording:
-            self.start_recording()
+            self.start_recording(sport)
         else:
             self.stop_recording()
 
-    def start_recording(self):
-        self.recording = True
+    def start_recording(self, sport):
         self.stop_event.clear()  # Clear the stop event before starting threads
         now = datetime.now()
         timestamp = now.strftime("%Y%m%d_%H%M%S")
-        self.folder = os.path.join(self.save_folder, f"recording_{timestamp}")
+        self.folder = os.path.join(self.save_path[sport], f"recording_{timestamp}")
         os.makedirs(self.folder, exist_ok=True)
-        file1 = os.path.join(self.folder, "vision1.avi")
-        file2 = os.path.join(self.folder, "vision2.avi")
-        file3 = os.path.join(self.folder, "vision3.avi")
-        file4 = os.path.join(self.folder, "vision4.avi")
-        file5 = os.path.join(self.folder, "vision5.avi")
-        
-        fps1 = 29
-        fps2 = 29
-        fps3 = 29
-        fps4 = 29
-        fps5 = 29
-        # print(f'fps1: {fps1}, fps2: {fps2}')
-        
-        self.out1 = cv2.VideoWriter(file1, cv2.VideoWriter_fourcc(*'XVID'), fps1, (int(self.vid1.height), int(self.vid1.width)))
-        self.out2 = cv2.VideoWriter(file2, cv2.VideoWriter_fourcc(*'XVID'), fps2, (int(self.vid2.height), int(self.vid2.width)))
-        self.out3 = cv2.VideoWriter(file3, cv2.VideoWriter_fourcc(*'XVID'), fps3, (int(self.vid3.height), int(self.vid3.width)))
-        self.out4 = cv2.VideoWriter(file4, cv2.VideoWriter_fourcc(*'XVID'), fps4, (int(self.vid4.height), int(self.vid4.width)))
-        self.out5 = cv2.VideoWriter(file5, cv2.VideoWriter_fourcc(*'XVID'), fps4, (int(self.vid5.height), int(self.vid5.width)))
-        if not self.out1.isOpened() or not self.out2.isOpened() or not self.out3.isOpened() or not self.out4.isOpened() or not self.out5.isOpened():
-            self.messagebox("Error", "Failed to initialize video recording")
-            self.recording = False
-            if self.out1 is not None:
-                self.out1.release()
-                self.out1 = None
-            if self.out2 is not None:
-                self.out2.release()
-                self.out2 = None
-            if self.out3 is not None:
-                self.out3.release()
-                self.out3 = None
-            if self.out4 is not None:
-                self.out4.release()
-                self.out4 = None
-            if self.out5 is not None:
-                self.out5.release()
-                self.out5 = None    
-
-        self.start_time1 = time.time()
-        self.start_time2 = time.time()
-        self.start_time3 = time.time()
-        self.start_time4 = time.time()
-        self.start_time5 = time.time()
-        self.frame_count1 = 0
-        self.frame_count2 = 0
-        self.frame_count3 = 0
-        self.frame_count4 = 0
-        self.frame_count5 = 0
-        self.frame_count_for_detect1 = 0
+        self.recording = True
         
         # # Initialize text files for saving coordinates
         self.yolo_txt_path = os.path.join(self.folder, "yolo_coordinates.txt")
@@ -203,34 +166,7 @@ class Recordingbackend():
         if self.recording:
             self.recording = False
             self.stop_event.set()  # Signal threads to stop writing
-
-            if self.out1 is not None:
-                self.out1.release()
-                self.out1 = None
-            if self.out2 is not None:
-                self.out2.release()
-                self.out2 = None
-
-            if self.out3 is not None:
-                self.out3.release()
-                self.out3 = None
-
-            if self.out4 is not None:
-                self.out4.release()
-                self.out4 = None
-
-            if self.out5 is not None:
-                self.out5.release()
-                self.out5 = None
-
-            if self.yolo_txt_file is not None:
-                self.yolo_txt_file.close()
-                self.yolo_txt_file = None
-
-            if self.mediapipe_txt_file is not None:
-                self.mediapipe_txt_file.close()
-                self.mediapipe_txt_file = None
-
+            
             # Create an auto-closing message box
             self.messagebox('Info', "Recording stopped and saved.")
 

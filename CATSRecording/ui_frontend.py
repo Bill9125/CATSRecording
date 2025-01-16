@@ -152,7 +152,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         labelsize = [420, 560]
         self.rc_Vision_labels, self.rc_qpixmaps = self.rpbf.creat_vision_labels_pixmaps(labelsize, self.ui.Recording_tab, self.Deadlift_vision_layout, 5)
-        self.recording_ctrl_btn.clicked.connect(lambda: self.rcbf.recording_ctrl_btn_clicked(self.Vision_labels))
+        self.recording_ctrl_btn.clicked.connect(lambda: self.rcbf.recording_ctrl_btn_clicked('Deadlift'))
         
     def Benchpress_layout_set(self):
         # clear recording layout
@@ -184,7 +184,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         labelsize = [640, 480]
         self.rc_Vision_labels, self.rc_qpixmaps = self.rpbf.creat_vision_labels_pixmaps(labelsize, self.ui.Recording_tab, self.Benchpress_vision_layout, 3)
-        self.recording_ctrl_btn.clicked.connect(lambda: self.rcbf.recording_ctrl_btn_clicked(self.rc_Vision_labels))
+        self.recording_ctrl_btn.clicked.connect(lambda: self.rcbf.recording_ctrl_btn_clicked('Benchpress'))
 
 
     def resource_path(self, relative_path):
