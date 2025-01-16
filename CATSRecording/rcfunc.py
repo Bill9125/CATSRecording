@@ -65,6 +65,7 @@ class Recordingbackend():
     def process_vision(self, i, sport, label):
         start_time = time.time()  
         frame_count = 0
+        fps = 0
         while True:
             ret, frame = self.cameras[i].get_frame()
             if ret:
