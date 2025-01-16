@@ -138,25 +138,30 @@ class Replaybackend():
         # Clear all the Qpixmap
         self.clear_layout(play_layout)
         if sport == 'Deadlift':
+            folderPath = self.resource_path('C:/Users/92A27/MOCAP/recordings')
+            self.folders[sport] = folderPath
             self.rp_Vision_labels, self.rp_qpixmaps = self.creat_vision_labels_pixmaps([420, 560], rp_tab, play_layout, 5)
             Deadlift_btn.setStyleSheet("font-size:18px;background-color: #888888")
             Benchpress_btn.setStyleSheet("font-size:18px;background-color: #666666")
             Squat_btn.setStyleSheet("font-size:18px;background-color: #666666")
         
         elif sport == 'Benchpress':
+            folderPath = self.resource_path('C:/Users/92A27/benchpress/recordings')
+            self.folders[sport] = folderPath
             self.rp_Vision_labels, self.rp_qpixmaps = self.creat_vision_labels_pixmaps([640, 480], rp_tab, play_layout, 3)
             Benchpress_btn.setStyleSheet("font-size:18px;background-color: #888888")
             Squat_btn.setStyleSheet("font-size:18px;background-color: #666666")
             Deadlift_btn.setStyleSheet("font-size:18px;background-color: #666666")
 
         elif sport == 'Squat':
+            folderPath = self.resource_path(f'C:/Users/92A27/barbell_squart/recordings')
+            self.folders[sport] = folderPath
             self.rp_Vision_labels, self.rp_qpixmaps = self.creat_vision_labels_pixmaps([420, 560], rp_tab, play_layout, 5)
             Squat_btn.setStyleSheet("font-size:18px;background-color: #888888")
             Benchpress_btn.setStyleSheet("font-size:18px;background-color: #666666")
             Deadlift_btn.setStyleSheet("font-size:18px;background-color: #666666")
             
-        folderPath = self.resource_path(f'C:/jinglun/CATSRecording/data/recording_{sport}')
-        self.folders[sport] = folderPath
+        
 
         File_comboBox.clear()
         list = os.listdir(self.folders[sport])
