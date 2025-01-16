@@ -82,7 +82,7 @@ class Recordingbackend():
                     start_time = time.time()
                 
                 if self.recording:
-                    file = os.path.join(self.folder, f'vision{i}.avi')
+                    file = os.path.join(self.folder, f'vision{i + 1}.avi')
                     out = cv2.VideoWriter(file, cv2.VideoWriter_fourcc(*'XVID'), 29, (int(cap.height), int(cap.width)))
                     out.write(frame)
                     
@@ -114,15 +114,15 @@ class Recordingbackend():
         Form = QtWidgets.QWidget()
         Form.setWindowTitle('message')
         Form.resize(300, 300)
-        mbox = QtWidgets.QMessageBox(Form)
+        self.mbox = QtWidgets.QMessageBox(Form)
         if type == 'Info':
-            mbox.information(Form, 'info', f'{text}')
-            mbox.addButton(QtWidgets.QMessageBox.Ok)
-            mbox.exec()
+            self.mbox.information(Form, 'info', f'{text}')
+            self.mbox.setStandardButtons(QtWidgets.QMessageBox.NoButton)
+            self.mbox.show()
         elif type == 'Error':
-            mbox.warning(Form, 'warning', f'{text}')
-            mbox.addButton(QtWidgets.QMessageBox.Ok)
-            mbox.exec()
+            self.mbox.warning(Form, 'warning', f'{text}')
+            self.mbox.addButton(QtWidgets.QMessageBox.Ok)
+            self.mbox.show()
 
     def manual_checkbox_isclicked(self, state):
         if state == 2:  
@@ -168,8 +168,7 @@ class Recordingbackend():
             self.stop_event.set()  # Signal threads to stop writing
             
             # Create an auto-closing message box
-            self.messagebox('Info', "Recording stopped and saved.")
-
+            # self.messagebox('Info', "Recording stopped. Saving...")
             
     def get_frame(self, camera_id):
         if 0 <= camera_id < len(self.cameras):
