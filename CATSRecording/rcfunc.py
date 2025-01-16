@@ -63,10 +63,19 @@ class Recordingbackend():
             thread.start()
 
     def process_vision(self, i, sport, label):
+        start_time = time.time()  
+        frame_count = 0
         while True:
-            ret, frame = self.cameras[i].getframe()
+            ret, frame = self.cameras[i].get_frame()
             if ret:
-                cv2.putText(frame, f'FPS: {self.fps3:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
+                frame_count += 1
+                elapsed_time = time.time() - start_time
+                if elapsed_time >= 1:
+                    fps = frame_count / elapsed_time
+                    frame_count = 0
+                    start_time = time.time()
+                    
+                cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
                 frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 h, w, ch = frame.shape
                 qpixmap = QtGui.QPixmap.fromImage(QtGui.QImage(frame_rgb.data, w, h, ch*w, QtGui.QImage.Format_RGB888))
