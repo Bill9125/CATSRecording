@@ -1,6 +1,6 @@
 from ui import Ui_MainWindow
-from ui_backend import Recordingbackend
-from ui_backend import Replaybackend
+from rcfunc import Recordingbackend
+from rpfunc import Replaybackend
 from PyQt5 import QtCore, QtGui, QtWidgets
 from qt_material import apply_stylesheet
 import os, glob, sys
@@ -28,9 +28,9 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.rc_Benchpress_btn.clicked.connect(self.rc_Benchpress_clicked)
         
         # Initialize QTimer for updating frames
-        self.timer = QTimer(self)
-        # self.timer.timeout.connect(self.update_frames)
-        self.timer.start(30)  # Update frames every 30ms
+        # self.timer = QTimer(self)
+        # # self.timer.timeout.connect(self.update_frames)
+        # self.timer.start(30)  # Update frames every 30ms
         
         self.Vision_labels = []  # Store QLabel for camera frames
         
@@ -137,7 +137,6 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.recording_ctrl_btn = QtWidgets.QToolButton(self.ui.Recording_tab)
         self.recording_ctrl_btn.setIcon(self.icons[2])
         self.recording_ctrl_btn.setIconSize(QtCore.QSize(64, 64))
-        # self.recording_ctrl_btn.clicked.connect(lambda: self.rcbf.recording_ctrl_btn_clicked(self.isclicked))
         self.ctrl_layout.addWidget(self.recording_ctrl_btn)
 
         self.back_toolbtn = QtWidgets.QToolButton(self.ui.Recording_tab)
@@ -183,7 +182,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         labelsize = [640, 480]
         self.rc_Vision_labels, self.rc_qpixmaps = self.rpbf.creat_vision_labels_pixmaps(labelsize, self.ui.Recording_tab, self.Benchpress_vision_layout, 3)
-        self.recording_ctrl_btn.clicked.connect(lambda: self.rcbf.recording_ctrl(self.rc_Vision_labels))
+        self.recording_ctrl_btn.clicked.connect(lambda: self.rcbf.recording_ctrl_btn_clicked(self.rc_Vision_labels))
 
 
     def resource_path(self, relative_path):
