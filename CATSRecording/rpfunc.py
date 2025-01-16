@@ -200,7 +200,6 @@ class Replaybackend():
                         ]
             self.videos[1], self.videos[2] = self.videos[2], self.videos[1]
         self.stop(Frameslider, play_btn, icons)
-        self.showprevision()
     
     def play_btn_clicked(self, fast_forward_combobox, Play_btn, icons, Frameslider):
         self.index += 1
