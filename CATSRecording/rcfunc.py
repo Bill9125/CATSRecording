@@ -43,6 +43,12 @@ class Recordingbackend():
                           'Benchpress': os.path.join(dir, 'benchpress', 'recordings'),
                           'Squat': os.path.join(dir, 'barbell_squat', 'recordings')}
         self.cameras = self.initialize_cameras()
+        self.skeleton_connections = [
+            (0, 1), (0, 2), (2, 4), (1, 3),  # Right arm
+            (5, 7), (5, 6), (7, 9), (6, 8),  # Left arm
+            (6, 12), (12, 14), (14, 16),  # Right leg
+            (5, 11), (11, 13), (13, 15)   # Left leg
+        ]
         self.current_layout = None
         self.recording_sig = False
         self.save_sig = False
@@ -116,7 +122,8 @@ class Recordingbackend():
                     elif i == 1:
                         start_time, frame_count, fps, out = loop.deadlift_bone_loop(
                             i, frame, label, self.save_sig, self.recording_sig,
-                            self.folder, start_time, frame_count, fps, out)
+                            self.folder, start_time, frame_count, fps, out, self.bone_model,
+                            self.mediapipe_txt_file, frame_count_for_detect, self.skeleton_connections)
                     else:
                         start_time, frame_count, fps, out = loop.deadlift_general_loop(
                             i, frame, label, self.save_sig, self.recording_sig,
