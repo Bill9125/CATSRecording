@@ -72,7 +72,8 @@ class Recordingbackend():
         frame_count = 0
         fps = 0
         cap = self.cameras[i]
-        while True:
+        out = None
+        while not self.stop_event.is_set():
             ret, frame = cap.get_frame()
             if ret:
                 frame_count += 1
@@ -83,26 +84,32 @@ class Recordingbackend():
                     start_time = time.time()
                 
                 if self.recording:
-                    # writer init
-                    if not out_init:
+                    if out is None:  # 初始化 VideoWriter
                         file = os.path.join(self.folder, f'vision{i + 1}.avi')
-                        out = cv2.VideoWriter(file, cv2.VideoWriter_fourcc(*'XVID'), 29, (int(cap.height), int(cap.width)))
-                        out_init = True
-                    # write frame after init
-                    out.write(frame)
-                if self.save_sig:
+                        fourcc = cv2.VideoWriter_fourcc(*'XVID')
+                        frame_size = (frame.shape[1], frame.shape[0])  # 幀大小 (width, height)
+                        out = cv2.VideoWriter(file, fourcc, 29, frame_size)
+                        print(f"Initialized VideoWriter for camera {i + 1}")
+                    
+                    if out is not None:
+                        out.write(frame)
+                    
+                if self.save_sig and out is not None:
                     out.release()
                     out = None
+                    print(f"Released VideoWriter for camera {i + 1}")
                     self.save_sig = False
-                        
-                    
+
                 cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
                 frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 h, w, ch = frame.shape
                 qpixmap = QtGui.QPixmap.fromImage(QtGui.QImage(frame_rgb.data, w, h, ch*w, QtGui.QImage.Format_RGB888))
                 scale_qpixmap = qpixmap.scaled(label.width(), label.height(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
                 label.setPixmap(scale_qpixmap)
-                
+        
+        if out is not None:
+            out.release()
+        cap.release()
 
     def initialize_cameras(self):
         cameras = []
