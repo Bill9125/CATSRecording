@@ -55,6 +55,7 @@ class Recordingbackend():
         self.cameras = self.initialize_cameras()
         self.current_layout = None
         self.recording = False
+        self.save_sig = False
         
         self.stop_event = threading.Event()
 
@@ -85,6 +86,10 @@ class Recordingbackend():
                     file = os.path.join(self.folder, f'vision{i + 1}.avi')
                     out = cv2.VideoWriter(file, cv2.VideoWriter_fourcc(*'XVID'), 29, (int(cap.height), int(cap.width)))
                     out.write(frame)
+                if self.save_sig:
+                    out.release()
+                    self.save_sig = False
+                        
                     
                 cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
                 frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -165,7 +170,8 @@ class Recordingbackend():
     def stop_recording(self):
         if self.recording:
             self.recording = False
-            self.stop_event.set()  # Signal threads to stop writing
+            self.save_sig = True
+            # self.stop_event.set()  # Signal threads to stop writing
             
             # Create an auto-closing message box
             # self.messagebox('Info', "Recording stopped. Saving...")
