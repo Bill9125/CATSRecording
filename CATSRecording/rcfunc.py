@@ -47,6 +47,8 @@ class Recordingbackend():
         self.recording_sig = False
         self.save_sig = False
         self.folder = str
+        self.yolo_txt_file = str
+        self.mediapipe_txt_file = str
         
         self.stop_event = threading.Event()
         
@@ -67,8 +69,10 @@ class Recordingbackend():
         return cameras
 
     def init_rc_backend(self, sport, labels):
-        self.creat_threads(sport, labels)
         self.bar_model, self.bone_model = self.model_select(sport)
+        
+        self.creat_threads(sport, labels)
+        
         
     def creat_threads(self, sport, labels):
         print('Start catch frame.')
@@ -95,6 +99,7 @@ class Recordingbackend():
     def process_vision(self, i, sport, label):
         start_time = time.time()  
         frame_count = 0
+        frame_count_for_detect = 0
         fps = 0
         out = None
         cap = self.cameras[i]
@@ -104,16 +109,18 @@ class Recordingbackend():
             if ret:
                 if sport == 'Deadlift':
                     if i == 0:
-                        start_time, frame_count, fps, out = loop.deadlift_bar_loop(
+                        start_time, frame_count, fps, out, frame_count_for_detect = loop.deadlift_bar_loop(
                             i, frame, label, self.save_sig, self.recording_sig,
-                            self.folder, start_time, frame_count, fps, out)
+                            self.folder, start_time, frame_count, fps, out, self.bar_model,
+                            self.yolo_txt_file, frame_count_for_detect)
                     elif i == 1:
                         start_time, frame_count, fps, out = loop.deadlift_bone_loop(
                             i, frame, label, self.save_sig, self.recording_sig,
                             self.folder, start_time, frame_count, fps, out)
                     else:
-                        start_time, frame_count, fps, out = loop.deadlift_general_loop(i, frame, label, self.save_sig, self.recording_sig,
-                                                                self.folder, start_time, frame_count, fps, out)
+                        start_time, frame_count, fps, out = loop.deadlift_general_loop(
+                            i, frame, label, self.save_sig, self.recording_sig,
+                            self.folder, start_time, frame_count, fps, out)
                 
                 elif sport == 'Benchpress':
                     if i == 0:
@@ -145,6 +152,12 @@ class Recordingbackend():
         
         if out is not None:
             out.release()
+        if self.yolo_txt_file is not None:
+            self.yolo_txt_file.close()
+            self.yolo_txt_file = None
+        if self.mediapipe_txt_file is not None:
+            self.mediapipe_txt_file.close()
+            self.mediapipe_txt_file = None
         cap.__del__()
         
     
@@ -186,11 +199,11 @@ class Recordingbackend():
         os.makedirs(self.folder, exist_ok=True)
         self.recording_sig = True
         
-        # # Initialize text files for saving coordinates
-        self.yolo_txt_path = os.path.join(self.folder, "yolo_coordinates.txt")
-        self.mediapipe_txt_path = os.path.join(self.folder, "mediapipe_landmarks.txt")
-        self.yolo_txt_file = open(self.yolo_txt_path, "w")
-        self.mediapipe_txt_file = open(self.mediapipe_txt_path, "w")
+        # Initialize text files for saving coordinates
+        yolo_txt_path = os.path.join(self.folder, "yolo_coordinates.txt")
+        mediapipe_txt_path = os.path.join(self.folder, "mediapipe_landmarks.txt")
+        self.yolo_txt_file = open(yolo_txt_path, "w")
+        self.mediapipe_txt_file = open(mediapipe_txt_path, "w")
         print("Recording started")
             
     def stop_recording(self):

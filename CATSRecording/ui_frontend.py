@@ -56,7 +56,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def rc_Deadlift_clicked(self):
         self.Deadlift_layout_set()
-        self.rcbf.creat_threads('Deadlift', self.rc_Vision_labels)
+        self.rcbf.init_rc_backend('Deadlift', self.rc_Vision_labels)
 
     def rc_Benchpress_clicked(self):
         self.Benchpress_layout_set()
