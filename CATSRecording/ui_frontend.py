@@ -27,11 +27,6 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.rc_Deadlift_btn.clicked.connect(self.rc_Deadlift_clicked)
         self.ui.rc_Benchpress_btn.clicked.connect(self.rc_Benchpress_clicked)
         
-        # Initialize QTimer for updating frames
-        # self.timer = QTimer(self)
-        # # self.timer.timeout.connect(self.update_frames)
-        # self.timer.start(30)  # Update frames every 30ms
-        
         self.Vision_labels = []  # Store QLabel for camera frames
         
         # replay top ctrl connection
@@ -63,20 +58,9 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.Deadlift_layout_set()
         self.rcbf.creat_threads('Deadlift', self.rc_Vision_labels)
 
-    def update_frames(self):
-        # Update the camera frames every 30ms
-        for i, label in enumerate(self.Vision_labels):
-            frame = self.rcbf.get_frame(i)
-            if frame is not None:
-                height, width, channels = frame.shape
-                bytes_per_line = channels * width
-                q_image = QtGui.QImage(frame.data, width, height, bytes_per_line, QtGui.QImage.Format_BGR888)
-                pixmap = QtGui.QPixmap.fromImage(q_image)
-                label.setPixmap(pixmap)
-
     def rc_Benchpress_clicked(self):
         self.Benchpress_layout_set()
-        self.rcbf.creat_threads('Benchpress', self.rc_Vision_labels)
+        self.rcbf.init_rc_backend('Benchpress', self.rc_Vision_labels)
 
     def back_toolbtn_clicked(self):
         # 清空 recording_layout
@@ -92,7 +76,8 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.manual_checkbox = QtWidgets.QCheckBox(self.ui.Recording_tab)
         self.ui.manual_checkbox.setObjectName("manual_checkbox")
         self.ui.manual_checkbox.setText("manual recording")
-        # self.isclicked = self.ui.manual_checkbox.stateChanged.connect(self.rcbf.manual_checkbox_isclicked)
+        self.ui.manual_checkbox.setChecked(True)
+        self.ui.manual_checkbox.setDisabled(True)
         grid_layout.addWidget(self.ui.manual_checkbox, 0, 0, 1, 1)
 
         # 添加 Deadlift 按鈕

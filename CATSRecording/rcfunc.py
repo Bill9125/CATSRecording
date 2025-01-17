@@ -1,9 +1,10 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
-import os, glob, sys, time
+import os, time
 import cv2, threading
 from datetime import datetime
 from ultralytics import YOLO
 import torch
+import loop
 
 class MyVideoCapture:
     def __init__(self, video_source):
@@ -35,18 +36,7 @@ class MyVideoCapture:
 class Recordingbackend():
     def __init__(self):
         super(Recordingbackend, self).__init__()
-        # Initialize YOLO model
-        self.yolov8_model = YOLO("../model/yolo_bar_model/best.pt")
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        print('yolo device:', device)
-        self.yolov8_model.to(device)
-
-        self.yolov8_model1 = YOLO("../model/yolov8_model/yolov8n-pose.pt")
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        print('yolo device:', device)
-        self.yolov8_model1.to(device)
         self.threads = []
-
         self.struct = {'Deadlift': 5, 'Benchpress': 3, 'Squat': 5}
         dir = 'C:/Users/92A27'
         self.save_path = {'Deadlift': os.path.join(dir, 'MOCAP', 'recordings'),
@@ -54,63 +44,12 @@ class Recordingbackend():
                           'Squat': os.path.join(dir, 'barbell_squat', 'recordings')}
         self.cameras = self.initialize_cameras()
         self.current_layout = None
-        self.recording = False
+        self.recording_sig = False
         self.save_sig = False
+        self.folder = str
         
         self.stop_event = threading.Event()
-
-    def creat_threads(self, sport, Vision_labels):
-        # Start YOLO and MediaPipe threads
-        for i in range(self.struct[sport]):
-            thread = threading.Thread(target=self.process_vision,
-                                      args = (i, sport, Vision_labels[i]) , daemon=True)
-            self.threads.append(thread)
-            thread.start()
-
-    def process_vision(self, i, sport, label):
-        start_time = time.time()  
-        frame_count = 0
-        fps = 0
-        cap = self.cameras[i]
-        out = None
-        while not self.stop_event.is_set():
-            ret, frame = cap.get_frame()
-            if ret:
-                frame_count += 1
-                elapsed_time = time.time() - start_time
-                if elapsed_time >= 1:
-                    fps = frame_count / elapsed_time
-                    frame_count = 0
-                    start_time = time.time()
-                
-                if self.recording:
-                    if out is None:  # 初始化 VideoWriter
-                        file = os.path.join(self.folder, f'vision{i + 1}.avi')
-                        fourcc = cv2.VideoWriter_fourcc(*'XVID')
-                        frame_size = (frame.shape[1], frame.shape[0])  # 幀大小 (width, height)
-                        out = cv2.VideoWriter(file, fourcc, 29, frame_size)
-                        print(f"Initialized VideoWriter for camera {i + 1}")
-                    
-                    if out is not None:
-                        out.write(frame)
-                    
-                if self.save_sig and out is not None:
-                    out.release()
-                    out = None
-                    print(f"Released VideoWriter for camera {i + 1}")
-                    self.save_sig = False
-
-                cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
-                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                h, w, ch = frame.shape
-                qpixmap = QtGui.QPixmap.fromImage(QtGui.QImage(frame_rgb.data, w, h, ch*w, QtGui.QImage.Format_RGB888))
-                scale_qpixmap = qpixmap.scaled(label.width(), label.height(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
-                label.setPixmap(scale_qpixmap)
         
-        if out is not None:
-            out.release()
-        cap.release()
-
     def initialize_cameras(self):
         cameras = []
         for i in range(5):
@@ -127,6 +66,89 @@ class Recordingbackend():
             print("No cameras connected.")
         return cameras
 
+    def init_rc_backend(self, sport, labels):
+        self.creat_threads(sport, labels)
+        self.bar_model, self.bone_model = self.model_select(sport)
+        
+    def creat_threads(self, sport, labels):
+        print('Start catch frame.')
+        # Start YOLO and MediaPipe threads
+        for i in range(self.struct[sport]):
+            thread = threading.Thread(target=self.process_vision,
+                                      args = (i, sport, labels[i]) , daemon=True)
+            self.threads.append(thread)
+            thread.start()
+            
+    def model_select(self, sport):
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        if sport == 'Deadlift':
+            bar_model = YOLO("../model/deadlift/yolo_bar_model/best.pt")
+            bone_model = YOLO("../model/deadlift/yolov8_model/yolov8n-pose.pt")
+        elif sport =='Benchpress':
+            bar_model = YOLO("../model/benchpress/yolo_bar_model/best.pt")
+            bone_model = YOLO("../model/benchpress/yolov8_model/yolov8n-pose.pt")
+            
+        bar_model.to(device)
+        bone_model.to(device)
+        return bar_model, bone_model
+        
+    def process_vision(self, i, sport, label):
+        start_time = time.time()  
+        frame_count = 0
+        fps = 0
+        out = None
+        cap = self.cameras[i]
+        # 基本錄製結構
+        while not self.stop_event.is_set():
+            ret, frame = cap.get_frame()
+            if ret:
+                if sport == 'Deadlift':
+                    if i == 0:
+                        start_time, frame_count, fps, out = loop.deadlift_bar_loop(
+                            i, frame, label, self.save_sig, self.recording_sig,
+                            self.folder, start_time, frame_count, fps, out)
+                    elif i == 1:
+                        start_time, frame_count, fps, out = loop.deadlift_bone_loop(
+                            i, frame, label, self.save_sig, self.recording_sig,
+                            self.folder, start_time, frame_count, fps, out)
+                    else:
+                        start_time, frame_count, fps, out = loop.deadlift_general_loop(i, frame, label, self.save_sig, self.recording_sig,
+                                                                self.folder, start_time, frame_count, fps, out)
+                
+                elif sport == 'Benchpress':
+                    if i == 0:
+                        start_time, frame_count, fps, out = loop.benchpress_bar_loop(
+                            i, frame, label, self.save_sig, self.recording_sig,
+                            self.folder, start_time, frame_count, fps, out)
+                    elif i == 1:
+                        start_time, frame_count, fps, out = loop.benchpress_bone_loop_1(
+                            i, frame, label, self.save_sig, self.recording_sig,
+                            self.folder, start_time, frame_count, fps, out)
+                    else:
+                        start_time, frame_count, fps, out = loop.benchpress_bone_loop_2(
+                            i, frame, label, self.save_sig, self.recording_sig,
+                            self.folder, start_time, frame_count, fps, out)
+                        
+                elif sport == 'squat':
+                    if i == 0:
+                        start_time, frame_count, fps, out = loop.deadlift_bar_loop(
+                            i, frame, label, self.save_sig, self.recording_sig,
+                            self.folder, start_time, frame_count, fps, out)
+                    elif i == 1:
+                        start_time, frame_count, fps, out = loop.deadlift_bone_loop(
+                            i, frame, label, self.save_sig, self.recording_sig,
+                            self.folder, start_time, frame_count, fps, out)
+                    else:
+                        start_time, frame_count, fps, out = loop.deadlift_general_loop(
+                            i, frame, label, self.save_sig, self.recording_sig,
+                            self.folder, start_time, frame_count, fps, out)
+        
+        if out is not None:
+            out.release()
+        cap.__del__()
+        
+    
+
     def messagebox(self, type, text):
         Form = QtWidgets.QWidget()
         Form.setWindowTitle('message')
@@ -140,14 +162,6 @@ class Recordingbackend():
             self.mbox.warning(Form, 'warning', f'{text}')
             self.mbox.addButton(QtWidgets.QMessageBox.Ok)
             self.mbox.show()
-
-    def manual_checkbox_isclicked(self, state):
-        if state == 2:  
-            self.isclicked = True
-        else:  
-            self.isclicked = False
-        # return self.isclicked
-        print(f"manual recording: {self.isclicked}") 
     
     def update_camera_layout(self, layout_type):
         if layout_type == "benchpress_layout":
@@ -159,7 +173,7 @@ class Recordingbackend():
         print(f"Updated to {layout_type} with {len(self.cameras)} cameras.")
 
     def recording_ctrl_btn_clicked(self, sport):
-        if not self.recording:
+        if not self.recording_sig:
             self.start_recording(sport)
         else:
             self.stop_recording()
@@ -170,7 +184,7 @@ class Recordingbackend():
         timestamp = now.strftime("%Y%m%d_%H%M%S")
         self.folder = os.path.join(self.save_path[sport], f"recording_{timestamp}")
         os.makedirs(self.folder, exist_ok=True)
-        self.recording = True
+        self.recording_sig = True
         
         # # Initialize text files for saving coordinates
         self.yolo_txt_path = os.path.join(self.folder, "yolo_coordinates.txt")
@@ -180,22 +194,8 @@ class Recordingbackend():
         print("Recording started")
             
     def stop_recording(self):
-        if self.recording:
-            self.recording = False
+        if self.recording_sig:
+            self.recording_sig = False
             self.save_sig = True
-            # self.stop_event.set()  # Signal threads to stop writing
             
-            # Create an auto-closing message box
-            # self.messagebox('Info', "Recording stopped. Saving...")
-            
-    def get_frame(self, camera_id):
-        if 0 <= camera_id < len(self.cameras):
-            ret, frame = self.cameras[camera_id].get_frame()
-            if ret:
-                # 如果是第三個相機，進行 180 度旋轉
-                if camera_id == 2:  # 第三個相機，索引為 2
-                    frame = cv2.rotate(frame, cv2.ROTATE_180)
-                return frame
-        return None
-    
     
