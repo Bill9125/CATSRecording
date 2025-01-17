@@ -72,6 +72,8 @@ class Recordingbackend():
         frame_count = 0
         fps = 0
         cap = self.cameras[i]
+        file = os.path.join(self.folder, f'vision{i + 1}.avi')
+        out = cv2.VideoWriter(file, cv2.VideoWriter_fourcc(*'XVID'), 29, (int(cap.height), int(cap.width)))
         while True:
             ret, frame = cap.get_frame()
             if ret:
@@ -83,11 +85,10 @@ class Recordingbackend():
                     start_time = time.time()
                 
                 if self.recording:
-                    file = os.path.join(self.folder, f'vision{i + 1}.avi')
-                    out = cv2.VideoWriter(file, cv2.VideoWriter_fourcc(*'XVID'), 29, (int(cap.height), int(cap.width)))
                     out.write(frame)
                 if self.save_sig:
                     out.release()
+                    out = None
                     self.save_sig = False
                         
                     
