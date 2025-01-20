@@ -44,7 +44,7 @@ class ButtonClickApp(QMainWindow):
         text = button.text()
         button.setEnabled(False)
         if text not in self.click_order:
-            self.click_order.append(int(text[-1]) - 1)
+            self.click_order.append(text)
 
     def check_order(self):
         self.save_to_csv()
