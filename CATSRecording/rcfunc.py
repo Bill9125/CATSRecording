@@ -68,10 +68,11 @@ class Recordingbackend():
         back_btn.setEnabled(False)
         window = self.subui(n)
         window.show()
+        window.destroyed.connect(self.source_get)
         self.src_changing = True
         
     def initialize_cameras(self):
-        self.sources = self.source_get()
+        self.source_get()
         cameras = []
         for source in self.sources:
             try:
@@ -94,12 +95,10 @@ class Recordingbackend():
     def source_get(self):
         with open('../config/click_order.csv', mode='r', newline='', encoding='utf-8') as file:
             if file is None:
-                sources = [0, 1, 2, 3, 4]
+                self.sources = [0, 1, 2, 3, 4]
             else:
                 reader = csv.reader(file)
-                sources = [row for row in reader]  # 將每一行存入列表
-            print(sources)
-            return sources
+                self.sources = [row for row in reader]  # 將每一行存入列表
         
     def creat_threads(self, sport, labels):
         print('Start catch frame.')
@@ -129,15 +128,13 @@ class Recordingbackend():
         frame_count_for_detect = 0
         fps = 0
         out = None
+       
         # 基本錄製結構
         while not self.stop_event.is_set():
             if self.src_changing:
                 continue
-            elif not self.src_changing:
-                self.sources = self.source_get()
-                src = self.sources[i]
-                cap = self.cameras[src]
-            
+            src = self.sources[i]
+            cap = self.cameras[src]
             ret, frame = cap.get_frame()
             if ret:
                 if sport == 'Deadlift':
