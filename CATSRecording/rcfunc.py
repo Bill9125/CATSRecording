@@ -1,5 +1,5 @@
 from PyQt5 import QtWidgets
-import os, time, sys
+import os, time, sys, csv
 import cv2, threading
 from datetime import datetime
 from ultralytics import YOLO
@@ -55,6 +55,7 @@ class Recordingbackend():
         self.current_layout = None
         self.recording_sig = False
         self.save_sig = False
+        self.src_changing = False
         self.folder = str
         self.yolo_txt_file = str
         self.mediapipe_txt_file = str
@@ -67,23 +68,20 @@ class Recordingbackend():
         back_btn.setEnabled(False)
         window = self.subui(n)
         window.show()
-        window.destroyed.connect(lambda: self.subUI_destroyed(rc_btn, back_btn))
-        
-    def subUI_destroyed(self, rc_btn, back_btn):
-        rc_btn.setEnabled(True)
-        back_btn.setEnabled(True)
+        self.src_changing = True
         
     def initialize_cameras(self):
+        self.sources = self.source_get()
         cameras = []
-        for i in range(5):
+        for source in self.sources:
             try:
-                cam = MyVideoCapture(i)
+                cam = MyVideoCapture(source)
                 if cam.isOpened():
                     cameras.append(cam)
                 else:
-                    print(f"Camera {i} is not available.")
+                    print(f"Camera {source} is not available.")
             except Exception as e:
-                print(f"Error opening camera {i}: {e}")
+                print(f"Error opening camera {source}: {e}")
 
         if not cameras:
             print("No cameras connected.")
@@ -93,6 +91,14 @@ class Recordingbackend():
         self.bar_model, self.bone_model = self.model_select(sport)
         self.creat_threads(sport, labels)
         
+    def source_get(self):
+        with open('../config/click_order.csv', mode='r', newline='', encoding='utf-8') as file:
+            if file is None:
+                sources = ['1', '2', '3', '4', '5']
+            else:
+                reader = csv.reader(file)
+                sources = [row for row in reader]  # 將每一行存入列表
+            return sources
         
     def creat_threads(self, sport, labels):
         print('Start catch frame.')
@@ -122,9 +128,15 @@ class Recordingbackend():
         frame_count_for_detect = 0
         fps = 0
         out = None
-        cap = self.cameras[i]
         # 基本錄製結構
         while not self.stop_event.is_set():
+            if self.src_changing:
+                continue
+            elif not self.src_changing:
+                self.sources = self.source_get()
+                src = self.sources[i]
+                cap = self.cameras[src]
+            
             ret, frame = cap.get_frame()
             if ret:
                 if sport == 'Deadlift':
@@ -156,7 +168,7 @@ class Recordingbackend():
                         start_time, frame_count, fps, out = loop.benchpress_bone_loop_2(
                             i, frame, label, self.save_sig, self.recording_sig,
                             self.folder, start_time, frame_count, fps, out)
-                        
+                
                 elif sport == 'squat':
                     if i == 0:
                         start_time, frame_count, fps, out = loop.deadlift_bar_loop(

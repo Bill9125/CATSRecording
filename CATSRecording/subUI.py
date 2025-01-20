@@ -1,7 +1,6 @@
-import sys, csv
-from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel
+import csv
+from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel
 from PyQt5.QtCore import Qt
-from qt_material import apply_stylesheet
 
 class ButtonClickApp(QMainWindow):
     def __init__(self, n):
@@ -41,13 +40,15 @@ class ButtonClickApp(QMainWindow):
 
     def record_click(self, button):
         text = button.text()
+        button.setEnabled(False)
         if text not in self.click_order:
-            self.click_order.append(text)
+            self.click_order.append(text[-1])
         self.info_label.setText(f"Current Order: {', '.join(self.click_order)}")
 
     def check_order(self):
         self.save_to_csv()
         self.close()
+        
     def save_to_csv(self):
         # 將點擊順序寫入 CSV 文件
         with open('../config/click_order.csv', mode='w', newline='') as file:
