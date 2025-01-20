@@ -62,14 +62,18 @@ class Recordingbackend():
         
         self.stop_event = threading.Event()
         
-    def source_ctrl_btn_clicked(self, rc_btn, back_btn, sport):
+    def source_ctrl_btn_clicked(self, sport, labels):
         n = self.struct[sport]  # 按鈕數量
-        rc_btn.setEnabled(False)
-        back_btn.setEnabled(False)
         window = self.subui(n)
+        window.ok_clicked.connect(lambda: self.subUI_close(sport, labels))
         window.show()
-        window.destroyed.connect(self.source_get)
-        self.src_changing = True
+        self.stop_event.set()
+        
+    def subUI_close(self, sport, labels):
+        self.stop_event.clear()
+        self.source_get()
+        self.init_rc_backend(sport, labels)
+        
         
     def initialize_cameras(self):
         self.source_get()
@@ -130,11 +134,8 @@ class Recordingbackend():
         frame_count_for_detect = 0
         fps = 0
         out = None
-       
         # 基本錄製結構
         while not self.stop_event.is_set():
-            if self.src_changing:
-                continue
             src = self.sources[i]
             cap = self.cameras[src]
             ret, frame = cap.get_frame()

@@ -1,8 +1,10 @@
 import csv
+from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel
 from PyQt5.QtCore import Qt
 
 class ButtonClickApp(QMainWindow):
+    ok_clicked = pyqtSignal()
     def __init__(self, n):
         super().__init__()
         self.click_order = []  # 用於記錄點擊順序
@@ -46,6 +48,7 @@ class ButtonClickApp(QMainWindow):
 
     def check_order(self):
         self.save_to_csv()
+        self.ok_clicked.emit()
         self.close()
         
     def save_to_csv(self):

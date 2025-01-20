@@ -129,7 +129,6 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.source_ctrl_btn = QtWidgets.QPushButton(self.ui.Recording_tab)
         self.source_ctrl_btn.setFont(QtGui.QFont("Times New Roman", 32))
         self.source_ctrl_btn.setText("Source change")
-        self.source_ctrl_btn.clicked.connect(lambda: self.rcbf.source_ctrl_btn_clicked(self.recording_ctrl_btn, self.back_toolbtn, 'Deadlift'))
         self.ctrl_layout.addWidget(self.source_ctrl_btn)
 
         self.back_toolbtn = QtWidgets.QToolButton(self.ui.Recording_tab)
@@ -143,6 +142,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         labelsize = [420, 560]
         self.rc_Vision_labels, self.rc_qpixmaps = self.rpbf.creat_vision_labels_pixmaps(labelsize, self.ui.Recording_tab, self.Deadlift_vision_layout, 5)
+        self.source_ctrl_btn.clicked.connect(lambda: self.rcbf.source_ctrl_btn_clicked('Deadlift', self.rc_Vision_labels))
         self.recording_ctrl_btn.clicked.connect(lambda: self.rcbf.recording_ctrl_btn_clicked('Deadlift'))
         
     def Benchpress_layout_set(self):
@@ -167,7 +167,6 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.source_ctrl_btn = QtWidgets.QPushButton(self.ui.Recording_tab)
         self.source_ctrl_btn.setFont(QtGui.QFont("Times New Roman", 32))
         self.source_ctrl_btn.setText("Source change")
-        self.source_ctrl_btn.clicked.connect(lambda: self.rcbf.source_ctrl_btn_clicked(self.recording_ctrl_btn, self.back_toolbtn, 'Benchpress'))
         self.ctrl_layout.addWidget(self.source_ctrl_btn)
 
         self.back_toolbtn = QtWidgets.QToolButton(self.ui.Recording_tab)
@@ -181,6 +180,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         labelsize = [640, 480]
         self.rc_Vision_labels, self.rc_qpixmaps = self.rpbf.creat_vision_labels_pixmaps(labelsize, self.ui.Recording_tab, self.Benchpress_vision_layout, 3)
+        self.source_ctrl_btn.clicked.connect(lambda: self.rcbf.source_ctrl_btn_clicked('Benchpress', self.rc_Vision_labels))
         self.recording_ctrl_btn.clicked.connect(lambda: self.rcbf.recording_ctrl_btn_clicked('Benchpress'))
 
 
