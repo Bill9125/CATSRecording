@@ -103,7 +103,7 @@ def deadlift_bone_loop(i, frame, label, save_sig, recording_sig, folder,
                 x_kp, y_kp = int(kp[0].item()), int(kp[1].item())  # Get x, y coordinates
                 kp_coords.append((x_kp, y_kp))
                 cv2.circle(frame, (x_kp, y_kp), 5, (0, 255, 0), cv2.FILLED)
-                print(x_kp, y_kp)
+                # print(x_kp, y_kp)
 
             # Draw skeleton
             for start_idx, end_idx in skeleton_connections:

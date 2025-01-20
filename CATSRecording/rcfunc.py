@@ -79,7 +79,8 @@ class Recordingbackend():
     def initialize_cameras(self):
         self.source_get()
         cameras = []
-        for src in self.vision_src.values:
+        for src in self.vision_src.values():
+            print(src)
             try:
                 cam = MyVideoCapture(src)
                 if cam.isOpened():
@@ -103,11 +104,10 @@ class Recordingbackend():
                 pass
             else:
                 reader = csv.reader(file)
-                order = [row for row in reader]  # 將每一行存入列表
-                for i in range(order):
-                    self.vision_src['Vision' + str(i)] = order[i]
-
-
+                order = [row for row in reader][0]  # 將每一行存入列表
+                for i in range(len(order)):
+                    self.vision_src['Vision' + str(i+1)] = int(order[i])
+                print(self.vision_src)
         
     def creat_threads(self, sport, labels):
         print('Start catch frame.')
@@ -139,9 +139,7 @@ class Recordingbackend():
         out = None
         # 基本錄製結構
         while not self.stop_event.is_set():
-            src = self.sources[i]
-            cap = self.cameras[src]
-            print(f'thread {i} is displaying source {src}.')
+            cap = self.cameras[self.vision_src[f'Vision{i+1}']]
             ret, frame = cap.get_frame()
             if ret:
                 if sport == 'Deadlift':
