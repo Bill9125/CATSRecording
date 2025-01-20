@@ -98,7 +98,9 @@ class Recordingbackend():
                 self.sources = [0, 1, 2, 3, 4]
             else:
                 reader = csv.reader(file)
-                self.sources = [row for row in reader]  # 將每一行存入列表
+                sources = [row for row in reader]  # 將每一行存入列表
+                self.sources = [int(value) for row in sources for value in row]
+
         
     def creat_threads(self, sport, labels):
         print('Start catch frame.')
