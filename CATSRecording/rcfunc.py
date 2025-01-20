@@ -94,10 +94,11 @@ class Recordingbackend():
     def source_get(self):
         with open('../config/click_order.csv', mode='r', newline='', encoding='utf-8') as file:
             if file is None:
-                sources = ['1', '2', '3', '4', '5']
+                sources = [0, 1, 2, 3, 4]
             else:
                 reader = csv.reader(file)
                 sources = [row for row in reader]  # 將每一行存入列表
+            print(sources)
             return sources
         
     def creat_threads(self, sport, labels):
