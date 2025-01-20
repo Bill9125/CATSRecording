@@ -103,6 +103,7 @@ class Recordingbackend():
             else:
                 reader = csv.reader(file)
                 sources = [row for row in reader]  # 將每一行存入列表
+                print(sources)
                 self.sources = [int(value) for row in sources for value in row]
 
         
@@ -138,6 +139,7 @@ class Recordingbackend():
         while not self.stop_event.is_set():
             src = self.sources[i]
             cap = self.cameras[src]
+            print(f'thread {i} is displaying source {src}.')
             ret, frame = cap.get_frame()
             if ret:
                 if sport == 'Deadlift':
