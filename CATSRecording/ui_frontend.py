@@ -118,13 +118,19 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # set recording layout
         self.ctrl_layout = QtWidgets.QHBoxLayout()
         self.ctrl_layout.setContentsMargins(0, 0, 0, 0)
-        self.ctrl_layout.setSpacing(1800)
+        self.ctrl_layout.setSpacing(800)
         self.ui.recording_layout.addLayout(self.ctrl_layout)
 
         self.recording_ctrl_btn = QtWidgets.QToolButton(self.ui.Recording_tab)
         self.recording_ctrl_btn.setIcon(self.icons[2])
         self.recording_ctrl_btn.setIconSize(QtCore.QSize(64, 64))
         self.ctrl_layout.addWidget(self.recording_ctrl_btn)
+        
+        self.source_ctrl_btn = QtWidgets.QPushButton(self.ui.Recording_tab)
+        self.source_ctrl_btn.setFont(QtGui.QFont("Times New Roman", 32))
+        self.source_ctrl_btn.setText("Source change")
+        self.source_ctrl_btn.clicked.connect(lambda: self.rcbf.source_ctrl_btn_clicked(self.recording_ctrl_btn, self.back_toolbtn, 'Deadlift'))
+        self.ctrl_layout.addWidget(self.source_ctrl_btn)
 
         self.back_toolbtn = QtWidgets.QToolButton(self.ui.Recording_tab)
         self.back_toolbtn.setIcon(self.icons[4])
@@ -150,13 +156,19 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # set recording layout
         self.ctrl_layout = QtWidgets.QHBoxLayout()
         self.ctrl_layout.setContentsMargins(0, 0, 0, 0)
-        self.ctrl_layout.setSpacing(1800)
+        self.ctrl_layout.setSpacing(800)
         self.ui.recording_layout.addLayout(self.ctrl_layout)
 
         self.recording_ctrl_btn = QtWidgets.QToolButton(self.ui.Recording_tab)
         self.recording_ctrl_btn.setIcon(self.icons[2])
         self.recording_ctrl_btn.setIconSize(QtCore.QSize(64, 64))
         self.ctrl_layout.addWidget(self.recording_ctrl_btn)
+        
+        self.source_ctrl_btn = QtWidgets.QPushButton(self.ui.Recording_tab)
+        self.source_ctrl_btn.setFont(QtGui.QFont("Times New Roman", 32))
+        self.source_ctrl_btn.setText("Source change")
+        self.source_ctrl_btn.clicked.connect(lambda: self.rcbf.source_ctrl_btn_clicked(self.recording_ctrl_btn, self.back_toolbtn, 'Benchpress'))
+        self.ctrl_layout.addWidget(self.source_ctrl_btn)
 
         self.back_toolbtn = QtWidgets.QToolButton(self.ui.Recording_tab)
         self.back_toolbtn.setIcon(self.icons[4])

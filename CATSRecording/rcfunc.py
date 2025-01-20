@@ -1,10 +1,12 @@
-from PyQt5 import QtCore, QtGui, QtWidgets
-import os, time
+from PyQt5 import QtWidgets
+import os, time, sys
 import cv2, threading
 from datetime import datetime
 from ultralytics import YOLO
 import torch
 import loop
+from subUI import ButtonClickApp
+from qt_material import apply_stylesheet
 
 class MyVideoCapture:
     def __init__(self, video_source):
@@ -36,6 +38,7 @@ class MyVideoCapture:
 class Recordingbackend():
     def __init__(self):
         super(Recordingbackend, self).__init__()
+        self.subui = ButtonClickApp
         self.threads = []
         self.struct = {'Deadlift': 5, 'Benchpress': 3, 'Squat': 5}
         dir = 'C:/Users/92A27'
@@ -58,6 +61,18 @@ class Recordingbackend():
         
         self.stop_event = threading.Event()
         
+    def source_ctrl_btn_clicked(self, rc_btn, back_btn, sport):
+        n = self.struct[sport]  # 按鈕數量
+        rc_btn.setEnabled(False)
+        back_btn.setEnabled(False)
+        window = self.subui(n)
+        window.show()
+        window.destroyed.connect(lambda: self.subUI_destroyed(rc_btn, back_btn))
+        
+    def subUI_destroyed(self, rc_btn, back_btn):
+        rc_btn.setEnabled(True)
+        back_btn.setEnabled(True)
+        
     def initialize_cameras(self):
         cameras = []
         for i in range(5):
@@ -76,7 +91,6 @@ class Recordingbackend():
 
     def init_rc_backend(self, sport, labels):
         self.bar_model, self.bone_model = self.model_select(sport)
-        
         self.creat_threads(sport, labels)
         
         
