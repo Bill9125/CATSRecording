@@ -2,9 +2,7 @@ from ui import Ui_MainWindow
 from rcfunc import Recordingbackend
 from rpfunc import Replaybackend
 from PyQt5 import QtCore, QtGui, QtWidgets
-from qt_material import apply_stylesheet
 import os, glob, sys
-from PyQt5.QtCore import QTimer
 
 # frontend logic
 class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):

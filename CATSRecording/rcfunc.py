@@ -79,15 +79,15 @@ class Recordingbackend():
     def initialize_cameras(self):
         self.source_get()
         cameras = []
-        for source in self.sources:
+        for src in self.vision_src.values:
             try:
-                cam = MyVideoCapture(source)
+                cam = MyVideoCapture(src)
                 if cam.isOpened():
                     cameras.append(cam)
                 else:
-                    print(f"Camera {source} is not available.")
+                    print(f"Camera {src} is not available.")
             except Exception as e:
-                print(f"Error opening camera {source}: {e}")
+                print(f"Error opening camera {src}: {e}")
 
         if not cameras:
             print("No cameras connected.")
@@ -100,12 +100,13 @@ class Recordingbackend():
     def source_get(self):
         with open('../config/click_order.csv', mode='r', newline='', encoding='utf-8') as file:
             if file is None:
-                self.sources = [0, 1, 2, 3, 4]
+                pass
             else:
                 reader = csv.reader(file)
-                sources = [row for row in reader]  # 將每一行存入列表
-                print(sources)
-                self.sources = [int(value) for row in sources for value in row]
+                order = [row for row in reader]  # 將每一行存入列表
+                for i in range(order):
+                    self.vision_src['Vision' + str(i)] = order[i]
+
 
         
     def creat_threads(self, sport, labels):
@@ -131,7 +132,7 @@ class Recordingbackend():
         return bar_model, bone_model
         
     def process_vision(self, i, sport, label):
-        start_time = time.time()  
+        start_time = time.time()
         frame_count = 0
         frame_count_for_detect = 0
         fps = 0
