@@ -73,6 +73,7 @@ class Recordingbackend():
         self.folder = str
         self.yolo_txt_file = str
         self.mediapipe_txt_file = str
+        self.mediapipe_txt_file2 = str
         
         self.stop_event = threading.Event()
         
