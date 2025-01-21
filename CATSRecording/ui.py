@@ -47,6 +47,8 @@ class Ui_MainWindow(object):
 
         self.manual_checkbox = QtWidgets.QCheckBox(self.Recording_tab)
         self.manual_checkbox.setObjectName("manual_checkbox")
+        self.manual_checkbox.setEnabled(False)
+        self.manual_checkbox.setChecked(True)
         self.grid_Layout_recording.addWidget(self.manual_checkbox, 0, 0, 1, 1)
 
         self.rc_Deadlift_btn = QtWidgets.QPushButton(self.Recording_tab)

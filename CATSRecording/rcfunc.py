@@ -103,7 +103,6 @@ class Recordingbackend():
                 self.vision_src[f'Vision{i+1}'] = int(data[sport][i])
         
     def creat_threads(self, sport, labels):
-        print('Start catch frame.')
         # Start YOLO and MediaPipe threads
         for i in range(self.struct[sport]):
             thread = threading.Thread(target=self.process_vision,
