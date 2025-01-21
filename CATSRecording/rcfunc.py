@@ -160,7 +160,8 @@ class Recordingbackend():
                     if i == 0:
                         start_time, frame_count, fps, out = loop.benchpress_bar_loop(
                             i, frame, label, self.save_sig, self.recording_sig,
-                            self.folder, start_time, frame_count, fps, out)
+                            self.folder, start_time, frame_count, fps, out, self.bar_model,
+                            self.yolo_txt_file, frame_count_for_detect)
                     elif i == 1:
                         start_time, frame_count, fps, out = loop.benchpress_bone_loop_1(
                             i, frame, label, self.save_sig, self.recording_sig,
