@@ -158,7 +158,7 @@ class Recordingbackend():
                 
                 elif sport == 'Benchpress':
                     if i == 0:
-                        start_time, frame_count, fps, out = loop.benchpress_bar_loop(
+                        start_time, frame_count, fps, out, frame_count_for_detect = loop.benchpress_bar_loop(
                             i, frame, label, self.save_sig, self.recording_sig,
                             self.folder, start_time, frame_count, fps, out, self.bar_model,
                             self.yolo_txt_file, frame_count_for_detect)

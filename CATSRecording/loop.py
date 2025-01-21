@@ -190,7 +190,7 @@ def benchpress_bar_loop(i, frame, label, save_sig, recording_sig, folder,
         start_time = time.time()
         
     # frame 處理
-    results = model.predict(source=frame1, imgsz=320, conf=0.5, verbose=False)
+    results = model.predict(source=frame, imgsz=320, conf=0.5, verbose=False)
     boxes = results[0].boxes
     detected = False  # Initialize detected to False at the start of each frame
     for result in results:
