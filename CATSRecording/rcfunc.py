@@ -39,9 +39,9 @@ class Recordingbackend():
     def __init__(self):
         super(Recordingbackend, self).__init__()
         self.subui = ButtonClickApp
+        self.vision_src = {}
         self.threads = []
         self.struct = {'Deadlift': 5, 'Benchpress': 3, 'Squat': 5}
-        self.vision_src = {'Vision1': 0, 'Vision2': 1, 'Vision3': 2, 'Vision4': 3, 'Vision5': 4}
         dir = 'C:/Users/92A27'
         self.save_path = {'Deadlift': os.path.join(dir, 'MOCAP', 'recordings'),
                           'Benchpress': os.path.join(dir, 'benchpress', 'recordings'),
@@ -71,19 +71,31 @@ class Recordingbackend():
         
     def subUI_close(self, sport, labels):
         self.stop_event.clear()
-        self.source_get(sport)
         self.init_rc_backend(sport, labels)
         
     def init_rc_backend(self, sport, labels):
-        self.cameras = self.initialize_cameras(sport)
+        self.source_get(sport)
+        self.cameras = self.initialize_cameras()
         self.bar_model, self.bone_model = self.model_select(sport)
         self.creat_threads(sport, labels)
+    
+    def source_get(self, sport):
+        self.vision_src = {}
+        for i in range(self.struct[sport]):
+            self.vision_src[f'Vision{i+1}'] = i
+
+        with open('../config/click_order.json', mode='r', newline='', encoding='utf-8') as file:
+            data = json.load(file)
+            for i in range(self.struct[sport]):
+                self.vision_src[f'Vision{i+1}'] = int(data[sport][i])
         
-    def initialize_cameras(self, sport):
-        self.source_get(sport)
+    def initialize_cameras(self):
         cameras = []
+        i = 0
         for src in self.vision_src.values():
             try:
+                print(f'cam {i} with {src}')
+                i+=1
                 cam = MyVideoCapture(src)
                 if cam.isOpened():
                     cameras.append(cam)
@@ -95,12 +107,6 @@ class Recordingbackend():
         if not cameras:
             print("No cameras connected.")
         return cameras
-        
-    def source_get(self, sport):
-        with open('../config/click_order.json', mode='r', newline='', encoding='utf-8') as file:
-            data = json.load(file)
-            for i in range(self.struct[sport]):
-                self.vision_src[f'Vision{i+1}'] = int(data[sport][i])
         
     def creat_threads(self, sport, labels):
         # Start YOLO and MediaPipe threads
@@ -131,7 +137,7 @@ class Recordingbackend():
         out = None
         # 基本錄製結構
         while not self.stop_event.is_set():
-            cap = self.cameras[self.vision_src[f'Vision{i+1}']]
+            cap = self.cameras[i]
             ret, frame = cap.get_frame()
             if ret:
                 if sport == 'Deadlift':
