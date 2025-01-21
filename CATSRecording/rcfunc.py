@@ -251,7 +251,6 @@ class Recordingbackend():
         timestamp = now.strftime("%Y%m%d_%H%M%S")
         self.folder = os.path.join(self.save_path[sport], f"recording_{timestamp}")
         os.makedirs(self.folder, exist_ok=True)
-        self.recording_sig = True
         
         # Initialize text files for saving coordinates
         yolo_txt_path = os.path.join(self.folder, "yolo_coordinates.txt")
@@ -260,6 +259,7 @@ class Recordingbackend():
         self.yolo_txt_file = open(yolo_txt_path, "w")
         self.mediapipe_txt_file = open(mediapipe_txt_path, "w")
         self.mediapipe_txt_file2 = open(mediapipe_txt_path2, "w")
+        self.recording_sig = True
         print("Recording started")
             
     def stop_recording(self):
