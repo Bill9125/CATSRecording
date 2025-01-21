@@ -181,7 +181,7 @@ def deadlift_general_loop(i, frame, label, save_sig, recording_sig, folder,
     return start_time, frame_count, fps, out
     
 def benchpress_bar_loop(i, frame, label, save_sig, recording_sig, folder,
-                        start_time, frame_count, fps, out, model, txt_file, frame_count_for_detect):
+                        start_time, frame_count, fps, out, original_out, model, txt_file, frame_count_for_detect):
     frame_count += 1
     elapsed_time = time.time() - start_time
     if elapsed_time >= 1:
@@ -189,6 +189,10 @@ def benchpress_bar_loop(i, frame, label, save_sig, recording_sig, folder,
         frame_count = 0
         start_time = time.time()
         
+    # Save the original video frame
+    if recording_sig and original_out is not None:
+        original_out.write(frame1)
+
     # frame 處理
     results = model.predict(source=frame, imgsz=320, conf=0.5, verbose=False)
     boxes = results[0].boxes
@@ -241,10 +245,10 @@ def benchpress_bar_loop(i, frame, label, save_sig, recording_sig, folder,
     qpixmap = QtGui.QPixmap.fromImage(QtGui.QImage(frame_rgb.data, w, h, ch*w, QtGui.QImage.Format_RGB888))
     scale_qpixmap = qpixmap.scaled(label.width(), label.height(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
     label.setPixmap(scale_qpixmap)
-    return start_time, frame_count, fps, out, frame_count_for_detect
+    return start_time, frame_count, fps, out, frame_count_for_detect, original_out
     
 def benchpress_bone_loop_1(i, frame, label, save_sig, recording_sig, folder,
-                           start_time, frame_count, fps, out):
+                           start_time, frame_count, fps, out, original_out, excluded_indices, txt_file, pose):
     frame_count += 1
     elapsed_time = time.time() - start_time
     if elapsed_time >= 1:
@@ -252,6 +256,39 @@ def benchpress_bone_loop_1(i, frame, label, save_sig, recording_sig, folder,
         frame_count = 0
         start_time = time.time()
         
+    # 儲存原始影像幀
+    if recording_sig and original_out is not None:
+        original_out.write(frame)
+        
+    # frame 處理
+    # MediaPipe Pose Detection
+    image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    results = pose.process(image)
+    frame_count_for_detect += 1  # Increment frame count for each frame
+
+    if recording_sig is False:
+        frame_count_for_detect = 0
+
+    if results.pose_landmarks:
+        for idx, landmark in enumerate(results.pose_landmarks.landmark):
+            if idx not in excluded_indices:
+                x, y, z = landmark.x, landmark.y, landmark.z
+                if recording_sig and txt_file is not None:
+                    txt_file.write(f"{frame_count_for_detect},{idx},{x},{y},{z}\n")
+                # 只畫出不在排除範圍內的 landmarks
+                x = int(landmark.x * image.shape[1])
+                y = int(landmark.y * image.shape[0])
+                cv2.circle(image, (x, y), 5, (0, 255, 255), -1)  # Example: Draw a blue circle for landmarks
+    else:
+        # Write "no detection" if no landmarks are detected
+        if recording_sig and txt_file is not None:
+            txt_file.write(f"{frame_count_for_detect},no detection\n")
+
+    frame = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+    frame = cv2.rotate(frame, cv2.ROTATE_180)
+    if recording_sig and out is not None:
+        out.write(frame)
+
     # 錄影開始
     if recording_sig:
         if out is None:  # 初始化 VideoWriter
@@ -272,15 +309,14 @@ def benchpress_bone_loop_1(i, frame, label, save_sig, recording_sig, folder,
         save_sig = False
 
     cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
-    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     h, w, ch = frame.shape
-    qpixmap = QtGui.QPixmap.fromImage(QtGui.QImage(frame_rgb.data, w, h, ch*w, QtGui.QImage.Format_RGB888))
+    qpixmap = QtGui.QPixmap.fromImage(QtGui.QImage(frame.data, w, h, ch*w, QtGui.QImage.Format_RGB888))
     scale_qpixmap = qpixmap.scaled(label.width(), label.height(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
     label.setPixmap(scale_qpixmap)
-    return start_time, frame_count, fps, out
+    return start_time, frame_count, fps, out, frame_count_for_detect, original_out
     
 def benchpress_bone_loop_2(i, frame, label, save_sig, recording_sig, folder,
-                           start_time, frame_count, fps, out):
+                           start_time, frame_count, fps, out, original_out, excluded_indices, txt_file, pose):
     frame_count += 1
     elapsed_time = time.time() - start_time
     if elapsed_time >= 1:
@@ -288,6 +324,39 @@ def benchpress_bone_loop_2(i, frame, label, save_sig, recording_sig, folder,
         frame_count = 0
         start_time = time.time()
         
+    # 儲存原始影像幀
+    frame = cv2.rotate(frame, cv2.ROTATE_180)
+    if recording_sig and original_out is not None:
+        original_out.write(frame)
+        
+    # frame 處理
+    # MediaPipe Pose Detection
+    image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    results = pose.process(image)
+    frame_count_for_detect += 1  # Increment frame count for each frame
+
+    if recording_sig is False:
+        frame_count_for_detect = 0
+
+    if results.pose_landmarks:
+        for idx, landmark in enumerate(results.pose_landmarks.landmark):
+            if idx not in excluded_indices:
+                x, y, z = landmark.x, landmark.y, landmark.z
+                if recording_sig and txt_file is not None:
+                    txt_file.write(f"{frame_count_for_detect},{idx},{x},{y},{z}\n")
+                # 只畫出不在排除範圍內的 landmarks
+                x = int(landmark.x * image.shape[1])
+                y = int(landmark.y * image.shape[0])
+                cv2.circle(image, (x, y), 5, (0, 255, 255), -1)  # Example: Draw a blue circle for landmarks
+    else:
+        # Write "no detection" if no landmarks are detected
+        if recording_sig and txt_file is not None:
+            txt_file.write(f"{frame_count_for_detect},no detection\n")
+
+    frame = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+    if recording_sig and out is not None:
+        out.write(frame)
+
     # 錄影開始
     if recording_sig:
         if out is None:  # 初始化 VideoWriter
@@ -308,9 +377,8 @@ def benchpress_bone_loop_2(i, frame, label, save_sig, recording_sig, folder,
         save_sig = False
 
     cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
-    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     h, w, ch = frame.shape
-    qpixmap = QtGui.QPixmap.fromImage(QtGui.QImage(frame_rgb.data, w, h, ch*w, QtGui.QImage.Format_RGB888))
+    qpixmap = QtGui.QPixmap.fromImage(QtGui.QImage(frame.data, w, h, ch*w, QtGui.QImage.Format_RGB888))
     scale_qpixmap = qpixmap.scaled(label.width(), label.height(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
     label.setPixmap(scale_qpixmap)
-    return start_time, frame_count, fps, out
+    return start_time, frame_count, fps, out, frame_count_for_detect, original_out

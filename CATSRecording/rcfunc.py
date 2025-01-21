@@ -7,6 +7,7 @@ import torch
 import loop
 from subUI import ButtonClickApp
 from qt_material import apply_stylesheet
+import mediapipe as mp
 
 class MyVideoCapture:
     def __init__(self, video_source):
@@ -52,6 +53,19 @@ class Recordingbackend():
             (6, 12), (12, 14), (14, 16),  # Right leg
             (5, 11), (11, 13), (13, 15)   # Left leg
         ]
+        # Initialize MediaPipe Pose 
+        self.mp_pose = mp.solutions.pose
+        self.mp_drawing = mp.solutions.drawing_utils
+        self.pose = self.mp_pose.Pose(
+            model_complexity=0,
+            min_detection_confidence=0.5, 
+            min_tracking_confidence=0.5
+        )
+        self.pose2 = self.mp_pose.Pose(
+            model_complexity=0,
+            min_detection_confidence=0.5, 
+            min_tracking_confidence=0.5
+        )
         self.current_layout = None
         self.recording_sig = False
         self.save_sig = False
@@ -135,6 +149,7 @@ class Recordingbackend():
         frame_count_for_detect = 0
         fps = 0
         out = None
+        original_out = None
         # 基本錄製結構
         while not self.stop_event.is_set():
             cap = self.cameras[i]
@@ -158,18 +173,22 @@ class Recordingbackend():
                 
                 elif sport == 'Benchpress':
                     if i == 0:
-                        start_time, frame_count, fps, out, frame_count_for_detect = loop.benchpress_bar_loop(
+                        start_time, frame_count, fps, out, frame_count_for_detect, original_out = loop.benchpress_bar_loop(
                             i, frame, label, self.save_sig, self.recording_sig,
-                            self.folder, start_time, frame_count, fps, out, self.bar_model,
+                            self.folder, start_time, frame_count, fps, out, original_out, self.bar_model,
                             self.yolo_txt_file, frame_count_for_detect)
                     elif i == 1:
-                        start_time, frame_count, fps, out = loop.benchpress_bone_loop_1(
+                        excluded_indices = set(range(0, 11)) | set(range(25, 33)) | set(range(15, 23)) 
+                        start_time, frame_count, fps, out, frame_count_for_detect, original_out = loop.benchpress_bone_loop_1(
                             i, frame, label, self.save_sig, self.recording_sig,
-                            self.folder, start_time, frame_count, fps, out)
+                            self.folder, start_time, frame_count, fps, out, original_out,
+                            excluded_indices, self.mediapipe_txt_file, self.pose)
                     else:
-                        start_time, frame_count, fps, out = loop.benchpress_bone_loop_2(
+                        excluded_indices = set(range(0, 11)) | set(range(25, 33))
+                        start_time, frame_count, fps, out, frame_count_for_detect, original_out = loop.benchpress_bone_loop_2(
                             i, frame, label, self.save_sig, self.recording_sig,
-                            self.folder, start_time, frame_count, fps, out)
+                            self.folder, start_time, frame_count, fps, out, original_out,
+                            excluded_indices, self.mediapipe_txt_file2, self.pose2)
                 
                 elif sport == 'squat':
                     if i == 0:
@@ -237,8 +256,10 @@ class Recordingbackend():
         # Initialize text files for saving coordinates
         yolo_txt_path = os.path.join(self.folder, "yolo_coordinates.txt")
         mediapipe_txt_path = os.path.join(self.folder, "mediapipe_landmarks.txt")
+        mediapipe_txt_path2 = os.path.join(self.folder, "mediapipe_landmarks_2.txt")
         self.yolo_txt_file = open(yolo_txt_path, "w")
         self.mediapipe_txt_file = open(mediapipe_txt_path, "w")
+        self.mediapipe_txt_file2 = open(mediapipe_txt_path2, "w")
         print("Recording started")
             
     def stop_recording(self):
