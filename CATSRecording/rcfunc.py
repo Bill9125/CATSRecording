@@ -99,7 +99,7 @@ class Recordingbackend():
     def source_get(self, sport):
         with open('../config/click_order.json', mode='r', newline='', encoding='utf-8') as file:
             data = json.load(file)
-            for i in len(self.vision_src.keys()):
+            for i in range(self.struct[sport]):
                 self.vision_src[f'Vision{i+1}'] = int(data[sport][i])
         
     def creat_threads(self, sport, labels):
