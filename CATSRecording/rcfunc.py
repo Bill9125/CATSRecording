@@ -1,5 +1,5 @@
 from PyQt5 import QtWidgets
-import os, time, sys, csv
+import os, time, sys, json
 import cv2, threading
 from datetime import datetime
 from ultralytics import YOLO
@@ -46,7 +46,6 @@ class Recordingbackend():
         self.save_path = {'Deadlift': os.path.join(dir, 'MOCAP', 'recordings'),
                           'Benchpress': os.path.join(dir, 'benchpress', 'recordings'),
                           'Squat': os.path.join(dir, 'barbell_squat', 'recordings')}
-        self.cameras = self.initialize_cameras()
         self.skeleton_connections = [
             (0, 1), (0, 2), (2, 4), (1, 3),  # Right arm
             (5, 7), (5, 6), (7, 9), (6, 8),  # Left arm
@@ -65,22 +64,25 @@ class Recordingbackend():
         
     def source_ctrl_btn_clicked(self, sport, labels):
         n = self.struct[sport]  # 按鈕數量
-        window = self.subui(n)
+        window = self.subui(n, sport)
         window.ok_clicked.connect(lambda: self.subUI_close(sport, labels))
         window.show()
         self.stop_event.set()
         
     def subUI_close(self, sport, labels):
         self.stop_event.clear()
-        self.source_get()
+        self.source_get(sport)
         self.init_rc_backend(sport, labels)
         
+    def init_rc_backend(self, sport, labels):
+        self.cameras = self.initialize_cameras(sport)
+        self.bar_model, self.bone_model = self.model_select(sport)
+        self.creat_threads(sport, labels)
         
-    def initialize_cameras(self):
-        self.source_get()
+    def initialize_cameras(self, sport):
+        self.source_get(sport)
         cameras = []
         for src in self.vision_src.values():
-            print(src)
             try:
                 cam = MyVideoCapture(src)
                 if cam.isOpened():
@@ -93,21 +95,12 @@ class Recordingbackend():
         if not cameras:
             print("No cameras connected.")
         return cameras
-
-    def init_rc_backend(self, sport, labels):
-        self.bar_model, self.bone_model = self.model_select(sport)
-        self.creat_threads(sport, labels)
         
-    def source_get(self):
-        with open('../config/click_order.csv', mode='r', newline='', encoding='utf-8') as file:
-            if file is None:
-                pass
-            else:
-                reader = csv.reader(file)
-                order = [row for row in reader][0]  # 將每一行存入列表
-                for i in range(len(order)):
-                    self.vision_src['Vision' + str(i+1)] = int(order[i])
-                print(self.vision_src)
+    def source_get(self, sport):
+        with open('../config/click_order.json', mode='r', newline='', encoding='utf-8') as file:
+            data = json.load(file)
+            for i in len(self.vision_src.keys()):
+                self.vision_src[f'Vision{i+1}'] = int(data[sport][i])
         
     def creat_threads(self, sport, labels):
         print('Start catch frame.')
