@@ -248,7 +248,7 @@ def benchpress_bar_loop(i, frame, label, save_sig, recording_sig, folder,
     return start_time, frame_count, fps, out, frame_count_for_detect, original_out
     
 def benchpress_bone_loop_1(i, frame, label, save_sig, recording_sig, folder,
-                           start_time, frame_count, fps, out, original_out, excluded_indices, txt_file, pose):
+                           start_time, frame_count, fps, out, original_out, excluded_indices, txt_file, pose, frame_count_for_detect):
     frame_count += 1
     elapsed_time = time.time() - start_time
     if elapsed_time >= 1:
@@ -316,7 +316,7 @@ def benchpress_bone_loop_1(i, frame, label, save_sig, recording_sig, folder,
     return start_time, frame_count, fps, out, frame_count_for_detect, original_out
     
 def benchpress_bone_loop_2(i, frame, label, save_sig, recording_sig, folder,
-                           start_time, frame_count, fps, out, original_out, excluded_indices, txt_file, pose):
+                           start_time, frame_count, fps, out, original_out, excluded_indices, txt_file, pose, frame_count_for_detect):
     frame_count += 1
     elapsed_time = time.time() - start_time
     if elapsed_time >= 1:

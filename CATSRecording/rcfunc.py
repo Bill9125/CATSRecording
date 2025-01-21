@@ -182,13 +182,13 @@ class Recordingbackend():
                         start_time, frame_count, fps, out, frame_count_for_detect, original_out = loop.benchpress_bone_loop_1(
                             i, frame, label, self.save_sig, self.recording_sig,
                             self.folder, start_time, frame_count, fps, out, original_out,
-                            excluded_indices, self.mediapipe_txt_file, self.pose)
+                            excluded_indices, self.mediapipe_txt_file, self.pose, frame_count_for_detect)
                     else:
                         excluded_indices = set(range(0, 11)) | set(range(25, 33))
                         start_time, frame_count, fps, out, frame_count_for_detect, original_out = loop.benchpress_bone_loop_2(
                             i, frame, label, self.save_sig, self.recording_sig,
                             self.folder, start_time, frame_count, fps, out, original_out,
-                            excluded_indices, self.mediapipe_txt_file2, self.pose2)
+                            excluded_indices, self.mediapipe_txt_file2, self.pose2, frame_count_for_detect)
                 
                 elif sport == 'squat':
                     if i == 0:
