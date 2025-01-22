@@ -116,13 +116,19 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # set recording layout
         self.ctrl_layout = QtWidgets.QHBoxLayout()
         self.ctrl_layout.setContentsMargins(0, 0, 0, 0)
-        self.ctrl_layout.setSpacing(800)
+        self.ctrl_layout.setSpacing(400)
         self.ui.recording_layout.addLayout(self.ctrl_layout)
 
         self.recording_ctrl_btn = QtWidgets.QToolButton(self.ui.Recording_tab)
         self.recording_ctrl_btn.setIcon(self.icons[2])
         self.recording_ctrl_btn.setIconSize(QtCore.QSize(64, 64))
         self.ctrl_layout.addWidget(self.recording_ctrl_btn)
+
+        self.auto_recording_btn = QtWidgets.QPushButton(self.ui.Recording_tab)
+        self.auto_recording_btn.setFont(QtGui.QFont("Times New Roman", 32))
+        self.auto_recording_btn.setText("Auto Recording")
+        self.auto_recording_btn.setEnabled(False)
+        self.ctrl_layout.addWidget(self.auto_recording_btn)
         
         self.source_ctrl_btn = QtWidgets.QPushButton(self.ui.Recording_tab)
         self.source_ctrl_btn.setFont(QtGui.QFont("Times New Roman", 32))
@@ -138,8 +144,24 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.Deadlift_vision_layout = QtWidgets.QHBoxLayout()
         self.ui.recording_layout.addLayout(self.Deadlift_vision_layout)
 
-        labelsize = [420, 560]
-        self.rc_Vision_labels, self.rc_qpixmaps = self.rpbf.creat_vision_labels_pixmaps(labelsize, self.ui.Recording_tab, self.Deadlift_vision_layout, 5)
+        self.subject_layout = QtWidgets.QGridLayout()
+        self.subject_layout.setContentsMargins(0, 0, 0, 0)
+        for x in range(8):
+            for y in range(2):
+                if y == 0:
+                    text = QtWidgets.QLineEdit()
+                    text.setAlignment(QtCore.Qt.AlignCenter)
+                    text.setText(f'Name {x+1}')
+                    self.subject_layout.addWidget(text, y, x)    
+                if y == 1:
+                    btn = QtWidgets.QPushButton(self.ui.Recording_tab)
+                    btn.setFont(QtGui.QFont('Times New Roman', 32))
+                    btn.setText(f'Player {x+1}')
+                    self.subject_layout.addWidget(btn, y, x)    
+        self.ui.recording_layout.addLayout(self.subject_layout)
+
+        labelsize = [480, 640]
+        self.rc_Vision_labels, self.rc_qpixmaps = self.rpbf.creat_vision_labels_pixmaps(labelsize, self.ui.Recording_tab, self.Deadlift_vision_layout, 3)
         self.source_ctrl_btn.clicked.connect(lambda: self.rcbf.source_ctrl_btn_clicked('Deadlift', self.rc_Vision_labels))
         self.recording_ctrl_btn.clicked.connect(lambda: self.rcbf.recording_ctrl_btn_clicked('Deadlift'))
         
@@ -154,13 +176,19 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # set recording layout
         self.ctrl_layout = QtWidgets.QHBoxLayout()
         self.ctrl_layout.setContentsMargins(0, 0, 0, 0)
-        self.ctrl_layout.setSpacing(800)
+        self.ctrl_layout.setSpacing(400)
         self.ui.recording_layout.addLayout(self.ctrl_layout)
 
         self.recording_ctrl_btn = QtWidgets.QToolButton(self.ui.Recording_tab)
         self.recording_ctrl_btn.setIcon(self.icons[2])
         self.recording_ctrl_btn.setIconSize(QtCore.QSize(64, 64))
         self.ctrl_layout.addWidget(self.recording_ctrl_btn)
+        
+        self.auto_recording_btn = QtWidgets.QPushButton(self.ui.Recording_tab)
+        self.auto_recording_btn.setFont(QtGui.QFont("Times New Roman", 32))
+        self.auto_recording_btn.setText("Auto Recording")
+        self.auto_recording_btn.setEnabled(False)
+        self.ctrl_layout.addWidget(self.auto_recording_btn)
         
         self.source_ctrl_btn = QtWidgets.QPushButton(self.ui.Recording_tab)
         self.source_ctrl_btn.setFont(QtGui.QFont("Times New Roman", 32))
@@ -175,6 +203,22 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.Benchpress_vision_layout = QtWidgets.QHBoxLayout()
         self.ui.recording_layout.addLayout(self.Benchpress_vision_layout)
+        
+        self.subject_layout = QtWidgets.QGridLayout()
+        self.subject_layout.setContentsMargins(0, 0, 0, 0)
+        for x in range(8):
+            for y in range(2):
+                if y == 0:
+                    text = QtWidgets.QLineEdit()
+                    text.setAlignment(QtCore.Qt.AlignCenter)
+                    text.setText(f'Name {x+1}')
+                    self.subject_layout.addWidget(text, y, x)    
+                if y == 1:
+                    btn = QtWidgets.QPushButton(self.ui.Recording_tab)
+                    btn.setFont(QtGui.QFont('Times New Roman', 32))
+                    btn.setText(f'Player {x+1}')
+                    self.subject_layout.addWidget(btn, y, x)    
+        self.ui.recording_layout.addLayout(self.subject_layout)
 
         labelsize = [640, 480]
         self.rc_Vision_labels, self.rc_qpixmaps = self.rpbf.creat_vision_labels_pixmaps(labelsize, self.ui.Recording_tab, self.Benchpress_vision_layout, 3)
