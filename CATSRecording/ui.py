@@ -106,7 +106,9 @@ class Ui_MainWindow(object):
 
         self.play_groupBox = QtWidgets.QGroupBox(self.Replay_tab)
         self.play_groupBox.setObjectName("play_groupBox")
-        self.play_layout = QtWidgets.QHBoxLayout(self.play_groupBox)
+        self.play_layout = QtWidgets.QHBoxLayout()
+        self.play_groupBox.setLayout(self.play_layout)
+        self.play_layout.addLayout()
 
         self.replay_layout.addWidget(self.play_groupBox)
 

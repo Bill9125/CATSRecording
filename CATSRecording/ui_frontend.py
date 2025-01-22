@@ -160,7 +160,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     self.subject_layout.addWidget(btn, y, x)    
         self.ui.recording_layout.addLayout(self.subject_layout)
 
-        labelsize = [480, 640]
+        labelsize = [384, 512]
         self.rc_Vision_labels, self.rc_qpixmaps = self.rpbf.creat_vision_labels_pixmaps(labelsize, self.ui.Recording_tab, self.Deadlift_vision_layout, 3)
         self.source_ctrl_btn.clicked.connect(lambda: self.rcbf.source_ctrl_btn_clicked('Deadlift', self.rc_Vision_labels))
         self.recording_ctrl_btn.clicked.connect(lambda: self.rcbf.recording_ctrl_btn_clicked('Deadlift'))
