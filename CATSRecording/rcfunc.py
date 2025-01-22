@@ -214,8 +214,6 @@ class Recordingbackend():
             self.mediapipe_txt_file.close()
             self.mediapipe_txt_file = None
         cap.__del__()
-        
-    
 
     def messagebox(self, type, text):
         Form = QtWidgets.QWidget()
@@ -230,15 +228,6 @@ class Recordingbackend():
             self.mbox.warning(Form, 'warning', f'{text}')
             self.mbox.addButton(QtWidgets.QMessageBox.Ok)
             self.mbox.show()
-    
-    def update_camera_layout(self, layout_type):
-        if layout_type == "benchpress_layout":
-            self.cameras = [MyVideoCapture(i) for i in range(3)]
-        elif layout_type == "deadlift_layout":
-            self.cameras = [MyVideoCapture(i) for i in range(5)]
-
-        self.current_layout = layout_type
-        print(f"Updated to {layout_type} with {len(self.cameras)} cameras.")
 
     def recording_ctrl_btn_clicked(self, sport):
         if not self.recording_sig:
