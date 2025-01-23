@@ -114,10 +114,12 @@ class Replaybackend():
         head_label, bottom_labels, data_labels
         ):
         self.currentsport = 'Deadlift'
+        self.rp_Vision_labels = head_label + bottom_labels
+        self.data_labels = data_labels
         self.rp_btn_press(
             self.currentsport, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons,
             Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout,
-            head_label, bottom_labels, data_labels)
+            )
        
 
     def Benchpress_btn_pressed(self, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons,
@@ -140,7 +142,7 @@ class Replaybackend():
     def rp_btn_press(
         self, sport, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons, 
         Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout,
-        head_label, bottom_labels, data_labels):
+        ):
         # Clear all the Qpixmap
         self.clear_layout(play_layout)
         if sport == 'Deadlift':
@@ -185,11 +187,17 @@ class Replaybackend():
         self.videos = glob.glob(f'{folder}/{videofolder}/*.avi')
         
         # 臥推有六部影片，要抽取三部
-        if len(self.videos) >= 6:
+        if len(self.videos) == 6:
             self.videos = [video for video in self.videos 
                            if os.path.basename(video) in ('original_vision1.avi', 'vision2.avi', 'original_vision3.avi')
                         ]
             self.videos[1], self.videos[2] = self.videos[2], self.videos[1]
+        # 硬舉只需要 1, 2, 3 視角
+        elif len(self.videos) == 5:
+            self.videos = [video for video in self.videos
+                           if os.path.basename(video) in ('vision1.avi', 'vision2.avi', 'vision3.avi')]
+            self.videos = [self.videos[1], self.videos[2], self.videos[0]]
+
         self.stop(Frameslider, play_btn, icons)
     
     def play_btn_clicked(self, fast_forward_combobox, Play_btn, icons, Frameslider):
