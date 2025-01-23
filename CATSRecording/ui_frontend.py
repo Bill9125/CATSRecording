@@ -24,19 +24,22 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.ui.rc_Deadlift_btn.clicked.connect(self.rc_Deadlift_clicked)
         self.ui.rc_Benchpress_btn.clicked.connect(self.rc_Benchpress_clicked)
+        self.ui.rp_Deadlift_btn.clicked.connect(lambda :self.rp_layout_set('Deadlift'))
+        self.ui.rp_Benchpress_btn.clicked.connect(lambda :self.rp_layout_set('Benchpress'))
+        self.ui.rp_Squat_btn.clicked.connect(lambda :self.rp_layout_set('Squat'))
         
         self.Vision_labels = []  # Store QLabel for camera frames
         
         # replay top ctrl connection
-        self.ui.rp_Deadlift_btn.clicked.connect(lambda: self.rpbf.Deadlift_btn_pressed(
-            self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.icons, self.ui.Stop_btn, 
-            self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox, self.ui.Replay_tab, self.ui.play_layout))
-        self.ui.rp_Benchpress_btn.clicked.connect(lambda: self.rpbf.Benchpress_btn_pressed(
-            self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.icons, self.ui.Stop_btn, 
-            self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox, self.ui.Replay_tab, self.ui.play_layout))
-        self.ui.rp_Squat_btn.clicked.connect(lambda: self.rpbf.Squat_btn_pressed(
-            self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.icons, self.ui.Stop_btn, 
-            self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox, self.ui.Replay_tab, self.ui.play_layout))
+        # self.ui.rp_Deadlift_btn.clicked.connect(lambda: self.rpbf.Deadlift_btn_pressed(
+        #     self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.icons, self.ui.Stop_btn, 
+        #     self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox, self.ui.Replay_tab, self.ui.play_layout))
+        # self.ui.rp_Benchpress_btn.clicked.connect(lambda: self.rpbf.Benchpress_btn_pressed(
+        #     self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.icons, self.ui.Stop_btn, 
+        #     self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox, self.ui.Replay_tab, self.ui.play_layout))
+        # self.ui.rp_Squat_btn.clicked.connect(lambda: self.rpbf.Squat_btn_pressed(
+        #     self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.icons, self.ui.Stop_btn, 
+        #     self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox, self.ui.Replay_tab, self.ui.play_layout))
         self.ui.File_comboBox.currentTextChanged.connect(lambda: self.rpbf.File_combobox_TextChanged(
             self.ui.File_comboBox, self.ui.Play_btn, self.icons, self.ui.Frameslider))
         self.ui.Stop_btn.clicked.connect(lambda: self.rpbf.stop(self.ui.Frameslider, self.ui.Play_btn, self.icons))
@@ -53,11 +56,11 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.Frameslider.valueChanged.connect(lambda: self.rpbf.slider_changed(self.ui.Frameslider, self.ui.Play_btn, self.icons))
 
     def rc_Deadlift_clicked(self):
-        self.Deadlift_layout_set()
+        self.rc_Deadlift_layout_set()
         self.rcbf.init_rc_backend('Deadlift', self.rc_Vision_labels)
 
     def rc_Benchpress_clicked(self):
-        self.Benchpress_layout_set()
+        self.rc_Benchpress_layout_set()
         self.rcbf.init_rc_backend('Benchpress', self.rc_Vision_labels)
 
     def back_toolbtn_clicked(self):
@@ -105,7 +108,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # 確保佈局刷新
         self.ui.recording_layout.addLayout(grid_layout)
 
-    def Deadlift_layout_set(self):
+    def rc_Deadlift_layout_set(self):
         # clear recording layout
         grid_layout = self.ui.grid_Layout_recording
         for i in reversed(range(grid_layout.count())):
@@ -165,7 +168,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.source_ctrl_btn.clicked.connect(lambda: self.rcbf.source_ctrl_btn_clicked('Deadlift', self.rc_Vision_labels))
         self.recording_ctrl_btn.clicked.connect(lambda: self.rcbf.recording_ctrl_btn_clicked('Deadlift'))
         
-    def Benchpress_layout_set(self):
+    def rc_Benchpress_layout_set(self):
         # clear recording layout
         grid_layout = self.ui.grid_Layout_recording
         for i in reversed(range(grid_layout.count())):
@@ -225,7 +228,46 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.source_ctrl_btn.clicked.connect(lambda: self.rcbf.source_ctrl_btn_clicked('Benchpress', self.rc_Vision_labels))
         self.recording_ctrl_btn.clicked.connect(lambda: self.rcbf.recording_ctrl_btn_clicked('Benchpress'))
 
-
+    def rp_layout_set(self, sport):
+        if sport == 'Deadlift':
+            self.layout_clear(self.ui.head_vis_layout)
+            self.layout_clear(self.ui.bottom_vis_layout)
+            self.layout_clear(self.ui.data_ctrl_layout_V)
+            self.head_Vis_label, self.head_Vis_qpixmap = self.rpbf.creat_vision_labels_pixmaps([480, 640], self.ui.Replay_tab, self.ui.head_vis_layout, 1)
+            self.bottom_Vis_labels, self.bottom_Vis_qpixmaps = self.rpbf.creat_vision_labels_pixmaps([307, 410], self.ui.Replay_tab, self.ui.bottom_vis_layout, 2)
+            self.ui.bottom_vis_layout.setSpacing(50)
+            self.data_Vis_labels, self.data_Vis_qpixmaps = self.rpbf.creat_vision_labels_pixmaps([300, 50], self.ui.Replay_tab, self.ui.data_ctrl_layout_V, 5)
+            self.ui.data_ctrl_layout_V.addLayout(self.ui.bottom_controls_layout)
+            
+            self.rpbf.Deadlift_btn_pressed(
+                self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.icons, self.ui.Stop_btn, 
+                self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox, self.ui.Replay_tab, self.ui.play_layout,
+                self.head_Vis_label, self.bottom_Vis_labels, self.data_Vis_labels)
+            
+        elif sport == 'Benchpress':
+            self.layout_clear(self.ui.head_vis_layout)
+            self.layout_clear(self.ui.bottom_vis_layout)
+            self.layout_clear(self.ui.data_ctrl_layout_V)
+            self.head_Vis_labels, self.rc_qpixmaps = self.rpbf.creat_vision_labels_pixmaps([640, 480], self.ui.Replay_tab, self.ui.head_vis_layout, 1)
+            self.bottom_Vis_labels, self.bottom_Vis_qpixmaps = self.rpbf.creat_vision_labels_pixmaps([640, 480], self.ui.Replay_tab, self.ui.bottom_vis_layout, 2)
+            self.data_Vis_labels, self.data_Vis_qpixmaps = self.rpbf.creat_vision_labels_pixmaps([300, 50], self.ui.Replay_tab, self.ui.data_ctrl_layout_V, 3)
+            self.ui.data_ctrl_layout_V.addLayout(self.ui.bottom_controls_layout)
+        elif sport == 'Squat':
+            self.layout_clear(self.ui.head_vis_layout)
+            self.layout_clear(self.ui.bottom_vis_layout)
+            self.layout_clear(self.ui.data_ctrl_layout_V)
+            self.head_Vis_label, self.head_Vis_qpixmap = self.rpbf.creat_vision_labels_pixmaps([480, 640], self.ui.Replay_tab, self.ui.head_vis_layout, 1)
+            self.bottom_Vis_labels, self.bottom_Vis_qpixmaps = self.rpbf.creat_vision_labels_pixmaps([307, 410], self.ui.Replay_tab, self.ui.bottom_vis_layout, 2)
+            self.data_Vis_labels, self.data_Vis_qpixmaps = self.rpbf.creat_vision_labels_pixmaps([300, 50], self.ui.Replay_tab, self.ui.data_ctrl_layout_V, 5)
+            self.ui.data_ctrl_layout_V.addLayout(self.ui.bottom_controls_layout)
+            
+            
+    def layout_clear(self, layout):
+        for i in reversed(range(layout.count())):
+            widget = layout.itemAt(i).widget()
+            if widget is not None:
+                widget.deleteLater()
+        
     def resource_path(self, relative_path):
         base_path = getattr(sys, '_MEIPASS', os.path.abspath("."))
         return os.path.join(base_path, relative_path)

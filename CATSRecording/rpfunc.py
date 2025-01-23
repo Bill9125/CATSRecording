@@ -108,12 +108,16 @@ class Replaybackend():
         self.exited = False
         self.is_stop = True
 
-    def Deadlift_btn_pressed(self, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons,
-                            Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout):
+    def Deadlift_btn_pressed(
+        self, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons,
+        Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout,
+        head_label, bottom_labels, data_labels
+        ):
         self.currentsport = 'Deadlift'
-        self.rp_btn_press(self.currentsport,
-                            Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons,
-                            Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout)
+        self.rp_btn_press(
+            self.currentsport, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons,
+            Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout,
+            head_label, bottom_labels, data_labels)
        
 
     def Benchpress_btn_pressed(self, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons,
@@ -133,14 +137,15 @@ class Replaybackend():
         
         
         
-    def rp_btn_press(self, sport, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons, 
-                              Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout):
+    def rp_btn_press(
+        self, sport, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons, 
+        Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout,
+        head_label, bottom_labels, data_labels):
         # Clear all the Qpixmap
         self.clear_layout(play_layout)
         if sport == 'Deadlift':
             folderPath = self.resource_path('C:/Users/92A27/MOCAP/recordings')
             self.folders[sport] = folderPath
-            self.rp_Vision_labels, self.rp_qpixmaps = self.creat_vision_labels_pixmaps([384, 512], rp_tab, play_layout, 3)
             Deadlift_btn.setStyleSheet("font-size:18px;background-color: #888888")
             Benchpress_btn.setStyleSheet("font-size:18px;background-color: #666666")
             Squat_btn.setStyleSheet("font-size:18px;background-color: #666666")
@@ -163,6 +168,7 @@ class Replaybackend():
 
         File_comboBox.clear()
         list = os.listdir(self.folders[sport])
+        # 這裡combobox有變動
         for folder in list[::-1]:
             File_comboBox.addItems([folder])
 
@@ -284,6 +290,7 @@ class Replaybackend():
             Vision_label.setMinimumSize(labelsize[0], labelsize[1])
             Vision_label.setMaximumSize(labelsize[0], labelsize[1])
             Vision_label.setPixmap(qpixmap)
+            Vision_label.setText('1111111111111111111111111111111111111111111111111111111111111111111111111')
             sublayout.addWidget(Vision_label)
             Vision_labels.append(Vision_label)
         return Vision_labels, qpixmaps
