@@ -154,6 +154,8 @@ class Ui_MainWindow(object):
         self.bottom_controls_layout.setStretch(2, 0)
         self.bottom_controls_layout.setStretch(3, 90)
         self.bottom_controls_layout.setStretch(4, 5)
+        
+        self.data_ctrl_layout_V.addLayout(self.bottom_controls_layout)
         self.replay_tabWidget.addTab(self.Replay_tab, "")
 
         self.main_layout.addWidget(self.replay_tabWidget)

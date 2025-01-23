@@ -98,7 +98,12 @@ class Replaybackend():
         self.folders = {}
         self.threads = []
         self.rp_Vision_labels = []
+
         self.rp_qpixmaps = []
+        for _ in range(3):
+            pixmap = QtGui.QPixmap()
+            self.rp_qpixmaps.append(pixmap)
+
         self.videos = []
         self.caps = []
         self.currentsport = ''
@@ -120,31 +125,37 @@ class Replaybackend():
             self.currentsport, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons,
             Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout,
             )
-       
-
-    def Benchpress_btn_pressed(self, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons,
-                            Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout):
+        
+    def Benchpress_btn_pressed(
+        self, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons,
+        Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout,
+        head_label, bottom_labels, data_labels
+        ):
         self.currentsport = 'Benchpress'
-        self.rp_btn_press(self.currentsport, 
-                            Deadlift_btn,Benchpress_btn, Squat_btn, Play_btn, icons,
-                            Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout)
+        self.rp_Vision_labels = head_label + bottom_labels
+        self.data_labels = data_labels
+        self.rp_btn_press(
+            self.currentsport, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons,
+            Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout,
+            )
         
-        
-    def Squat_btn_pressed(self, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons,
-                            Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout):
+    def Squat_btn_pressed(
+        self, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons,
+        Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout,
+        head_label, bottom_labels, data_labels
+        ):
         self.currentsport = 'Squat'
-        self.rp_btn_press(self.currentsport, 
-                            Deadlift_btn,Benchpress_btn, Squat_btn, Play_btn, icons,
-                            Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout)
-        
-        
+        self.rp_Vision_labels = head_label + bottom_labels
+        self.data_labels = data_labels
+        self.rp_btn_press(
+            self.currentsport, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons,
+            Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout,
+            )
         
     def rp_btn_press(
         self, sport, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons, 
         Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout,
         ):
-        # Clear all the Qpixmap
-        self.clear_layout(play_layout)
         if sport == 'Deadlift':
             folderPath = self.resource_path('C:/Users/92A27/MOCAP/recordings')
             self.folders[sport] = folderPath
@@ -155,7 +166,6 @@ class Replaybackend():
         elif sport == 'Benchpress':
             folderPath = self.resource_path('C:/Users/92A27/benchpress/recordings')
             self.folders[sport] = folderPath
-            self.rp_Vision_labels, self.rp_qpixmaps = self.creat_vision_labels_pixmaps([640, 480], rp_tab, play_layout, 3)
             Benchpress_btn.setStyleSheet("font-size:18px;background-color: #888888")
             Squat_btn.setStyleSheet("font-size:18px;background-color: #666666")
             Deadlift_btn.setStyleSheet("font-size:18px;background-color: #666666")
@@ -192,6 +202,7 @@ class Replaybackend():
                            if os.path.basename(video) in ('original_vision1.avi', 'vision2.avi', 'original_vision3.avi')
                         ]
             self.videos[1], self.videos[2] = self.videos[2], self.videos[1]
+
         # 硬舉只需要 1, 2, 3 視角
         elif len(self.videos) == 5:
             self.videos = [video for video in self.videos

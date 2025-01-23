@@ -15,7 +15,10 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         
         self.ui.rc_Squat_btn.setEnabled(False)
         self.icons = []
-        self.isclicked = False
+        self.D_layout_inited = False
+        self.B_layout_inited = False
+        self.S_layout_inited = False
+        
         icon_srcs = glob.glob(self.resource_path('ui_src/*.png'))
         for icon in icon_srcs:
             self.icons.append(QtGui.QIcon(icon))
@@ -230,28 +233,40 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def rp_layout_set(self, sport):
         if sport == 'Deadlift':
+            if not self.D_layout_inited:
+                self.ui.bottom_vis_layout.setSpacing(50)
+                self.ui.bottom_vis_layout.setContentsMargins(0, 0, 10, 10)
+                self.ui.head_vis_layout.setContentsMargins(110, 0, 0, 0)
+                self.D_layout_inited = True
+
             self.layout_clear(self.ui.head_vis_layout)
             self.layout_clear(self.ui.bottom_vis_layout)
             self.layout_clear(self.ui.data_ctrl_layout_V)
-            self.head_Vis_label, self.head_Vis_qpixmap = self.rpbf.creat_vision_labels_pixmaps([480, 640], self.ui.Replay_tab, self.ui.head_vis_layout, 1)
-            self.bottom_Vis_labels, self.bottom_Vis_qpixmaps = self.rpbf.creat_vision_labels_pixmaps([307, 410], self.ui.Replay_tab, self.ui.bottom_vis_layout, 2)
-            self.ui.bottom_vis_layout.setSpacing(50)
-            self.data_Vis_labels, self.data_Vis_qpixmaps = self.rpbf.creat_vision_labels_pixmaps([300, 50], self.ui.Replay_tab, self.ui.data_ctrl_layout_V, 5)
-            self.ui.data_ctrl_layout_V.addLayout(self.ui.bottom_controls_layout)
-            
+            self.head_Vis_label, self.head_Vis_qpixmap = self.rpbf.creat_vision_labels_pixmaps([288, 384], self.ui.Replay_tab, self.ui.head_vis_layout, 1)
+            self.bottom_Vis_labels, self.bottom_Vis_qpixmaps = self.rpbf.creat_vision_labels_pixmaps([240, 320], self.ui.Replay_tab, self.ui.bottom_vis_layout, 2)
+            self.data_Vis_labels, self.data_Vis_qpixmaps = self.rpbf.creat_vision_labels_pixmaps([300, 50], self.ui.Replay_tab, self.ui.data_ctrl_layout_V, 5)    
             self.rpbf.Deadlift_btn_pressed(
                 self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.icons, self.ui.Stop_btn, 
                 self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox, self.ui.Replay_tab, self.ui.play_layout,
                 self.head_Vis_label, self.bottom_Vis_labels, self.data_Vis_labels)
-            
         elif sport == 'Benchpress':
+            if not self.B_layout_inited:
+                self.ui.bottom_vis_layout.setSpacing(50)
+                self.ui.bottom_vis_layout.setContentsMargins(0, 10, 10, 10)
+                self.ui.head_vis_layout.setContentsMargins(260, 0, 0, 0)
+                self.B_layout_inited = True
+            
             self.layout_clear(self.ui.head_vis_layout)
             self.layout_clear(self.ui.bottom_vis_layout)
             self.layout_clear(self.ui.data_ctrl_layout_V)
-            self.head_Vis_labels, self.rc_qpixmaps = self.rpbf.creat_vision_labels_pixmaps([640, 480], self.ui.Replay_tab, self.ui.head_vis_layout, 1)
-            self.bottom_Vis_labels, self.bottom_Vis_qpixmaps = self.rpbf.creat_vision_labels_pixmaps([640, 480], self.ui.Replay_tab, self.ui.bottom_vis_layout, 2)
+            self.head_Vis_label, self.rc_qpixmaps = self.rpbf.creat_vision_labels_pixmaps([512, 384], self.ui.Replay_tab, self.ui.head_vis_layout, 1)
+            self.bottom_Vis_labels, self.bottom_Vis_qpixmaps = self.rpbf.creat_vision_labels_pixmaps([512, 384], self.ui.Replay_tab, self.ui.bottom_vis_layout, 2)
             self.data_Vis_labels, self.data_Vis_qpixmaps = self.rpbf.creat_vision_labels_pixmaps([300, 50], self.ui.Replay_tab, self.ui.data_ctrl_layout_V, 3)
-            self.ui.data_ctrl_layout_V.addLayout(self.ui.bottom_controls_layout)
+            self.rpbf.Benchpress_btn_pressed(
+                self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.icons, self.ui.Stop_btn, 
+                self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox, self.ui.Replay_tab, self.ui.play_layout,
+                self.head_Vis_label, self.bottom_Vis_labels, self.data_Vis_labels)
+            
         elif sport == 'Squat':
             self.layout_clear(self.ui.head_vis_layout)
             self.layout_clear(self.ui.bottom_vis_layout)
