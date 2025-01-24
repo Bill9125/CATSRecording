@@ -24,7 +24,6 @@ class MyThread(threading.Thread):
         self.is_pause = False
         self.is_slide_end = False
         self.is_slide_start = False
-        self.ended = False
         
     def run(self):
         self.Frameslider.setMaximum(int(self.framenumber))
@@ -54,7 +53,7 @@ class MyThread(threading.Thread):
                 continue
                 
             # 迴圈終止條件
-            if self.Frameslider.value() >= self.framenumber or self.ended:
+            if self.Frameslider.value() >= self.framenumber:
                 break
 
             # 等待所有 thread 完成同步
@@ -262,9 +261,9 @@ class Replaybackend():
     # threads 全部刪除，重新播放
     def del_mythreads(self):
         for thread in self.threads:
-            thread.ended = True
+            thread._stop_event.set()
         self.threads.clear()
-            
+    
     def slider_released(self):
         for thread in self.threads:
             thread.is_slide_end = True
@@ -285,7 +284,6 @@ class Replaybackend():
         self.del_mythreads()
         event.accept()
         
-
     def showprevision(self):
         if self.videos:
             for i, video in enumerate(self.videos):
@@ -314,7 +312,6 @@ class Replaybackend():
             Vision_labels.append(Vision_label)
         return Vision_labels, qpixmaps
 
-        
     def stop(self, Frameslider, Play_btn, icons):
         print('stop')
         Frameslider.setEnabled(False)
