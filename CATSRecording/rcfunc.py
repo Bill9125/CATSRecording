@@ -42,7 +42,7 @@ class Recordingbackend():
         self.subui = ButtonClickApp
         self.vision_src = {}
         self.threads = []
-        self.struct = {'Deadlift': 3, 'Benchpress': 3, 'Squat': 5}
+        self.struct = {'Deadlift': 5, 'Benchpress': 3, 'Squat': 5}
         dir = 'C:/Users/92A27'
         self.save_path = {'Deadlift': os.path.join(dir, 'MOCAP', 'recordings'),
                           'Benchpress': os.path.join(dir, 'benchpress', 'recordings'),
