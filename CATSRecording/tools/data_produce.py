@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import numpy as np
 import os
+import argparse
 import cv2
 
 # 函式：讀取骨架數據的 txt 檔案
@@ -78,7 +79,7 @@ def generate_individual_animation(title, y_label, y_data, y_limit, output_file):
         # 確保不會出現 x 軸為 0 的情況
         if frame_index < 1:
             frame_index = 1
-        start_frame = max(0, frame_index - 200)  # 只顯示最近 200 幀
+        start_frame = max(0, frame_index - 500)  # 只顯示最近 200 幀
         end_frame = frame_index
         line.set_data(skeleton_frames[start_frame:end_frame], y_data[start_frame:end_frame])
         ax.set_xlim(start_frame, end_frame)
@@ -97,8 +98,10 @@ def generate_individual_animation(title, y_label, y_data, y_limit, output_file):
     finally:
         plt.close(fig)
 
-# 主程式
-dir = 'C:/jinglun/CATSRecording/data/recording_Deadlift/Subject65/recording_20241226_161743'
+parser = argparse.ArgumentParser()
+parser.add_argument('dir',type=str)
+args = parser.parse_args()
+dir = args.dir
 skeleton_file_path = os.path.join(dir ,'interpolated_mediapipe_landmarks_1.txt')
 barbell_file_path = os.path.join(dir , 'yolo_coordinates_interpolated.txt')
 

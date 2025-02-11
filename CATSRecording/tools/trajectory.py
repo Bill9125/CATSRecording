@@ -1,7 +1,11 @@
 import cv2
 import os
+import argparse
 
-dir = 'C:/jinglun/CATSRecording/data/recording_Deadlift/Subject65/recording_20241226_161743'
+parser = argparse.ArgumentParser()
+parser.add_argument('dir',type=str)
+args = parser.parse_args()
+dir = args.dir
 
 # 載入影片和座標
 video_path = os.path.join(dir, 'vision1.avi')

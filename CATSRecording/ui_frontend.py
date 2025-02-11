@@ -136,6 +136,11 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.auto_recording_btn.setEnabled(False)
         self.ctrl_layout.addWidget(self.auto_recording_btn)
         
+        self.data_produce_btn = QtWidgets.QPushButton(self.ui.Recording_tab)
+        self.data_produce_btn.setFont(QtGui.QFont("Times New Roman", 32))
+        self.data_produce_btn.setText("Data Produce")
+        self.ctrl_layout.addWidget(self.data_produce_btn)
+        
         self.source_ctrl_btn = QtWidgets.QPushButton(self.ui.Recording_tab)
         self.source_ctrl_btn.setFont(QtGui.QFont("Times New Roman", 32))
         self.source_ctrl_btn.setText("Source change")
@@ -168,6 +173,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         labelsize = [384, 512]
         self.rc_Vision_labels, self.rc_qpixmaps = self.rpbf.creat_vision_labels_pixmaps(labelsize, self.ui.Recording_tab, self.Deadlift_vision_layout, 5)
+        self.data_produce_btn.clicked.connect(self.rcbf.data_produce_btn_clicked)
         self.source_ctrl_btn.clicked.connect(lambda: self.rcbf.source_ctrl_btn_clicked('Deadlift', self.rc_Vision_labels))
         self.recording_ctrl_btn.clicked.connect(lambda: self.rcbf.recording_ctrl_btn_clicked('Deadlift'))
         

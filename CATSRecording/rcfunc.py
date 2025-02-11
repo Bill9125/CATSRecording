@@ -6,8 +6,7 @@ from ultralytics import YOLO
 import torch
 import loop
 from subUI import ButtonClickApp
-from qt_material import apply_stylesheet
-# import mediapipe as mp
+import mediapipe as mp
 
 class MyVideoCapture:
     def __init__(self, video_source):
@@ -54,18 +53,18 @@ class Recordingbackend():
             (5, 11), (11, 13), (13, 15)   # Left leg
         ]
         # Initialize MediaPipe Pose 
-        # self.mp_pose = mp.solutions.pose
-        # self.mp_drawing = mp.solutions.drawing_utils
-        # self.pose = self.mp_pose.Pose(
-        #     model_complexity=0,
-        #     min_detection_confidence=0.5, 
-        #     min_tracking_confidence=0.5
-        # )
-        # self.pose2 = self.mp_pose.Pose(
-        #     model_complexity=0,
-        #     min_detection_confidence=0.5, 
-        #     min_tracking_confidence=0.5
-        # )
+        self.mp_pose = mp.solutions.pose
+        self.mp_drawing = mp.solutions.drawing_utils
+        self.pose = self.mp_pose.Pose(
+            model_complexity=0,
+            min_detection_confidence=0.5, 
+            min_tracking_confidence=0.5
+        )
+        self.pose2 = self.mp_pose.Pose(
+            model_complexity=0,
+            min_detection_confidence=0.5, 
+            min_tracking_confidence=0.5
+        )
         self.current_layout = None
         self.recording_sig = False
         self.save_sig = False
@@ -256,5 +255,8 @@ class Recordingbackend():
         if self.recording_sig:
             self.recording_sig = False
             self.save_sig = True
-            
-    
+        
+    def data_produce_btn_clicked(self):
+            os.system(f'python ./tools/interpolate.py {self.folder}')
+            os.system(f'python ./tools/data_produce.py {self.folder}')
+            os.system(f'python ./tools/trajectory.py {self.folder}')
