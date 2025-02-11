@@ -257,8 +257,7 @@ class Recordingbackend():
             self.save_sig = True
         
     def data_produce_btn_clicked(self):
-        # self.folder = 'C:/jinglun/CATSRecording/data/recording_Deadlift/cam_group_1_recording_1'
-        print(f'self.folder : {self.folder}')
+        self.folder = 'C:/jinglun/CATSRecording/data/recording_Deadlift/cam_group_1_recording_1'
         os.system(f'python ./tools/interpolate.py {self.folder}')
         os.system(f'python ./tools/data_produce.py {self.folder}')
         os.system(f'python ./tools/trajectory.py {self.folder}')

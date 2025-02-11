@@ -64,22 +64,30 @@ def read_barbell_positions(filename):
             y_coords.append(y)
     return frames, x_coords, y_coords
     
-# 函式：生成單個動畫並存成影片
-def generate_individual_animation(title, y_label, y_data, y_limit, output_file):
-    fig, ax = plt.subplots(figsize=(8, 4))
+def generate_individual_animation(title, y_label, y_data, output_file, skeleton_frames):
+    fig, ax = plt.subplots(figsize=(16, 6))  # 让动画变大
     ax.set_title(title)
     ax.set_xlabel('Frame')
     ax.set_ylabel(y_label)
-    ax.set_ylim(y_limit)
-    ax.grid()
+    
+    # ✅ 只使用中间的部分数据来计算 y 轴范围（排除前 100 和后 100 帧）
+    if len(y_data) > 200:
+        trimmed_data = y_data[100:-100]  # 只取中间部分数据
+    else:
+        trimmed_data = y_data  # 如果数据少于 200 帧，保留所有数据
+    
+    # ✅ 计算上下限，给范围增加 10% 缓冲
+    y_min = min(trimmed_data) * 0.9
+    y_max = max(trimmed_data) * 1.1
+    ax.set_ylim(y_min, y_max)
 
+    ax.grid()
     line, = ax.plot([], [], color='blue')
 
     def update(frame_index):
-        # 確保不會出現 x 軸為 0 的情況
         if frame_index < 1:
             frame_index = 1
-        start_frame = max(0, frame_index - 500)  # 只顯示最近 200 幀
+        start_frame = max(0, frame_index - 1000)  # 只显示最近 1000 帧
         end_frame = frame_index
         line.set_data(skeleton_frames[start_frame:end_frame], y_data[start_frame:end_frame])
         ax.set_xlim(start_frame, end_frame)
@@ -87,9 +95,9 @@ def generate_individual_animation(title, y_label, y_data, y_limit, output_file):
 
     ani = FuncAnimation(fig, update, frames=len(skeleton_frames), interval=10, blit=True)
 
-    # 保存影片
+    # 保存影片，增加 dpi 提高画质
     try:
-        ani.save(output_file, fps=30, writer='ffmpeg')
+        ani.save(output_file, fps=30, writer='ffmpeg', dpi=200)
         print(f"Saved animation to {output_file}")
     except FileNotFoundError:
         print(f"FFmpeg is not available on your system. Unable to save {output_file}.")
@@ -97,6 +105,8 @@ def generate_individual_animation(title, y_label, y_data, y_limit, output_file):
         print(f"Error saving {output_file}: {e}")
     finally:
         plt.close(fig)
+
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('dir',type=str)
@@ -117,30 +127,30 @@ generate_individual_animation(
     title='Left Knee Angle Over Time',
     y_label='Angle (degrees)',
     y_data=left_knee_angles,
-    y_limit=(100, 200),
-    output_file = os.path.join(dir, 'vision2_data.mp4')
+    output_file = os.path.join(dir, 'vision2_data.avi'),
+    skeleton_frames=skeleton_frames
 )
 
 generate_individual_animation(
     title='Left Hip Angle Over Time',
     y_label='Angle (degrees)',
     y_data=left_hip_angles,
-    y_limit=(80, 200),
-    output_file = os.path.join(dir, 'vision3_data.mp4')
+    output_file = os.path.join(dir, 'vision3_data.avi'),
+    skeleton_frames=skeleton_frames
 )
 
 generate_individual_animation(
     title='Knee-to-Hip Angle Ratio Over Time',
     y_label='Ratio (Knee / Hip)',
     y_data=knee_to_hip_ratios,
-    y_limit=(0, 2),  # 假設比例範圍合理為 0-2
-    output_file = os.path.join(dir, 'vision4_data.mp4')
+    output_file = os.path.join(dir, 'vision4_data.avi'),
+    skeleton_frames=skeleton_frames
 )
 
 generate_individual_animation(
     title='Body Length Over Time',
     y_label='Length',
     y_data=body_lengths,
-    y_limit=(80, 160),
-    output_file = os.path.join(dir, 'vision5_data.mp4')
+    output_file = os.path.join(dir, 'vision5_data.avi'),
+    skeleton_frames=skeleton_frames
 )

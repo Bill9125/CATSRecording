@@ -10,7 +10,7 @@ dir = args.dir
 # 載入影片和座標
 video_path = os.path.join(dir, 'vision1.avi')
 coordinates_path = os.path.join(dir, 'yolo_coordinates_interpolated.txt')
-output_path = os.path.join(dir, 'vision1_drawed.mp4')
+output_path = os.path.join(dir, 'vision1_drawed.avi')
 
 def trajectory(video_path, coordinates_path, output_path):
     # 解析座標檔案
@@ -29,7 +29,7 @@ def trajectory(video_path, coordinates_path, output_path):
     fps = int(cap.get(cv2.CAP_PROP_FPS))
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
     out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
     # 設定軌跡視窗範圍

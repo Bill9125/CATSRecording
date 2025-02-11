@@ -68,7 +68,7 @@ class MyThread(threading.Thread):
                 frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 h, w, ch = frame.shape
                 self.qpixmap = QtGui.QPixmap.fromImage(QtGui.QImage(frame_rgb.data, w, h, ch*w, QtGui.QImage.Format_RGB888))
-                scale_qpixmap = self.qpixmap.scaled(self.Vision_label.width(), self.Vision_label.height(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
+                scale_qpixmap = self.qpixmap.scaled(self.Vision_label.width(), self.Vision_label.height(), QtCore.Qt.IgnoreAspectRatio, QtCore.Qt.SmoothTransformation)
                 self.Vision_label.setPixmap(scale_qpixmap)
                 # 更新時間
                 start_time = time.time()
@@ -97,14 +97,11 @@ class Replaybackend():
         self.folders = {}
         self.threads = []
         self.rp_Vision_labels = []
-
         self.rp_qpixmaps = []
-        for _ in range(3):
-            pixmap = QtGui.QPixmap()
-            self.rp_qpixmaps.append(pixmap)
-
         self.videos = []
+        self.data_videos = []
         self.caps = []
+        self.data_caps = []
         self.currentsport = ''
         self.ocv = True
         self.index = 0
@@ -193,21 +190,36 @@ class Replaybackend():
     def File_combobox_TextChanged(self, file_comboBox, play_btn, icons, Frameslider):
         videofolder = file_comboBox.currentText()
         folder = self.folders[self.currentsport]
-        self.videos = glob.glob(f'{folder}/{videofolder}/*.avi')
+        videos = glob.glob(f'{folder}/{videofolder}/*.avi')
         
-        # 臥推有六部影片，要抽取三部
-        if len(self.videos) == 6:
-            self.videos = [video for video in self.videos 
+        # 臥推有六部avi影片，要抽取三部
+        if len(videos) == 6:
+            self.videos = [video for video in videos 
                            if os.path.basename(video) in ('original_vision1.avi', 'vision2.avi', 'original_vision3.avi')
                         ]
             self.videos[1], self.videos[2] = self.videos[2], self.videos[1]
 
-        # 硬舉只需要 1, 2, 3 視角
-        elif len(self.videos) == 5:
-            self.videos = [video for video in self.videos
+        ## 硬舉avi只需要 1, 2, 3 視角
+        # 未後製
+        elif len(videos) == 5:
+            self.videos = [video for video in videos
                            if os.path.basename(video) in ('vision1.avi', 'vision2.avi', 'vision3.avi')]
             self.videos = [self.videos[1], self.videos[2], self.videos[0]]
-
+        # 已後製
+        elif len(videos) == 10:
+            self.videos = [video for video in videos
+                           if os.path.basename(video) in ('vision1_drawed.avi', 'vision2.avi', 'vision3.avi')]
+            self.videos = [self.videos[1], self.videos[2], self.videos[0]]
+            self.data_videos = [video for video in videos
+                           if os.path.basename(video) in ('vision2_data.avi', 'vision3_data.avi', 'vision4_data.avi', 'vision5_data.avi')]
+        
+        for _ in range(len(self.videos) + len(self.data_videos)):
+            pixmap = QtGui.QPixmap()
+            self.rp_qpixmaps.append(pixmap)
+        if self.data_videos:
+            print(cv2.VideoCapture(self.data_videos[0]).get(cv2.CAP_PROP_FRAME_WIDTH))
+            print(cv2.VideoCapture(self.data_videos[0]).get(cv2.CAP_PROP_FRAME_HEIGHT))
+            
         self.stop(Frameslider, play_btn, icons)
     
     def play_btn_clicked(self, fast_forward_combobox, Play_btn, icons, Frameslider):
@@ -229,7 +241,8 @@ class Replaybackend():
                 self.is_stop = False
                 if self.threads:
                     self.del_mythreads()
-                if self.caps:
+                if self.caps or self.data_caps:
+                    self.data_caps.clear()
                     self.caps.clear()
                 self.barrier = threading.Barrier(len(self.videos))
                 for i, video in enumerate(self.videos):
@@ -237,6 +250,15 @@ class Replaybackend():
                     self.caps.append(cap)
                     thread_play = MyThread(self.caps, i, Play_btn, icons, fast_forward_combobox,
                                             Frameslider, framenumber, self.rp_Vision_labels,
+                                            self.rp_qpixmaps, self.barrier)
+                    thread_play.start()
+                    self.threads.append(thread_play)
+                    
+                for i, video in enumerate(self.data_videos):
+                    cap = cv2.VideoCapture(video)
+                    self.data_caps.append(cap)
+                    thread_play = MyThread(self.data_caps, i, Play_btn, icons, fast_forward_combobox,
+                                            Frameslider, framenumber, self.data_labels,
                                             self.rp_qpixmaps, self.barrier)
                     thread_play.start()
                     self.threads.append(thread_play)
@@ -285,7 +307,7 @@ class Replaybackend():
         event.accept()
         
     def showprevision(self):
-        if self.videos:
+        if self.videos and self.data_videos:
             for i, video in enumerate(self.videos):
                 temp_cap = cv2.VideoCapture(video)
                 if self.ocv:
@@ -293,8 +315,18 @@ class Replaybackend():
                     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                     image = QtGui.QImage(frame_rgb.data, frame_rgb.shape[1], frame_rgb.shape[0], QtGui.QImage.Format_RGB888)
                     self.rp_qpixmaps[i] = QtGui.QPixmap.fromImage(image)
-                    scaled_pixmap = self.rp_qpixmaps[i].scaled(self.rp_Vision_labels[i].size(), QtCore.Qt.KeepAspectRatio)
+                    scaled_pixmap = self.rp_qpixmaps[i].scaled(self.rp_Vision_labels[i].size(), QtCore.Qt.IgnoreAspectRatio)
                     self.rp_Vision_labels[i].setPixmap(scaled_pixmap)
+            for i, video in enumerate(self.data_videos):
+                temp_cap = cv2.VideoCapture(video)
+                if self.ocv:
+                    _ , frame = temp_cap.read()
+                    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                    image = QtGui.QImage(frame_rgb.data, frame_rgb.shape[1], frame_rgb.shape[0], QtGui.QImage.Format_RGB888)
+                    self.rp_qpixmaps[i] = QtGui.QPixmap.fromImage(image)
+                    scaled_pixmap = self.rp_qpixmaps[i].scaled(self.data_labels[i].size(), QtCore.Qt.IgnoreAspectRatio)
+                    self.data_labels[i].setPixmap(scaled_pixmap)
+                    print(f'label size : {self.data_labels[i].size()}')
 
     def creat_vision_labels_pixmaps(self, labelsize, parentlayout, sublayout, num):
         Vision_labels = []
@@ -307,8 +339,9 @@ class Replaybackend():
             Vision_label.setMinimumSize(labelsize[0], labelsize[1])
             Vision_label.setMaximumSize(labelsize[0], labelsize[1])
             Vision_label.setPixmap(qpixmap)
-            Vision_label.setText('1111111111111111111111111111111111111111111111111111111111111111111111111')
+            Vision_label.setText('')
             sublayout.addWidget(Vision_label)
+            sublayout.setAlignment(Vision_label, QtCore.Qt.AlignCenter)
             Vision_labels.append(Vision_label)
         return Vision_labels, qpixmaps
 
