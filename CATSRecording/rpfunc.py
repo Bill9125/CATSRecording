@@ -191,7 +191,10 @@ class Replaybackend():
         videofolder = file_comboBox.currentText()
         folder = self.folders[self.currentsport]
         videos = glob.glob(f'{folder}/{videofolder}/*.avi')
-        
+        self.data_videos.clear()
+        for label in self.data_labels:
+            label.setPixmap(QtGui.QPixmap())
+            
         # 臥推有六部avi影片，要抽取三部
         if len(videos) == 6:
             self.videos = [video for video in videos 
@@ -205,6 +208,7 @@ class Replaybackend():
             self.videos = [video for video in videos
                            if os.path.basename(video) in ('vision1.avi', 'vision2.avi', 'vision3.avi')]
             self.videos = [self.videos[1], self.videos[2], self.videos[0]]
+            print(self.videos)
         # 已後製
         elif len(videos) == 10:
             self.videos = [video for video in videos
@@ -216,10 +220,6 @@ class Replaybackend():
         for _ in range(len(self.videos) + len(self.data_videos)):
             pixmap = QtGui.QPixmap()
             self.rp_qpixmaps.append(pixmap)
-        if self.data_videos:
-            print(cv2.VideoCapture(self.data_videos[0]).get(cv2.CAP_PROP_FRAME_WIDTH))
-            print(cv2.VideoCapture(self.data_videos[0]).get(cv2.CAP_PROP_FRAME_HEIGHT))
-            
         self.stop(Frameslider, play_btn, icons)
     
     def play_btn_clicked(self, fast_forward_combobox, Play_btn, icons, Frameslider):
@@ -307,7 +307,7 @@ class Replaybackend():
         event.accept()
         
     def showprevision(self):
-        if self.videos and self.data_videos:
+        if self.videos:
             for i, video in enumerate(self.videos):
                 temp_cap = cv2.VideoCapture(video)
                 if self.ocv:
@@ -317,6 +317,7 @@ class Replaybackend():
                     self.rp_qpixmaps[i] = QtGui.QPixmap.fromImage(image)
                     scaled_pixmap = self.rp_qpixmaps[i].scaled(self.rp_Vision_labels[i].size(), QtCore.Qt.IgnoreAspectRatio)
                     self.rp_Vision_labels[i].setPixmap(scaled_pixmap)
+        if self.data_videos:
             for i, video in enumerate(self.data_videos):
                 temp_cap = cv2.VideoCapture(video)
                 if self.ocv:

@@ -179,13 +179,13 @@ class Recordingbackend():
                             self.yolo_txt_file, frame_count_for_detect)
                     elif i == 1:
                         excluded_indices = set(range(0, 11)) | set(range(25, 33)) | set(range(15, 23)) 
-                        start_time, frame_count, fps, out, frame_count_for_detect, original_out = loop.benchpress_bone_loop_1(
+                        start_time, frame_count, fps, out, frame_count_for_detect, original_out = loop.benchpress_body_loop(
                             i, frame, label, self.save_sig, self.recording_sig,
                             self.folder, start_time, frame_count, fps, out, original_out,
                             excluded_indices, self.mediapipe_txt_file, self.pose, frame_count_for_detect)
                     else:
                         excluded_indices = set(range(0, 11)) | set(range(25, 33))
-                        start_time, frame_count, fps, out, frame_count_for_detect, original_out = loop.benchpress_bone_loop_2(
+                        start_time, frame_count, fps, out, frame_count_for_detect, original_out = loop.benchpress_head_loop(
                             i, frame, label, self.save_sig, self.recording_sig,
                             self.folder, start_time, frame_count, fps, out, original_out,
                             excluded_indices, self.mediapipe_txt_file2, self.pose2, frame_count_for_detect)
@@ -233,6 +233,10 @@ class Recordingbackend():
             self.start_recording(sport)
         else:
             self.stop_recording()
+            
+    def player_reset(self, name):
+        self.player = name.text()
+        print(self.player)
 
     def start_recording(self, sport):
         self.stop_event.clear()  # Clear the stop event before starting threads
@@ -257,7 +261,7 @@ class Recordingbackend():
             self.save_sig = True
         
     def data_produce_btn_clicked(self):
-        self.folder = 'C:/jinglun/CATSRecording/data/recording_Deadlift/cam_group_1_recording_1'
+        self.folder = 'C:/Users/92A27/MOCAP/recordings/cam_group_1_recording_1'
         os.system(f'python ./tools/interpolate.py {self.folder}')
         os.system(f'python ./tools/data_produce.py {self.folder}')
         os.system(f'python ./tools/trajectory.py {self.folder}')
