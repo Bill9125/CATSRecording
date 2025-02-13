@@ -1,6 +1,9 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 import os, glob, sys, time
 import cv2, threading
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+import json
 
 
 class MyThread(threading.Thread):
@@ -86,6 +89,62 @@ class MyThread(threading.Thread):
 
     def stop(self):
         self._stop_event.set()
+        
+class Thread_data(threading.Thread):
+    def __init__(self, gragh, file, barrier, fast_forward_combobox, Frameslider, framenumber):
+        threading.Thread.__init__(self, daemon=True)
+        self._pause_event = threading.Event()
+        self._pause_event.set()
+        self._stop_event = threading.Event()
+        self._stop_event.clear()
+        self.gragh = gragh
+        self.file = file
+        self.barrier = barrier
+        self.fast_forward_combobox = fast_forward_combobox
+        self.Frameslider = Frameslider
+        self.framenumber = framenumber
+        self.is_pause = False
+        self.is_slide_end = False
+        self.is_slide_start = False
+        
+    def run(self):
+        start_time = time.time()
+        current_frame = 0
+        while not self._stop_event.is_set():
+            speed_rate = self.fast_forward_combobox.currentText()
+            spf = 1 / 30
+            # 迴圈暫停條件
+            if self.is_pause:
+                continue
+            
+            if self.is_slide_start:
+                if self.is_slide_end:
+                    
+                    self.is_slide_end = False
+                    self.is_slide_start = False
+                self.barrier.wait() 
+                continue
+            
+            # 迴圈終止條件
+            if self.Frameslider.value() >= self.framenumber:
+                break
+                
+            # 等待所有 thread 完成同步
+            self.barrier.wait()
+            current_frame += 1
+            if (time.time() - start_time) >= (spf / float(speed_rate)):
+                self.gragh['ax'].scatter(self.file['frames'][0:current_frame], self.file['values'][0:current_frame], marker="s", color="green")
+                self.gragh['canvas'].draw()
+                self.gragh['label'].setPixmap(self.gragh['canvas'].grab())
+                
+    def pause(self):
+        self._pause_event.clear()
+
+    def resume(self):
+        self._pause_event.set()
+
+    def stop(self):
+        self._stop_event.set()
             
 class Replaybackend():
     def __init__(self):
@@ -94,6 +153,10 @@ class Replaybackend():
         self.firstclicked_D = True
         self.firstclicked_B = True
         self.firstclicked_S = True
+        self.data_path = {'Deadlift': ['Body_Length.json', 'Hip_Angle.json', 
+                                       'Knee_Angle.json', 'Knee_to_Hip.json'],
+                          'Benchpress' : ['Armpit_Angles.json', 'Bar_Position.json', 
+                                          'Shoulder_Angle.json']}
         self.folders = {}
         self.threads = []
         self.rp_Vision_labels = []
@@ -112,11 +175,11 @@ class Replaybackend():
     def Deadlift_btn_pressed(
         self, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons,
         Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout,
-        head_label, bottom_labels, data_labels
+        head_label, bottom_labels, graghs
         ):
         self.currentsport = 'Deadlift'
         self.rp_Vision_labels = head_label + bottom_labels
-        self.data_labels = data_labels
+        self.data_graghs = graghs
         self.rp_btn_press(
             self.currentsport, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons,
             Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout,
@@ -152,6 +215,14 @@ class Replaybackend():
         self, sport, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons, 
         Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout,
         ):
+        # 抓取計算完的檔案
+        self.datas = []
+        for i in range(len(self.data_path[sport])):
+            with open(f'../config/{sport}_data/{self.data_path[sport][i]}',
+                        mode='r', encoding='utf-8') as file:
+                data = json.load(file)
+                self.datas.append(data)
+                
         if sport == 'Deadlift':
             folderPath = self.resource_path('C:/Users/92A27/MOCAP/recordings')
             self.folders[sport] = folderPath
@@ -192,8 +263,6 @@ class Replaybackend():
         folder = self.folders[self.currentsport]
         videos = glob.glob(f'{folder}/{videofolder}/*.avi')
         self.data_videos.clear()
-        for label in self.data_labels:
-            label.setPixmap(QtGui.QPixmap())
             
         # 臥推有六部avi影片，要抽取三部
         if len(videos) == 6:
@@ -254,15 +323,10 @@ class Replaybackend():
                     thread_play.start()
                     self.threads.append(thread_play)
                     
-                for i, video in enumerate(self.data_videos):
-                    cap = cv2.VideoCapture(video)
-                    self.data_caps.append(cap)
-                    thread_play = MyThread(self.data_caps, i, Play_btn, icons, fast_forward_combobox,
-                                            Frameslider, framenumber, self.data_labels,
-                                            self.rp_qpixmaps, self.barrier)
-                    thread_play.start()
-                    self.threads.append(thread_play)
-
+                # for i, gragh in enumerate(self.data_graghs):
+                #     data_thread = Thread_data(gragh, self.datas[i], self.barrier, fast_forward_combobox, Frameslider, framenumber)
+                #     data_thread.start()
+                    
             # pause 後繼續播放
             else:
                 print('resume')
@@ -272,7 +336,7 @@ class Replaybackend():
         # pause
         elif self.index % 2 == 0:
             self.pause_event(fast_forward_combobox, Play_btn, icons)
-                
+
     def pause_event(self, fast_forward_combobox, Play_btn, icons):
         fast_forward_combobox.setEnabled(True)
         Play_btn.setIcon(icons[1])
@@ -295,13 +359,21 @@ class Replaybackend():
             thread.is_slide_start = True
 
     def sliding(self, Frameslider, TimeCount_LineEdit):
+        # 控制秒數
         fps = 30
         val = Frameslider.value()
         sec = val / fps
         minute = "%02d" % int(sec / 60)
         second = "%02d" % int(sec % 60)
         TimeCount_LineEdit.setText(f'{minute}:{second}')
-
+        for i, gragh in enumerate(self.data_graghs):
+            file = self.datas[i]
+            x_data = file['frames']
+            y_data = file['values']
+            gragh['ax'].scatter_plot.set_offsets(list(zip(x_data[0:val], y_data[0:val])))  # 更新點的位置
+            gragh['canvas'].draw()
+            gragh['label'].setPixmap(gragh['canvas'].grab())
+        
     def closeEvent(self, event):
         self.del_mythreads()
         event.accept()
@@ -317,17 +389,29 @@ class Replaybackend():
                     self.rp_qpixmaps[i] = QtGui.QPixmap.fromImage(image)
                     scaled_pixmap = self.rp_qpixmaps[i].scaled(self.rp_Vision_labels[i].size(), QtCore.Qt.IgnoreAspectRatio)
                     self.rp_Vision_labels[i].setPixmap(scaled_pixmap)
-        if self.data_videos:
-            for i, video in enumerate(self.data_videos):
-                temp_cap = cv2.VideoCapture(video)
-                if self.ocv:
-                    _ , frame = temp_cap.read()
-                    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                    image = QtGui.QImage(frame_rgb.data, frame_rgb.shape[1], frame_rgb.shape[0], QtGui.QImage.Format_RGB888)
-                    self.rp_qpixmaps[i] = QtGui.QPixmap.fromImage(image)
-                    scaled_pixmap = self.rp_qpixmaps[i].scaled(self.data_labels[i].size(), QtCore.Qt.IgnoreAspectRatio)
-                    self.data_labels[i].setPixmap(scaled_pixmap)
-                    print(f'label size : {self.data_labels[i].size()}')
+        
+        for i, gragh in enumerate(self.data_graghs):
+            file = self.datas[i]
+            x_data = file['frames']
+            y_data = file['values']
+            gragh['ax'].clear()
+            min_length = min(len(x_data), len(y_data))
+            x_data = x_data[:min_length]
+            y_data = y_data[:min_length]
+            if min_length > 200:
+                trimmed_data = y_data[100:-100]  # 只取中间部分数据
+            else:
+                trimmed_data = y_data  # 如果数据少于 200 帧，保留所有数据
+            y_min = min(trimmed_data) * 0.9
+            y_max = max(trimmed_data) * 1.1
+            gragh['ax'].set_ylim(y_min, y_max)
+            gragh['ax'].plot(x_data, y_data, label = f"{file['title']}")
+            gragh['ax'].set_xlabel('frames')
+            gragh['ax'].set_ylabel(f"{file['y_label']}")
+            gragh['ax'].legend()
+            gragh['canvas'].draw()
+            gragh['label'].setPixmap(gragh['canvas'].grab())
+            
 
     def creat_vision_labels_pixmaps(self, labelsize, parentlayout, sublayout, num):
         Vision_labels = []
@@ -345,6 +429,17 @@ class Replaybackend():
             sublayout.setAlignment(Vision_label, QtCore.Qt.AlignCenter)
             Vision_labels.append(Vision_label)
         return Vision_labels, qpixmaps
+    
+    def creat_matplot_labels(self, size, parentlayout, sublayout):
+        figure = Figure(figsize=(17,2.8))
+        canvas = FigureCanvas(figure)
+        ax = figure.add_subplot(111)
+        label = QtWidgets.QLabel(parentlayout)
+        sublayout.setWidget(1, QtWidgets.QFormLayout.FieldRole, label)
+        sublayout.setFormAlignment(QtCore.Qt.AlignCenter)
+        label.setPixmap(canvas.grab())
+        return label, canvas, ax
+        
 
     def stop(self, Frameslider, Play_btn, icons):
         print('stop')

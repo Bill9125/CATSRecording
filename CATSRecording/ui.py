@@ -101,8 +101,6 @@ class Ui_MainWindow(object):
         self.top_controls_layout.setStretch(2, 1)
         self.top_controls_layout.setStretch(3, 20)
         self.top_controls_layout.setContentsMargins(0, 0, 500, 0)
-        
-
         self.replay_layout.addLayout(self.top_controls_layout)
 
         self.play_groupBox = QtWidgets.QGroupBox(self.Replay_tab)
@@ -120,7 +118,6 @@ class Ui_MainWindow(object):
         self.replay_layout.addWidget(self.play_groupBox)
         
         self.bottom_controls_layout = QtWidgets.QHBoxLayout()
-
         self.Play_btn = QtWidgets.QToolButton()
         self.Play_btn.setEnabled(False)
         self.Play_btn.setObjectName("Play_btn")

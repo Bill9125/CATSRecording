@@ -4,6 +4,7 @@ import numpy as np
 import os
 import argparse
 import cv2
+import json
 
 # 函式：讀取骨架數據的 txt 檔案
 def read_skeleton_data(filename):
@@ -64,54 +65,49 @@ def read_barbell_positions(filename):
             y_coords.append(y)
     return frames, x_coords, y_coords
     
-def generate_individual_animation(title, y_label, y_data, output_file, skeleton_frames):
-    fig, ax = plt.subplots(figsize=(16, 6))  # 让动画变大
-    ax.set_title(title)
-    ax.set_xlabel('Frame')
-    ax.set_ylabel(y_label)
-    
-    # ✅ 只使用中间的部分数据来计算 y 轴范围（排除前 100 和后 100 帧）
-    if len(y_data) > 200:
-        trimmed_data = y_data[100:-100]  # 只取中间部分数据
+def save_to_config(title, y_label, y_data, output_file, skeleton_frames):
+    # 确保数据长度一致
+    min_length = min(len(skeleton_frames), len(y_data))
+    skeleton_frames = skeleton_frames[:min_length]
+    y_data = y_data[:min_length]
+
+    # 排除前后 100 帧数据计算上下限
+    if min_length > 200:
+        trimmed_data = y_data[100:-100]  
     else:
-        trimmed_data = y_data  # 如果数据少于 200 帧，保留所有数据
-    
-    # ✅ 计算上下限，给范围增加 10% 缓冲
+        trimmed_data = y_data  
+
+    # 计算自动上下限
     y_min = min(trimmed_data) * 0.9
     y_max = max(trimmed_data) * 1.1
-    ax.set_ylim(y_min, y_max)
 
-    ax.grid()
-    line, = ax.plot([], [], color='blue')
+    # 构造 JSON 数据
+    config_data = {
+        "title": title,
+        "y_label": y_label,
+        "y_min": y_min,
+        "y_max": y_max,
+        "frames": skeleton_frames,
+        "values": y_data
+    }
 
-    def update(frame_index):
-        if frame_index < 1:
-            frame_index = 1
-        start_frame = max(0, frame_index - 1000)  # 只显示最近 1000 帧
-        end_frame = frame_index
-        line.set_data(skeleton_frames[start_frame:end_frame], y_data[start_frame:end_frame])
-        ax.set_xlim(start_frame, end_frame)
-        return line,
+    # 生成 JSON 配置文件路径
+    config_path = output_file
 
-    ani = FuncAnimation(fig, update, frames=len(skeleton_frames), interval=10, blit=True)
+    # 保存 JSON 文件
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config_data, f, indent=4)
 
-    # 保存影片，增加 dpi 提高画质
-    try:
-        ani.save(output_file, fps=30, writer='ffmpeg', dpi=200)
-        print(f"Saved animation to {output_file}")
-    except FileNotFoundError:
-        print(f"FFmpeg is not available on your system. Unable to save {output_file}.")
-    except Exception as e:
-        print(f"Error saving {output_file}: {e}")
-    finally:
-        plt.close(fig)
+    print(f"✅ 数据已存入 {config_path}")
 
 
 
 parser = argparse.ArgumentParser()
 parser.add_argument('dir',type=str)
+parser.add_argument('--out',type=str)
 args = parser.parse_args()
 dir = args.dir
+out = args.out
 skeleton_file_path = os.path.join(dir ,'interpolated_mediapipe_landmarks_1.txt')
 barbell_file_path = os.path.join(dir , 'yolo_coordinates_interpolated.txt')
 
@@ -122,35 +118,34 @@ knee_to_hip_ratios = [
     for left_knee, left_hip in zip(left_knee_angles, left_hip_angles)
 ]
 
-# 生成五個動畫並存成影片
-generate_individual_animation(
+save_to_config(
     title='Left Knee Angle Over Time',
     y_label='Angle (degrees)',
     y_data=left_knee_angles,
-    output_file = os.path.join(dir, 'vision2_data.avi'),
+    output_file=os.path.join(out, 'Deadlift_data', 'Knee_Angle.json'),
     skeleton_frames=skeleton_frames
 )
 
-generate_individual_animation(
+save_to_config(
     title='Left Hip Angle Over Time',
     y_label='Angle (degrees)',
     y_data=left_hip_angles,
-    output_file = os.path.join(dir, 'vision3_data.avi'),
+    output_file=os.path.join(out, 'Deadlift_data', 'Hip_Angle.json'),
     skeleton_frames=skeleton_frames
 )
 
-generate_individual_animation(
+save_to_config(
     title='Knee-to-Hip Angle Ratio Over Time',
     y_label='Ratio (Knee / Hip)',
     y_data=knee_to_hip_ratios,
-    output_file = os.path.join(dir, 'vision4_data.avi'),
+    output_file=os.path.join(out, 'Deadlift_data', 'Knee_to_Hip.json'),
     skeleton_frames=skeleton_frames
 )
 
-generate_individual_animation(
+save_to_config(
     title='Body Length Over Time',
     y_label='Length',
     y_data=body_lengths,
-    output_file = os.path.join(dir, 'vision5_data.avi'),
+    output_file=os.path.join(out, 'Deadlift_data', 'Body_Length.json'),
     skeleton_frames=skeleton_frames
 )
