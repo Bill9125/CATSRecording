@@ -110,6 +110,23 @@ class Thread_data(threading.Thread):
     def run(self):
         start_time = time.time()
         current_frame = 0
+        self.gragh['ax'].clear()
+        x_data = self.file['frames']
+        y_data = self.file['values']
+        self.gragh['ax'].set_xlim(min(x_data), max(x_data))
+        min_length = min(len(x_data), len(y_data))
+        x_data = x_data[:min_length]
+        y_data = y_data[:min_length]
+        if min_length > 200:
+            trimmed_data = y_data[100:-100]  # 只取中间部分数据
+        else:
+            trimmed_data = y_data  # 如果数据少于 200 帧，保留所有数据
+        y_min = min(trimmed_data) * 0.9
+        y_max = max(trimmed_data) * 1.1
+        self.gragh['ax'].set_ylim(y_min, y_max)
+        self.gragh['ax'].set_xlabel('frames')
+        self.gragh['ax'].set_ylabel(f"{self.file['y_label']}")
+        self.gragh['ax'].legend()
         while not self._stop_event.is_set():
             speed_rate = self.fast_forward_combobox.currentText()
             spf = 1 / 30
@@ -119,7 +136,23 @@ class Thread_data(threading.Thread):
             
             if self.is_slide_start:
                 if self.is_slide_end:
-                    
+                    self.gragh['ax'].clear()
+                    x_data = self.file['frames']
+                    y_data = self.file['values']
+                    self.gragh['ax'].set_xlim(min(x_data), max(x_data))
+                    min_length = min(len(x_data), len(y_data))
+                    x_data = x_data[:min_length]
+                    y_data = y_data[:min_length]
+                    if min_length > 200:
+                        trimmed_data = y_data[100:-100]  # 只取中间部分数据
+                    else:
+                        trimmed_data = y_data  # 如果数据少于 200 帧，保留所有数据
+                    y_min = min(trimmed_data) * 0.9
+                    y_max = max(trimmed_data) * 1.1
+                    self.gragh['ax'].set_ylim(y_min, y_max)
+                    self.gragh['ax'].set_xlabel('frames')
+                    self.gragh['ax'].set_ylabel(f"{self.file['y_label']}")
+                    self.gragh['ax'].legend()
                     self.is_slide_end = False
                     self.is_slide_start = False
                 self.barrier.wait() 
@@ -133,7 +166,7 @@ class Thread_data(threading.Thread):
             self.barrier.wait()
             current_frame += 1
             if (time.time() - start_time) >= (spf / float(speed_rate)):
-                self.gragh['ax'].scatter(self.file['frames'][0:current_frame], self.file['values'][0:current_frame], marker="s", color="green")
+                self.gragh['ax'].plot(x_data[0:current_frame], y_data[0:current_frame], color="blue")
                 self.gragh['canvas'].draw()
                 self.gragh['label'].setPixmap(self.gragh['canvas'].grab())
                 
@@ -313,7 +346,7 @@ class Replaybackend():
                 if self.caps or self.data_caps:
                     self.data_caps.clear()
                     self.caps.clear()
-                self.barrier = threading.Barrier(len(self.videos))
+                self.barrier = threading.Barrier(len(self.videos)+len(self.data_graghs))
                 for i, video in enumerate(self.videos):
                     cap = cv2.VideoCapture(video)
                     self.caps.append(cap)
@@ -323,9 +356,9 @@ class Replaybackend():
                     thread_play.start()
                     self.threads.append(thread_play)
                     
-                # for i, gragh in enumerate(self.data_graghs):
-                #     data_thread = Thread_data(gragh, self.datas[i], self.barrier, fast_forward_combobox, Frameslider, framenumber)
-                #     data_thread.start()
+                for i, gragh in enumerate(self.data_graghs):
+                    data_thread = Thread_data(gragh, self.datas[i], self.barrier, fast_forward_combobox, Frameslider, framenumber)
+                    data_thread.start()
                     
             # pause 後繼續播放
             else:
@@ -366,13 +399,13 @@ class Replaybackend():
         minute = "%02d" % int(sec / 60)
         second = "%02d" % int(sec % 60)
         TimeCount_LineEdit.setText(f'{minute}:{second}')
-        for i, gragh in enumerate(self.data_graghs):
-            file = self.datas[i]
-            x_data = file['frames']
-            y_data = file['values']
-            gragh['ax'].scatter_plot.set_offsets(list(zip(x_data[0:val], y_data[0:val])))  # 更新點的位置
-            gragh['canvas'].draw()
-            gragh['label'].setPixmap(gragh['canvas'].grab())
+        # for i, gragh in enumerate(self.data_graghs):
+        #     file = self.datas[i]
+        #     x_data = file['frames']
+        #     y_data = file['values']
+            # gragh['scatter_plot'].set_offsets(list(zip(x_data[0:val], y_data[0:val])))  # 更新點的位置
+            # gragh['canvas'].draw()
+            # gragh['label'].setPixmap(gragh['canvas'].grab())
         
     def closeEvent(self, event):
         self.del_mythreads()
@@ -434,11 +467,12 @@ class Replaybackend():
         figure = Figure(figsize=(17,2.8))
         canvas = FigureCanvas(figure)
         ax = figure.add_subplot(111)
+        scatter_plot = ax.scatter([], [])
         label = QtWidgets.QLabel(parentlayout)
         sublayout.setWidget(1, QtWidgets.QFormLayout.FieldRole, label)
         sublayout.setFormAlignment(QtCore.Qt.AlignCenter)
         label.setPixmap(canvas.grab())
-        return label, canvas, ax
+        return label, canvas, ax, scatter_plot
         
 
     def stop(self, Frameslider, Play_btn, icons):

@@ -259,8 +259,8 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
             for _ in range(4):
                 data_layout = QtWidgets.QFormLayout()
                 self.data_layouts.append(data_layout)
-                label, canvas, ax = self.rpbf.creat_matplot_labels([1800, 300], self.ui.Replay_tab, data_layout)
-                self.graghs.append({'label' : label, 'canvas' : canvas, 'ax' : ax})
+                label, canvas, ax, scatter_plot = self.rpbf.creat_matplot_labels([1800, 300], self.ui.Replay_tab, data_layout)
+                self.graghs.append({'label' : label, 'canvas' : canvas, 'ax' : ax, 'scatter_plot' : scatter_plot})
                 self.ui.data_ctrl_layout_V.addLayout(data_layout)
                 
             self.ui.bottom_vis_layout.setSpacing(50)
