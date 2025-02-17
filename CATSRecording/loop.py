@@ -46,11 +46,11 @@ def deadlift_bar_loop(i, frame, label, save_sig, recording_sig, folder,
         # 錄影結束
         if save_sig and out is not None:
             out.release()
-            out = None
             print(f"Released VideoWriter for camera {i + 1}")
             save_sig = False
+        out = None
 
-   
+    barrier.wait()
     cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     h, w, ch = frame.shape
@@ -126,10 +126,10 @@ def deadlift_bone_loop(i, frame, label, save_sig, recording_sig, folder,
         # 錄影結束
         if save_sig and out is not None:
             out.release()
-            out = None
             print(f"Released VideoWriter for camera {i + 1}")
             save_sig = False
-        
+        out = None
+    barrier.wait()
     
     cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -160,11 +160,12 @@ def deadlift_general_loop(i, frame, label, save_sig, recording_sig, folder,
         out.write(frame)
     
     # 錄影結束    
-    if save_sig and out is not None and not recording_sig:
-        out.release()
+    if not recording_sig:
+        if out is not None:
+            out.release()
+            print(f"Released VideoWriter for camera {i + 1}")
         out = None
-        print(f"Released VideoWriter for camera {i + 1}")
-        save_sig = False
+    barrier.wait()
     cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     h, w, ch = frame.shape

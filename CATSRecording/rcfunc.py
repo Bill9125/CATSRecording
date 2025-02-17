@@ -129,7 +129,7 @@ class Recordingbackend():
         
     def creat_threads(self, sport, labels):
         # Start YOLO and MediaPipe threads
-        self.barrier = threading.Barrier(self.struct[sport])
+        self.barrier = threading.Barrier(5)
         for i in range(self.struct[sport]):
             thread = threading.Thread(target=self.process_vision,
                                       args = (i, sport, labels[i], self.barrier) , daemon=True)
@@ -154,6 +154,7 @@ class Recordingbackend():
         frame_count = 0
         frame_count_for_detect = 0
         fps = 0
+        out = None
         self.out_1 = None
         self.out_2 = None
         self.out_3 = None
@@ -175,9 +176,9 @@ class Recordingbackend():
                             self.folder, start_time, frame_count, fps, self.out_2, self.bone_model,
                             self.mediapipe_txt_file, frame_count_for_detect, self.skeleton_connections, barrier)
                     else:
-                        start_time, frame_count, fps, self.out_3, self.save_sig_3 = loop.deadlift_general_loop(
+                        start_time, frame_count, fps, out, self.save_sig_3 = loop.deadlift_general_loop(
                             i, frame, label, self.save_sig_3, self.recording_sig,
-                            self.folder, start_time, frame_count, fps, self.out_3, barrier)
+                            self.folder, start_time, frame_count, fps, out, barrier)
                 
                 elif sport == 'Benchpress':
                     if i == 0:
