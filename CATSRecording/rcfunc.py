@@ -72,6 +72,7 @@ class Recordingbackend():
         self.save_sig_1 = False
         self.save_sig_2 = False
         self.save_sig_3 = False
+        self.break_sig = False
         self.src_changing = False
         self.folder = str
         self.yolo_txt_file = str
@@ -153,9 +154,9 @@ class Recordingbackend():
         frame_count = 0
         frame_count_for_detect = 0
         fps = 0
-        out_1 = None
-        out_2 = None
-        out_3 = None
+        self.out_1 = None
+        self.out_2 = None
+        self.out_3 = None
         original_out = None
         # 基本錄製結構
         while not self.stop_event.is_set():
@@ -164,19 +165,19 @@ class Recordingbackend():
             if ret:
                 if sport == 'Deadlift':
                     if i == 0:
-                        start_time, frame_count, fps, out_1, frame_count_for_detect, self.save_sig_1 = loop.deadlift_bar_loop(
+                        start_time, frame_count, fps, self.out_1, frame_count_for_detect, self.save_sig_1 = loop.deadlift_bar_loop(
                             i, frame, label, self.save_sig_1, self.recording_sig,
-                            self.folder, start_time, frame_count, fps, out_1, self.bar_model,
+                            self.folder, start_time, frame_count, fps, self.out_1, self.bar_model,
                             self.yolo_txt_file, frame_count_for_detect, barrier)
                     elif i == 1:
-                        start_time, frame_count, fps, out_2, frame_count_for_detect, self.save_sig_2 = loop.deadlift_bone_loop(
+                        start_time, frame_count, fps, self.out_2, frame_count_for_detect, self.save_sig_2 = loop.deadlift_bone_loop(
                             i, frame, label, self.save_sig_2, self.recording_sig,
-                            self.folder, start_time, frame_count, fps, out_2, self.bone_model,
+                            self.folder, start_time, frame_count, fps, self.out_2, self.bone_model,
                             self.mediapipe_txt_file, frame_count_for_detect, self.skeleton_connections, barrier)
                     else:
-                        start_time, frame_count, fps, out_3, self.save_sig_3 = loop.deadlift_general_loop(
+                        start_time, frame_count, fps, self.out_3, self.save_sig_3 = loop.deadlift_general_loop(
                             i, frame, label, self.save_sig_3, self.recording_sig,
-                            self.folder, start_time, frame_count, fps, out_3, barrier)
+                            self.folder, start_time, frame_count, fps, self.out_3, barrier)
                 
                 elif sport == 'Benchpress':
                     if i == 0:
@@ -210,7 +211,13 @@ class Recordingbackend():
                         start_time, frame_count, fps, out = loop.deadlift_general_loop(
                             i, frame, label, self.save_sig, self.recording_sig,
                             self.folder, start_time, frame_count, fps, out)
-        
+            if self.break_sig:
+                break
+            
+        if self.out_1 or self.out_2 or self.out_3:
+            self.out_1.release()
+            self.out_2.release()
+            self.out_3.release()
         if self.yolo_txt_file is not None:
             self.yolo_txt_file.close()
             self.yolo_txt_file = None
@@ -251,6 +258,9 @@ class Recordingbackend():
         else:
             self.folder = os.path.join(self.save_path[sport], f"recording_{timestamp}")
         os.makedirs(self.folder, exist_ok=True)
+        self.out_1 = None  # 確保 `out` 變數重置
+        self.out_2 = None
+        self.out_3 = None
         
         # Initialize text files for saving coordinates
         yolo_txt_path = os.path.join(self.folder, "yolo_coordinates.txt")
