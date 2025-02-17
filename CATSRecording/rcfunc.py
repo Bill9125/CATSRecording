@@ -69,6 +69,9 @@ class Recordingbackend():
         self.player = None
         self.recording_sig = False
         self.save_sig = False
+        self.save_sig_1 = False
+        self.save_sig_2 = False
+        self.save_sig_3 = False
         self.src_changing = False
         self.folder = str
         self.yolo_txt_file = str
@@ -125,9 +128,10 @@ class Recordingbackend():
         
     def creat_threads(self, sport, labels):
         # Start YOLO and MediaPipe threads
+        self.barrier = threading.Barrier(self.struct[sport])
         for i in range(self.struct[sport]):
             thread = threading.Thread(target=self.process_vision,
-                                      args = (i, sport, labels[i]) , daemon=True)
+                                      args = (i, sport, labels[i], self.barrier) , daemon=True)
             self.threads.append(thread)
             thread.start()
             
@@ -144,12 +148,14 @@ class Recordingbackend():
         bone_model.to(device)
         return bar_model, bone_model
         
-    def process_vision(self, i, sport, label):
+    def process_vision(self, i, sport, label, barrier):
         start_time = time.time()
         frame_count = 0
         frame_count_for_detect = 0
         fps = 0
-        out = None
+        out_1 = None
+        out_2 = None
+        out_3 = None
         original_out = None
         # 基本錄製結構
         while not self.stop_event.is_set():
@@ -158,19 +164,19 @@ class Recordingbackend():
             if ret:
                 if sport == 'Deadlift':
                     if i == 0:
-                        start_time, frame_count, fps, out, frame_count_for_detect = loop.deadlift_bar_loop(
-                            i, frame, label, self.save_sig, self.recording_sig,
-                            self.folder, start_time, frame_count, fps, out, self.bar_model,
-                            self.yolo_txt_file, frame_count_for_detect)
+                        start_time, frame_count, fps, out_1, frame_count_for_detect, self.save_sig_1 = loop.deadlift_bar_loop(
+                            i, frame, label, self.save_sig_1, self.recording_sig,
+                            self.folder, start_time, frame_count, fps, out_1, self.bar_model,
+                            self.yolo_txt_file, frame_count_for_detect, barrier)
                     elif i == 1:
-                        start_time, frame_count, fps, out = loop.deadlift_bone_loop(
-                            i, frame, label, self.save_sig, self.recording_sig,
-                            self.folder, start_time, frame_count, fps, out, self.bone_model,
-                            self.mediapipe_txt_file, frame_count_for_detect, self.skeleton_connections)
+                        start_time, frame_count, fps, out_2, frame_count_for_detect, self.save_sig_2 = loop.deadlift_bone_loop(
+                            i, frame, label, self.save_sig_2, self.recording_sig,
+                            self.folder, start_time, frame_count, fps, out_2, self.bone_model,
+                            self.mediapipe_txt_file, frame_count_for_detect, self.skeleton_connections, barrier)
                     else:
-                        start_time, frame_count, fps, out = loop.deadlift_general_loop(
-                            i, frame, label, self.save_sig, self.recording_sig,
-                            self.folder, start_time, frame_count, fps, out)
+                        start_time, frame_count, fps, out_3, self.save_sig_3 = loop.deadlift_general_loop(
+                            i, frame, label, self.save_sig_3, self.recording_sig,
+                            self.folder, start_time, frame_count, fps, out_3, barrier)
                 
                 elif sport == 'Benchpress':
                     if i == 0:
@@ -205,8 +211,6 @@ class Recordingbackend():
                             i, frame, label, self.save_sig, self.recording_sig,
                             self.folder, start_time, frame_count, fps, out)
         
-        if out is not None:
-            out.release()
         if self.yolo_txt_file is not None:
             self.yolo_txt_file.close()
             self.yolo_txt_file = None
@@ -261,11 +265,13 @@ class Recordingbackend():
     def stop_recording(self):
         if self.recording_sig:
             self.recording_sig = False
-            self.save_sig = True
+            self.save_sig_1 = True
+            self.save_sig_2 = True
+            self.save_sig_3 = True
         
     def data_produce_btn_clicked(self):
-        self.folder = 'C:/Users/92A27/MOCAP/recordings/cam_group_1_recording_3'
+        # self.folder = 'C:/Users/92A27/MOCAP/recordings/cam_group_1_recording_3'
         os.system(f'python ./tools/interpolate.py {self.folder}')
-        os.system(f'python ./tools/data_produce.py {self.folder}')
+        os.system(f'python ./tools/data_produce.py {self.folder} --out ../config')
         os.system(f'python ./tools/trajectory.py {self.folder}')
         print('後製已完成')
