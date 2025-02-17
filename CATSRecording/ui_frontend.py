@@ -18,6 +18,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.names = []
         self.graghs = []
         self.player_btn = []
+        self.data_layouts = []
         self.D_layout_inited = False
         self.B_layout_inited = False
         self.S_layout_inited = False
@@ -244,10 +245,14 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.recording_ctrl_btn.clicked.connect(lambda: self.rcbf.recording_ctrl_btn_clicked('Benchpress'))
 
     def rp_layout_set(self, sport):
-        self.data_layouts = []
         self.layout_clear(self.ui.head_vis_layout)
         self.layout_clear(self.ui.bottom_vis_layout)
         self.layout_clear(self.ui.data_ctrl_layout_V)
+        if self.data_layouts:
+            for layout in self.data_layouts:
+                self.layout_clear(layout)
+        self.data_layouts = []
+        self.graghs = []
         if self.ui.bottom_controls_layout in [self.ui.data_ctrl_layout_V.itemAt(i).layout() for i in range(self.ui.data_ctrl_layout_V.count())]:
             self.ui.data_ctrl_layout_V.removeItem(self.ui.bottom_controls_layout)
         if sport == 'Deadlift':
