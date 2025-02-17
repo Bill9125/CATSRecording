@@ -178,9 +178,7 @@ class Replaybackend():
         self.rp_Vision_labels = []
         self.rp_qpixmaps = []
         self.videos = []
-        self.data_videos = []
         self.caps = []
-        self.data_caps = []
         self.currentsport = ''
         self.ocv = True
         self.index = 0
@@ -231,13 +229,6 @@ class Replaybackend():
         self, sport, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons, 
         Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout,
         ):
-        # 抓取計算完的檔案
-        self.datas = []
-        for i in range(len(self.data_path[sport])):
-            with open(f'../config/{sport}_data/{self.data_path[sport][i]}',
-                        mode='r', encoding='utf-8') as file:
-                data = json.load(file)
-                self.datas.append(data)
                 
         if sport == 'Deadlift':
             folderPath = self.resource_path('C:/Users/92A27/MOCAP/recordings')
@@ -278,31 +269,36 @@ class Replaybackend():
         videofolder = file_comboBox.currentText()
         folder = self.folders[self.currentsport]
         videos = glob.glob(f'{folder}/{videofolder}/*.avi')
-        self.data_videos.clear()
-            
-        # 臥推有六部avi影片，要抽取三部
-        if len(videos) == 6:
-            self.videos = [video for video in videos 
-                           if os.path.basename(video) in ('original_vision1.avi', 'vision2.avi', 'original_vision3.avi')
-                        ]
-            self.videos[1], self.videos[2] = self.videos[2], self.videos[1]
+        self.datas = []
+        
+        # 臥推有六部avi影片，要抽取三部    
+        if self.currentsport == 'Benchpress':
+            if len(videos) == 6:
+                self.videos = [video for video in videos 
+                            if os.path.basename(video) in ('original_vision1.avi', 'vision2.avi', 'original_vision3.avi')
+                            ]
+                self.videos[1], self.videos[2] = self.videos[2], self.videos[1]
 
         ## 硬舉avi只需要 1, 2, 3 視角
-        # 未後製
-        elif len(videos) == 5:
-            self.videos = [video for video in videos
-                           if os.path.basename(video) in ('vision1.avi', 'vision2.avi', 'vision3.avi')]
-            self.videos = [self.videos[1], self.videos[2], self.videos[0]]
-            print(self.videos)
-        # 已後製
-        elif len(videos) == 10:
-            self.videos = [video for video in videos
-                           if os.path.basename(video) in ('vision1_drawed.avi', 'vision2.avi', 'vision3.avi')]
-            self.videos = [self.videos[1], self.videos[2], self.videos[0]]
-            self.data_videos = [video for video in videos
-                           if os.path.basename(video) in ('vision2_data.avi', 'vision3_data.avi', 'vision4_data.avi', 'vision5_data.avi')]
+        if self.currentsport == 'Deadlift':
+            # 未後製
+            if len(videos) == 5:
+                self.videos = [video for video in videos
+                            if os.path.basename(video) in ('vision1.avi', 'vision2.avi', 'vision3.avi')]
+                self.videos = [self.videos[1], self.videos[2], self.videos[0]]
+            # 已後製
+            elif len(videos) == 6:
+                self.videos = [video for video in videos
+                            if os.path.basename(video) in ('vision1_drawed.avi', 'vision2.avi', 'vision3.avi')]
+                self.videos = [self.videos[1], self.videos[2], self.videos[0]]
+                # 抓取計算完的檔案
+                for i in range(len(self.data_path[self.currentsport])):
+                    with open(f'../config/{self.currentsport}_data/{self.data_path[self.currentsport][i]}',
+                                mode='r', encoding='utf-8') as file:
+                        data = json.load(file)
+                        self.datas.append(data)
         
-        for _ in range(len(self.videos) + len(self.data_videos)):
+        for _ in range(len(self.videos)):
             pixmap = QtGui.QPixmap()
             self.rp_qpixmaps.append(pixmap)
         self.stop(Frameslider, play_btn, icons)
@@ -326,8 +322,7 @@ class Replaybackend():
                 self.is_stop = False
                 if self.threads:
                     self.del_mythreads()
-                if self.caps or self.data_caps:
-                    self.data_caps.clear()
+                if self.caps:
                     self.caps.clear()
                 self.barrier_play = threading.Barrier(len(self.videos))
                 self.barrier_data = threading.Barrier(len(self.data_graghs))
@@ -340,10 +335,11 @@ class Replaybackend():
                     thread_play.start()
                     self.threads.append(thread_play)
                     
-                for i, gragh in enumerate(self.data_graghs):
-                    data_thread = Thread_data(gragh, self.datas[i], self.barrier_data, fast_forward_combobox, Frameslider, framenumber)
-                    data_thread.start()
-                    self.threads.append(data_thread)
+                if self.datas:
+                    for i, gragh in enumerate(self.data_graghs):
+                        data_thread = Thread_data(gragh, self.datas[i], self.barrier_data, fast_forward_combobox, Frameslider, framenumber)
+                        data_thread.start()
+                        self.threads.append(data_thread)
                     
             # pause 後繼續播放
             else:
@@ -400,29 +396,33 @@ class Replaybackend():
                     self.rp_qpixmaps[i] = QtGui.QPixmap.fromImage(image)
                     scaled_pixmap = self.rp_qpixmaps[i].scaled(self.rp_Vision_labels[i].size(), QtCore.Qt.IgnoreAspectRatio)
                     self.rp_Vision_labels[i].setPixmap(scaled_pixmap)
-        
-        for i, gragh in enumerate(self.data_graghs):
-            file = self.datas[i]
-            x_data = file['frames']
-            y_data = file['values']
-            gragh['ax'].clear()
-            min_length = min(len(x_data), len(y_data))
-            x_data = x_data[:min_length]
-            y_data = y_data[:min_length]
-            if min_length > 200:
-                trimmed_data = y_data[100:-100]  # 只取中间部分数据
-            else:
-                trimmed_data = y_data  # 如果数据少于 200 帧，保留所有数据
-            y_min = min(trimmed_data) * 0.9
-            y_max = max(trimmed_data) * 1.1
-            gragh['ax'].set_ylim(y_min, y_max)
-            gragh['ax'].plot(x_data, y_data, label = f"{file['title']}")
-            gragh['ax'].set_xlabel('frames')
-            gragh['ax'].set_ylabel(f"{file['y_label']}")
-            gragh['ax'].legend()
-            gragh['canvas'].draw()
-            gragh['graphicscene'].addWidget(gragh['canvas'])
-            
+        if self.datas:
+            for i, gragh in enumerate(self.data_graghs):
+                file = self.datas[i]
+                x_data = file['frames']
+                y_data = file['values']
+                gragh['ax'].clear()
+                min_length = min(len(x_data), len(y_data))
+                x_data = x_data[:min_length]
+                y_data = y_data[:min_length]
+                if min_length > 200:
+                    trimmed_data = y_data[100:-100]  # 只取中间部分数据
+                else:
+                    trimmed_data = y_data  # 如果数据少于 200 帧，保留所有数据
+                y_min = min(trimmed_data) * 0.9
+                y_max = max(trimmed_data) * 1.1
+                gragh['ax'].set_ylim(y_min, y_max)
+                gragh['ax'].plot(x_data, y_data, label = f"{file['title']}")
+                gragh['ax'].set_xlabel('frames')
+                gragh['ax'].set_ylabel(f"{file['y_label']}")
+                gragh['ax'].legend()
+                gragh['canvas'].draw()
+                gragh['graphicscene'].addWidget(gragh['canvas'])
+        else:
+            for i, gragh in enumerate(self.data_graghs):
+                gragh['ax'].clear()
+                gragh['canvas'].draw()
+                
 
     def creat_vision_labels_pixmaps(self, labelsize, parentlayout, sublayout, num):
         Vision_labels = []

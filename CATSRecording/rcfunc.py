@@ -66,6 +66,7 @@ class Recordingbackend():
             min_tracking_confidence=0.5
         )
         self.current_layout = None
+        self.player = None
         self.recording_sig = False
         self.save_sig = False
         self.src_changing = False
@@ -236,13 +237,15 @@ class Recordingbackend():
             
     def player_reset(self, name):
         self.player = name.text()
-        print(self.player)
 
     def start_recording(self, sport):
         self.stop_event.clear()  # Clear the stop event before starting threads
         now = datetime.now()
         timestamp = now.strftime("%Y%m%d_%H%M%S")
-        self.folder = os.path.join(self.save_path[sport], f"recording_{timestamp}")
+        if self.player:
+            self.folder = os.path.join(self.save_path[sport], self.player, f"recording_{timestamp}")
+        else:
+            self.folder = os.path.join(self.save_path[sport], f"recording_{timestamp}")
         os.makedirs(self.folder, exist_ok=True)
         
         # Initialize text files for saving coordinates
@@ -261,7 +264,7 @@ class Recordingbackend():
             self.save_sig = True
         
     def data_produce_btn_clicked(self):
-        self.folder = 'C:/Users/92A27/MOCAP/recordings/cam_group_1_recording_1'
+        self.folder = 'C:/Users/92A27/MOCAP/recordings/cam_group_1_recording_3'
         os.system(f'python ./tools/interpolate.py {self.folder}')
         os.system(f'python ./tools/data_produce.py {self.folder}')
         os.system(f'python ./tools/trajectory.py {self.folder}')

@@ -155,6 +155,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
             for y in range(2):
                 if y == 0:
                     text = QtWidgets.QLineEdit()
+                    text.setFocus(True)
                     text.setAlignment(QtCore.Qt.AlignCenter)
                     text.setText(f'Name {x+1}')
                     self.names.append(text)
@@ -163,11 +164,10 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     btn = QtWidgets.QPushButton(self.ui.Recording_tab)
                     btn.setFont(QtGui.QFont('Times New Roman', 32))
                     btn.setText(f'Player {x+1}')
+                    btn.clicked.connect(lambda checked, i=x: self.rcbf.player_reset(self.names[i]))
                     self.player_btn.append(btn)
                     self.subject_layout.addWidget(btn, y, x)
-        for i, btn in enumerate(self.player_btn):
-            print(self.names[i].text())
-            btn.clicked.connect(lambda: self.rcbf.player_reset(self.names[i]))
+                    
         self.ui.recording_layout.addLayout(self.subject_layout)
 
         labelsize = [384, 512]

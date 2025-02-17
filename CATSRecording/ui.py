@@ -9,22 +9,25 @@
 
 
 from PyQt5 import QtCore, QtGui, QtWidgets
+import pyautogui
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
+        screen_width, screen_height = pyautogui.size()
         MainWindow.setObjectName("MainWindow")
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(MainWindow.sizePolicy().hasHeightForWidth())
         MainWindow.setSizePolicy(sizePolicy)
-        MainWindow.setMinimumSize(QtCore.QSize(1292, 500))
+        MainWindow.setMinimumSize(QtCore.QSize(screen_width, screen_height))
 
+        space_10 = screen_width / 256
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
 
         self.main_layout = QtWidgets.QVBoxLayout(self.centralwidget)
-        self.main_layout.setContentsMargins(10, 10, 10, 10)
+        self.main_layout.setContentsMargins(space_10, space_10, space_10, space_10)
 
         self.replay_tabWidget = QtWidgets.QTabWidget(self.centralwidget)
         self.replay_tabWidget.setEnabled(True)
