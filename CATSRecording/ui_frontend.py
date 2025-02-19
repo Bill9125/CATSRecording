@@ -64,7 +64,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def back_toolbtn_clicked(self):
         # 清空 recording_layout
         self.rpbf.clear_layout(self.ui.recording_layout)
-        self.rcbf.break_sig = True
+        self.rcbf.stop_event.set()
         # 重新添加原本的控件
         self.add_original_recording_tab_content()
 
