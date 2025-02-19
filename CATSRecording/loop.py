@@ -184,7 +184,13 @@ def benchpress_bar_loop(i, frame, label, save_sig, recording_sig, folder,
         start_time = time.time()
         
     # Save the original video frame
-    if recording_sig and original_out is not None:
+    if recording_sig:
+        if original_out is None:
+            file = os.path.join(folder, f'origin_vision{i + 1}.avi')
+            fourcc = cv2.VideoWriter_fourcc(*'XVID')
+            frame_size = (frame.shape[1], frame.shape[0])  # 幀大小 (width, height)
+            original_out = cv2.VideoWriter(file, fourcc, 29, frame_size)
+            print(f"Initialized VideoWriter for origin camera {i + 1}")
         original_out.write(frame)
 
     # frame 處理
@@ -247,7 +253,13 @@ def benchpress_body_loop(i, frame, label, save_sig, recording_sig, folder,
         start_time = time.time()
         
     # 儲存原始影像幀
-    if recording_sig and original_out is not None:
+    if recording_sig:
+        if original_out is None:
+            file = os.path.join(folder, f'origin_vision{i + 1}.avi')
+            fourcc = cv2.VideoWriter_fourcc(*'XVID')
+            frame_size = (frame.shape[1], frame.shape[0])  # 幀大小 (width, height)
+            original_out = cv2.VideoWriter(file, fourcc, 29, frame_size)
+            print(f"Initialized VideoWriter for origin camera {i + 1}")
         original_out.write(frame)
         
     # frame 處理
@@ -311,7 +323,13 @@ def benchpress_head_loop(i, frame, label, save_sig, recording_sig, folder,
         start_time = time.time()
         
     # 儲存原始影像幀
-    if recording_sig and original_out is not None:
+    if recording_sig:
+        if original_out is None:
+            file = os.path.join(folder, f'origin_vision{i + 1}.avi')
+            fourcc = cv2.VideoWriter_fourcc(*'XVID')
+            frame_size = (frame.shape[1], frame.shape[0])  # 幀大小 (width, height)
+            original_out = cv2.VideoWriter(file, fourcc, 29, frame_size)
+            print(f"Initialized VideoWriter for origin camera {i + 1}")
         original_out.write(frame)
         
     # frame 處理
