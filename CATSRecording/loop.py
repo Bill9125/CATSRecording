@@ -11,8 +11,28 @@ def deadlift_bar_loop(i, frame, label, save_sig, recording_sig, folder,
         frame_count = 0
         start_time = time.time()
     
-    # frame 處理
     frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+    # 錄影開始
+    if recording_sig:
+        if out is None:  # 初始化 VideoWriter
+            file = os.path.join(folder, f'vision{i + 1}.avi')
+            fourcc = cv2.VideoWriter_fourcc(*'XVID')
+            frame_size = (frame.shape[1], frame.shape[0])  # 幀大小 (width, height)
+            out = cv2.VideoWriter(file, fourcc, 29, frame_size)
+            print(f"Initialized VideoWriter for camera {i + 1}")
+        out.write(frame)
+            
+    if not recording_sig:
+        frame_count_for_detect = 0
+        # 錄影結束
+        if save_sig and out is not None:
+            out.release()
+            print(f"Released VideoWriter for camera {i + 1}")
+            save_sig = False
+        out = None
+    barrier.wait()
+
+    # frame 處理
     results = model(source=frame, imgsz=320, conf=0.5, verbose=False)
     boxes = results[0].boxes
     detected = False
@@ -31,26 +51,6 @@ def deadlift_bar_loop(i, frame, label, save_sig, recording_sig, folder,
         frame_count_for_detect += 1
         txt_file.write(f"{frame_count_for_detect},no detection\n")
 
-    # 錄影開始
-    if recording_sig:
-        if out is None:  # 初始化 VideoWriter
-            file = os.path.join(folder, f'vision{i + 1}.avi')
-            fourcc = cv2.VideoWriter_fourcc(*'XVID')
-            frame_size = (frame.shape[1], frame.shape[0])  # 幀大小 (width, height)
-            out = cv2.VideoWriter(file, fourcc, 29, frame_size)
-            print(f"Initialized VideoWriter for camera {i + 1}")
-        out.write(frame)
-            
-    elif not recording_sig:
-        frame_count_for_detect = 0
-        # 錄影結束
-        if save_sig and out is not None:
-            out.release()
-            print(f"Released VideoWriter for camera {i + 1}")
-            save_sig = False
-        out = None
-
-    barrier.wait()
     cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     h, w, ch = frame.shape
@@ -67,9 +67,28 @@ def deadlift_bone_loop(i, frame, label, save_sig, recording_sig, folder,
         fps = frame_count / elapsed_time
         frame_count = 0
         start_time = time.time()
-        
-    # frame 處理
+    
     frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+    # 錄影開始
+    if recording_sig:
+        if out is None:  # 初始化 VideoWriter
+            file = os.path.join(folder, f'vision{i + 1}.avi')
+            fourcc = cv2.VideoWriter_fourcc(*'XVID')
+            frame_size = (frame.shape[1], frame.shape[0])  # 幀大小 (width, height)
+            out = cv2.VideoWriter(file, fourcc, 29, frame_size)
+            print(f"Initialized VideoWriter for camera {i + 1}")
+        out.write(frame)
+    if not recording_sig:
+        frame_count_for_detect = 0
+        # 錄影結束
+        if save_sig and out is not None:
+            out.release()
+            print(f"Released VideoWriter for camera {i + 1}")
+            save_sig = False
+        out = None
+    barrier.wait()
+
+    # frame 處理
     results = model(source=frame, stream=True, verbose=False)
     frame_count_for_detect += 1
     for r2 in results:
@@ -110,26 +129,6 @@ def deadlift_bone_loop(i, frame, label, save_sig, recording_sig, folder,
                     if kp_coords[start_idx] == (0, 0) or kp_coords[end_idx] == (0, 0):
                         continue
                     cv2.line(frame, kp_coords[start_idx], kp_coords[end_idx], (0, 255, 255), 2)
-
-    
-    # 錄影開始
-    if recording_sig:
-        if out is None:  # 初始化 VideoWriter
-            file = os.path.join(folder, f'vision{i + 1}.avi')
-            fourcc = cv2.VideoWriter_fourcc(*'XVID')
-            frame_size = (frame.shape[1], frame.shape[0])  # 幀大小 (width, height)
-            out = cv2.VideoWriter(file, fourcc, 29, frame_size)
-            print(f"Initialized VideoWriter for camera {i + 1}")
-        out.write(frame)
-    elif not recording_sig:
-        frame_count_for_detect = 0
-        # 錄影結束
-        if save_sig and out is not None:
-            out.release()
-            print(f"Released VideoWriter for camera {i + 1}")
-            save_sig = False
-        out = None
-    barrier.wait()
     
     cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -166,6 +165,7 @@ def deadlift_general_loop(i, frame, label, save_sig, recording_sig, folder,
             print(f"Released VideoWriter for camera {i + 1}")
         out = None
     barrier.wait()
+
     cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     h, w, ch = frame.shape
@@ -226,14 +226,16 @@ def benchpress_bar_loop(i, frame, label, save_sig, recording_sig, folder,
             out = cv2.VideoWriter(file, fourcc, 29, frame_size)
             print(f"Initialized VideoWriter for camera {i + 1}")
         out.write(frame)
-    elif not recording_sig:
+    if not recording_sig:
         frame_count_for_detect = 0
         # 錄影結束
         if save_sig and out is not None:
             out.release()
+            original_out.release()
             print(f"Released VideoWriter for camera {i + 1}")
             save_sig = False
         out = None
+        original_out = None
 
     cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -244,7 +246,7 @@ def benchpress_bar_loop(i, frame, label, save_sig, recording_sig, folder,
     return start_time, frame_count, fps, out, frame_count_for_detect, original_out, save_sig
     
 def benchpress_body_loop(i, frame, label, save_sig, recording_sig, folder,
-                           start_time, frame_count, fps, out, original_out, excluded_indices, txt_file, pose, frame_count_for_detect, barrier):
+                           start_time, frame_count, fps, out, original_out, excluded_indices, txt_file, pose, frame_count_for_detect, connections):
     frame_count += 1
     elapsed_time = time.time() - start_time
     if elapsed_time >= 1:
@@ -277,14 +279,20 @@ def benchpress_body_loop(i, frame, label, save_sig, recording_sig, folder,
                 x = int(landmark.x * frame.shape[1])
                 y = int(landmark.y * frame.shape[0])
                 cv2.circle(frame, (x, y), 5, (0, 255, 255), -1)  # Example: Draw a blue circle for landmarks
-    else:
+        for connection in connections:
+            start_idx, end_idx = connection
+            if start_idx not in excluded_indices and end_idx not in excluded_indices:
+                start_landmark = results.pose_landmarks.landmark[start_idx]
+                end_landmark = results.pose_landmarks.landmark[end_idx]
+                x1, y1 = int(start_landmark.x * frame.shape[1]), int(start_landmark.y * frame.shape[0])
+                x2, y2 = int(end_landmark.x * frame.shape[1]), int(end_landmark.y * frame.shape[0])
+                cv2.line(frame, (x1, y1), (x2, y2), (255, 255, 255), 2)
+    if not results.pose_landmarks:
         # Write "no detection" if no landmarks are detected
         if recording_sig and txt_file is not None:
             txt_file.write(f"{frame_count_for_detect},no detection\n")
 
     frame = cv2.rotate(frame, cv2.ROTATE_180)
-    if recording_sig and out is not None:
-        out.write(frame)
     
     # 錄影開始
     if recording_sig:
@@ -297,13 +305,15 @@ def benchpress_body_loop(i, frame, label, save_sig, recording_sig, folder,
         out.write(frame)
     
     # 錄影結束
-    elif not recording_sig:
+    if not recording_sig:
         frame_count_for_detect = 0
         if save_sig and out is not None:
             out.release()
+            original_out.release()
             print(f"Released VideoWriter for camera {i + 1}")
             save_sig = False
         out = None
+        original_out = None
     
     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
@@ -314,7 +324,7 @@ def benchpress_body_loop(i, frame, label, save_sig, recording_sig, folder,
     return start_time, frame_count, fps, out, frame_count_for_detect, original_out, save_sig
     
 def benchpress_head_loop(i, frame, label, save_sig, recording_sig, folder,
-                           start_time, frame_count, fps, out, original_out, excluded_indices, txt_file, pose, frame_count_for_detect, barrier):
+                           start_time, frame_count, fps, out, original_out, excluded_indices, txt_file, pose, frame_count_for_detect, connections):
     frame_count += 1
     elapsed_time = time.time() - start_time
     if elapsed_time >= 1:
@@ -322,6 +332,7 @@ def benchpress_head_loop(i, frame, label, save_sig, recording_sig, folder,
         frame_count = 0
         start_time = time.time()
         
+    frame = cv2.rotate(frame, cv2.ROTATE_180)
     # 儲存原始影像幀
     if recording_sig:
         if original_out is None:
@@ -347,15 +358,19 @@ def benchpress_head_loop(i, frame, label, save_sig, recording_sig, folder,
                 x = int(landmark.x * frame.shape[1])
                 y = int(landmark.y * frame.shape[0])
                 cv2.circle(frame, (x, y), 5, (0, 255, 255), -1)  # Example: Draw a blue circle for landmarks
-    else:
+        for connection in connections:
+            start_idx, end_idx = connection
+            if start_idx not in excluded_indices and end_idx not in excluded_indices:
+                start_landmark = results.pose_landmarks.landmark[start_idx]
+                end_landmark = results.pose_landmarks.landmark[end_idx]
+                x1, y1 = int(start_landmark.x * frame.shape[1]), int(start_landmark.y * frame.shape[0])
+                x2, y2 = int(end_landmark.x * frame.shape[1]), int(end_landmark.y * frame.shape[0])
+                cv2.line(frame, (x1, y1), (x2, y2), (255, 255, 255), 2)
+    if not results.pose_landmarks:
         # Write "no detection" if no landmarks are detected
         if recording_sig and txt_file is not None:
             txt_file.write(f"{frame_count_for_detect},no detection\n")
             
-    frame = cv2.rotate(frame, cv2.ROTATE_180)
-    if recording_sig and out is not None:
-        out.write(frame)
-
     # 錄影開始
     if recording_sig:
         if out is None:  # 初始化 VideoWriter
@@ -368,14 +383,16 @@ def benchpress_head_loop(i, frame, label, save_sig, recording_sig, folder,
         if out is not None:
             out.write(frame)
     
-    elif not recording_sig:
+    if not recording_sig:
         frame_count_for_detect = 0
         # 錄影結束
         if save_sig and out is not None:
             out.release()
+            original_out.release()
             print(f"Released VideoWriter for camera {i + 1}")
             save_sig = False
         out = None
+        original_out = None
     
     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)

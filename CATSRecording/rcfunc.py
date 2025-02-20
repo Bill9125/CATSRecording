@@ -40,7 +40,7 @@ class Recordingbackend():
         super(Recordingbackend, self).__init__()
         self.subui = ButtonClickApp
         self.vision_src = {}
-        self.struct = {'Deadlift': 4, 'Benchpress': 3, 'Squat': 5}
+        self.struct = {'Deadlift': 5, 'Benchpress': 3, 'Squat': 5}
         dir = 'C:/Users/92A27'
         self.save_path = {'Deadlift': os.path.join(dir, 'MOCAP', 'recordings'),
                           'Benchpress': os.path.join(dir, 'benchpress', 'recordings'),
@@ -50,6 +50,10 @@ class Recordingbackend():
             (5, 7), (5, 6), (7, 9), (6, 8),  # Left arm
             (6, 12), (12, 14), (14, 16),  # Right leg
             (5, 11), (11, 13), (13, 15)   # Left leg
+        ]
+        self.POSE_CONNECTIONS_CUSTOM = [
+            (11, 12), (11, 13), (13, 15), (12, 14), (14, 16),  # Upper body joints
+            (11, 23), (12, 24), (23, 24),  # Torso connections
         ]
         # Initialize MediaPipe Pose 
         self.mp_pose = mp.solutions.pose
@@ -199,13 +203,13 @@ class Recordingbackend():
                         start_time, frame_count, fps, self.out_2, frame_count_for_detect, original_out, self.save_sig_2 = loop.benchpress_body_loop(
                             i, frame, label, self.save_sig_2, self.recording_sig,
                             self.folder, start_time, frame_count, fps, self.out_2, original_out,
-                            excluded_indices, self.mediapipe_txt_file, self.pose, frame_count_for_detect, barrier)
+                            excluded_indices, self.mediapipe_txt_file, self.pose, frame_count_for_detect, self.POSE_CONNECTIONS_CUSTOM)
                     else:
                         excluded_indices = set(range(0, 11)) | set(range(25, 33))
                         start_time, frame_count, fps, self.out_3, frame_count_for_detect, original_out, self.save_sig_3 = loop.benchpress_head_loop(
                             i, frame, label, self.save_sig_3, self.recording_sig,
                             self.folder, start_time, frame_count, fps, self.out_3, original_out,
-                            excluded_indices, self.mediapipe_txt_file2, self.pose2, frame_count_for_detect, barrier)
+                            excluded_indices, self.mediapipe_txt_file2, self.pose2, frame_count_for_detect, self.POSE_CONNECTIONS_CUSTOM)
                 
                 elif sport == 'squat':
                     if i == 0:
@@ -274,16 +278,15 @@ class Recordingbackend():
             self.save_sig_1 = True
             self.save_sig_2 = True
             self.save_sig_3 = True    
-            if self.out_1 or self.out_2 or self.out_3:
-                self.out_1.release()
-                self.out_2.release()
-                self.out_3.release()
-            if self.yolo_txt_file is not None:
-                self.yolo_txt_file.close()
-                self.yolo_txt_file = None
-            if self.mediapipe_txt_file is not None:
-                self.mediapipe_txt_file.close()
-                self.mediapipe_txt_file = None
+            # if self.yolo_txt_file is not None:
+            #     self.yolo_txt_file.close()
+            #     self.yolo_txt_file = None
+            # if self.mediapipe_txt_file is not None:
+            #     self.mediapipe_txt_file.close()
+            #     self.mediapipe_txt_file = None
+            # if self.mediapipe_txt_file2 is not None:
+            #     self.mediapipe_txt_file2.close()
+            #     self.mediapipe_txt_file2 = None
         
     def data_produce_btn_clicked(self):
         # self.folder = 'C:/Users/92A27/MOCAP/recordings/cam_group_1_recording_3'
