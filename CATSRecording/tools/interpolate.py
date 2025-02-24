@@ -83,7 +83,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('dir',type=str)
 args = parser.parse_args()
 dir = args.dir
-# dir = 'C:/jinglun/CATSRecording/data/recording_Deadlift/cam_group_1_recording_3'
+
 # 設定要處理的文件
 input_files = [os.path.join(dir, 'mediapipe_landmarks.txt')]  # 請替換為你的輸入檔名
 output_files = [os.path.join(dir, 'mediapipe_landmarks_1st_interp.txt')]  # 對應的輸出檔名

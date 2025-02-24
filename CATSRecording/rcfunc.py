@@ -40,7 +40,7 @@ class Recordingbackend():
         super(Recordingbackend, self).__init__()
         self.subui = ButtonClickApp
         self.vision_src = {}
-        self.struct = {'Deadlift': 5, 'Benchpress': 3, 'Squat': 5}
+        self.struct = {'Deadlift': 4, 'Benchpress': 3, 'Squat': 5}
         dir = 'C:/Users/92A27'
         self.save_path = {'Deadlift': os.path.join(dir, 'MOCAP', 'recordings'),
                           'Benchpress': os.path.join(dir, 'benchpress', 'recordings'),
@@ -167,9 +167,6 @@ class Recordingbackend():
         frame_count_for_detect = 0
         fps = 0
         out = None
-        self.out_1 = None
-        self.out_2 = None
-        self.out_3 = None
         original_out = None
         # 基本錄製結構
         while not self.stop_event.is_set():
@@ -178,14 +175,14 @@ class Recordingbackend():
             if ret:
                 if sport == 'Deadlift':
                     if i == 0:
-                        start_time, frame_count, fps, self.out_1, frame_count_for_detect, self.save_sig_1 = loop.deadlift_bar_loop(
+                        start_time, frame_count, fps, out, frame_count_for_detect, self.save_sig_1 = loop.deadlift_bar_loop(
                             i, frame, label, self.save_sig_1, self.recording_sig,
-                            self.folder, start_time, frame_count, fps, self.out_1, self.models[i],
+                            self.folder, start_time, frame_count, fps, out, self.models[i],
                             self.yolo_txt_file, frame_count_for_detect, barrier)
                     elif i == 1:
-                        start_time, frame_count, fps, self.out_2, frame_count_for_detect, self.save_sig_2 = loop.deadlift_bone_loop(
+                        start_time, frame_count, fps, out, frame_count_for_detect, self.save_sig_2 = loop.deadlift_bone_loop(
                             i, frame, label, self.save_sig_2, self.recording_sig,
-                            self.folder, start_time, frame_count, fps, self.out_2, self.models[i],
+                            self.folder, start_time, frame_count, fps, out, self.models[i],
                             self.mediapipe_txt_file, frame_count_for_detect, self.skeleton_connections, barrier)
                     else:
                         start_time, frame_count, fps, out, self.save_sig_3 = loop.deadlift_general_loop(
@@ -194,22 +191,21 @@ class Recordingbackend():
                 
                 elif sport == 'Benchpress':
                     if i == 0:
-                        start_time, frame_count, fps, self.out_1, frame_count_for_detect, original_out, self.save_sig_1 = loop.benchpress_bar_loop(
+                        start_time, frame_count, fps, out, frame_count_for_detect, original_out, self.save_sig_1 = loop.benchpress_bar_loop(
                             i, frame, label, self.save_sig_1, self.recording_sig,
-                            self.folder, start_time, frame_count, fps, self.out_1, original_out, self.models[i],
+                            self.folder, start_time, frame_count, fps, out, original_out, self.models[i],
                             self.yolo_txt_file, frame_count_for_detect, barrier)
                     elif i == 1:
                         excluded_indices = set(range(0, 11)) | set(range(25, 33)) | set(range(15, 23)) 
-                        start_time, frame_count, fps, self.out_2, frame_count_for_detect, original_out, self.save_sig_2 = loop.benchpress_body_loop(
+                        start_time, frame_count, fps, out, frame_count_for_detect, original_out, self.save_sig_2 = loop.benchpress_body_loop(
                             i, frame, label, self.save_sig_2, self.recording_sig,
-                            self.folder, start_time, frame_count, fps, self.out_2, original_out,
+                            self.folder, start_time, frame_count, fps, out, original_out,
                             excluded_indices, self.mediapipe_txt_file, self.pose, frame_count_for_detect, self.POSE_CONNECTIONS_CUSTOM)
                     else:
-                        excluded_indices = set(range(0, 11)) | set(range(25, 33))
-                        start_time, frame_count, fps, self.out_3, frame_count_for_detect, original_out, self.save_sig_3 = loop.benchpress_head_loop(
+                        start_time, frame_count, fps, out, frame_count_for_detect, original_out, self.save_sig_3 = loop.benchpress_head_loop(
                             i, frame, label, self.save_sig_3, self.recording_sig,
-                            self.folder, start_time, frame_count, fps, self.out_3, original_out,
-                            excluded_indices, self.mediapipe_txt_file2, self.pose2, frame_count_for_detect, self.POSE_CONNECTIONS_CUSTOM)
+                            self.folder, start_time, frame_count, fps, out, original_out, 
+                            self.head_skeleton_txt_file, self.model[i], frame_count_for_detect)
                 
                 elif sport == 'squat':
                     if i == 0:
@@ -265,10 +261,10 @@ class Recordingbackend():
         # Initialize text files for saving coordinates
         yolo_txt_path = os.path.join(self.folder, "yolo_coordinates.txt")
         mediapipe_txt_path = os.path.join(self.folder, "mediapipe_landmarks.txt")
-        mediapipe_txt_path2 = os.path.join(self.folder, "mediapipe_landmarks_2.txt")
+        head_skeleton_txt_path = os.path.join(self.folder, "head_skeleton.txt")
         self.yolo_txt_file = open(yolo_txt_path, "w")
         self.mediapipe_txt_file = open(mediapipe_txt_path, "w")
-        self.mediapipe_txt_file2 = open(mediapipe_txt_path2, "w")
+        self.head_skeleton_txt_file = open(head_skeleton_txt_path, "w")
         self.recording_sig = True
         print("Recording started")
             
@@ -288,7 +284,7 @@ class Recordingbackend():
             #     self.mediapipe_txt_file2.close()
             #     self.mediapipe_txt_file2 = None
         
-    def data_produce_btn_clicked(self):
+    def data_produce_btn_clicked(self, sport):
         # self.folder = 'C:/Users/92A27/MOCAP/recordings/cam_group_1_recording_3'
         os.system(f'python ./tools/interpolate.py {self.folder}')
         os.system(f'python ./tools/data_produce.py {self.folder} --out ../config')

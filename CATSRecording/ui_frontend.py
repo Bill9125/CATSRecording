@@ -173,8 +173,8 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.recording_layout.addLayout(self.subject_layout)
 
         labelsize = [384, 512]
-        self.rc_Vision_labels, self.rc_qpixmaps = self.rpbf.creat_vision_labels_pixmaps(labelsize, self.ui.Recording_tab, self.Deadlift_vision_layout, 5)
-        self.data_produce_btn.clicked.connect(self.rcbf.data_produce_btn_clicked)
+        self.rc_Vision_labels, self.rc_qpixmaps = self.rpbf.creat_vision_labels_pixmaps(labelsize, self.ui.Recording_tab, self.Deadlift_vision_layout, 'Deadlift', 5)
+        self.data_produce_btn.clicked.connect(lambda: self.rcbf.data_produce_btn_clicked('Deadlift'))
         self.source_ctrl_btn.clicked.connect(lambda: self.rcbf.source_ctrl_btn_clicked('Deadlift', self.rc_Vision_labels))
         self.recording_ctrl_btn.clicked.connect(lambda: self.rcbf.recording_ctrl_btn_clicked('Deadlift'))
         
@@ -239,8 +239,8 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.recording_layout.addLayout(self.subject_layout)
 
         labelsize = [640, 480]
-        self.rc_Vision_labels, self.rc_qpixmaps = self.rpbf.creat_vision_labels_pixmaps(labelsize, self.ui.Recording_tab, self.Benchpress_vision_layout, 3)
-        self.data_produce_btn.clicked.connect(self.rcbf.data_produce_btn_clicked)
+        self.rc_Vision_labels, self.rc_qpixmaps = self.rpbf.creat_vision_labels_pixmaps(labelsize, self.ui.Recording_tab, self.Benchpress_vision_layout, 'Benchpress', 3)
+        self.data_produce_btn.clicked.connect(lambda: self.rcbf.data_produce_btn_clicked('Benchpress'))
         self.source_ctrl_btn.clicked.connect(lambda: self.rcbf.source_ctrl_btn_clicked('Benchpress', self.rc_Vision_labels))
         self.recording_ctrl_btn.clicked.connect(lambda: self.rcbf.recording_ctrl_btn_clicked('Benchpress'))
 
@@ -252,22 +252,20 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
             for layout in self.data_layouts:
                 self.layout_clear(layout)
         self.data_layouts = []
-        self.graghs = []
         if self.ui.bottom_controls_layout in [self.ui.data_ctrl_layout_V.itemAt(i).layout() for i in range(self.ui.data_ctrl_layout_V.count())]:
             self.ui.data_ctrl_layout_V.removeItem(self.ui.bottom_controls_layout)
         if sport == 'Deadlift':
             label_size = [480, 640]
             # 左半邊labels
-            self.head_Vis_label, _ = self.rpbf.creat_vision_labels_pixmaps([x for x in label_size], self.ui.Replay_tab, self.ui.head_vis_layout, 1)
-            self.bottom_Vis_labels, _ = self.rpbf.creat_vision_labels_pixmaps([x * 0.7 for x in label_size], self.ui.Replay_tab, self.ui.bottom_vis_layout, 2)
+            self.head_Vis_label, _ = self.rpbf.creat_vision_labels_pixmaps([x for x in label_size], self.ui.Replay_tab, self.ui.head_vis_layout, sport, 1)
+            self.bottom_Vis_labels, _ = self.rpbf.creat_vision_labels_pixmaps([x * 0.7 for x in label_size], self.ui.Replay_tab, self.ui.bottom_vis_layout, sport, 2)
             
-            # 右半邊labels
-            for _ in range(4):
-                data_layout = QtWidgets.QFormLayout()
-                self.data_layouts.append(data_layout)
-                graphicview, graphicscene, canvas, ax = self.rpbf.creat_matplot_labels([1800, 300], self.ui.Replay_tab, data_layout)
-                self.graghs.append({'graphicview' : graphicview, 'graphicscene' : graphicscene, 'canvas' : canvas, 'ax' : ax})
-                self.ui.data_ctrl_layout_V.addLayout(data_layout)
+            # 右半邊graphic
+            data_layout = QtWidgets.QFormLayout()
+            self.data_layouts.append(data_layout)
+            graphicview, graphicscene, canvas, axes = self.rpbf.creat_graphic(self.ui.Replay_tab, data_layout, 4)
+            self.graph = {'graphicview' : graphicview, 'graphicscene' : graphicscene, 'canvas' : canvas, 'axes' : axes}
+            self.ui.data_ctrl_layout_V.addLayout(data_layout)
                 
             self.ui.bottom_vis_layout.setSpacing(50)
             self.ui.bottom_vis_layout.setContentsMargins(0, 0, 10, 10)
@@ -275,25 +273,33 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.rpbf.Deadlift_btn_pressed(
                 self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.icons, self.ui.Stop_btn, 
                 self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox, self.ui.Replay_tab, self.ui.play_layout,
-            self.head_Vis_label, self.bottom_Vis_labels, self.graghs)
+                self.head_Vis_label, self.bottom_Vis_labels, self.graph)
             
         elif sport == 'Benchpress':
             label_size = [640, 480]
-            self.head_Vis_label, self.rc_qpixmaps = self.rpbf.creat_vision_labels_pixmaps([x for x in label_size], self.ui.Replay_tab, self.ui.head_vis_layout, 1)
-            self.bottom_Vis_labels, self.bottom_Vis_qpixmaps = self.rpbf.creat_vision_labels_pixmaps([x for x in label_size], self.ui.Replay_tab, self.ui.bottom_vis_layout, 2)
-            self.data_Vis_labels, self.data_Vis_qpixmaps = self.rpbf.creat_vision_labels_pixmaps([800, 270], self.ui.Replay_tab, self.ui.data_ctrl_layout_V, 3)
+            # 左半邊labels
+            self.head_Vis_label, self.rc_qpixmaps = self.rpbf.creat_vision_labels_pixmaps([x for x in label_size], self.ui.Replay_tab, self.ui.head_vis_layout, sport, 1, type = 'rp')
+            self.bottom_Vis_labels, self.bottom_Vis_qpixmaps = self.rpbf.creat_vision_labels_pixmaps([x for x in label_size], self.ui.Replay_tab, self.ui.bottom_vis_layout, sport, 2, type = 'rp')
+            
+            # 右半邊labels
+            data_layout = QtWidgets.QFormLayout()
+            self.data_layouts.append(data_layout)
+            graphicview, graphicscene, canvas, axes = self.rpbf.creat_graphic(self.ui.Replay_tab, data_layout, 3)
+            self.graph = {'graphicview' : graphicview, 'graphicscene' : graphicscene, 'canvas' : canvas, 'axes' : axes}
+            self.ui.data_ctrl_layout_V.addLayout(data_layout)
+            
             self.ui.bottom_vis_layout.setSpacing(50)
             self.ui.bottom_vis_layout.setContentsMargins(0, 0, 10, 70)
                 
             self.rpbf.Benchpress_btn_pressed(
                 self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.icons, self.ui.Stop_btn, 
                 self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox, self.ui.Replay_tab, self.ui.play_layout,
-                self.head_Vis_label, self.bottom_Vis_labels, self.data_Vis_labels)
+                self.head_Vis_label, self.bottom_Vis_labels, self.graph)
             
-        elif sport == 'Squat':
-            self.head_Vis_label, self.head_Vis_qpixmap = self.rpbf.creat_vision_labels_pixmaps([480, 640], self.ui.Replay_tab, self.ui.head_vis_layout, 1)
-            self.bottom_Vis_labels, self.bottom_Vis_qpixmaps = self.rpbf.creat_vision_labels_pixmaps([307, 410], self.ui.Replay_tab, self.ui.bottom_vis_layout, 2)
-            self.data_Vis_labels, self.data_Vis_qpixmaps = self.rpbf.creat_vision_labels_pixmaps([300, 50], self.ui.Replay_tab, self.ui.data_ctrl_layout_V, 5)
+        # elif sport == 'Squat':
+        #     self.head_Vis_label, self.head_Vis_qpixmap = self.rpbf.creat_vision_labels_pixmaps([480, 640], self.ui.Replay_tab, self.ui.head_vis_layout, sport)
+        #     self.bottom_Vis_labels, self.bottom_Vis_qpixmaps = self.rpbf.creat_vision_labels_pixmaps([307, 410], self.ui.Replay_tab, self.ui.bottom_vis_layout, sport)
+        #     self.data_Vis_labels, self.data_Vis_qpixmaps = self.rpbf.creat_vision_labels_pixmaps([300, 50], self.ui.Replay_tab, self.ui.data_ctrl_layout_V, sport)
             
         self.ui.data_ctrl_layout_V.addLayout(self.ui.bottom_controls_layout)
             

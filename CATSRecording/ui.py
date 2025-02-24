@@ -111,7 +111,7 @@ class Ui_MainWindow(object):
         self.play_layout = QtWidgets.QHBoxLayout()
         self.vision_layout_V = QtWidgets.QVBoxLayout()
         self.data_ctrl_layout_V = QtWidgets.QVBoxLayout()
-        self.head_vis_layout = QtWidgets.QFormLayout()
+        self.head_vis_layout = QtWidgets.QGridLayout()
         self.bottom_vis_layout = QtWidgets.QHBoxLayout()
         self.vision_layout_V.addLayout(self.head_vis_layout)
         self.vision_layout_V.addLayout(self.bottom_vis_layout)

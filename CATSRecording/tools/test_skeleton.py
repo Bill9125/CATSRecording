@@ -5,7 +5,7 @@ import torch
 from ultralytics import YOLO
 
 # Load YOLOv8 pose model
-model_path = "D:\\skeleton_train_data\\runs\\pose\\train29\\weights\\best.pt"  # 你的訓練好的模型檔案
+model_path = "../model/benchpress/head_model/best.pt"  # 你的訓練好的模型檔案
 model = YOLO(model_path)
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -83,5 +83,5 @@ def process_all_videos_in_directory(root_directory):
             process_video(video_path, output_video_path, output_txt_path)
 
 if __name__ == "__main__":
-    root_directory = "D:\\yolo_mediapipe\\所有受試者資料\\資料整理\\肩膀"  # 設定要遍歷的根資料夾
+    root_directory = "C:/Users/92A27/benchpress/recordings/recording_20241212_135946"  # 設定要遍歷的根資料夾
     process_all_videos_in_directory(root_directory)

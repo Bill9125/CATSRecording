@@ -324,7 +324,9 @@ def benchpress_body_loop(i, frame, label, save_sig, recording_sig, folder,
     return start_time, frame_count, fps, out, frame_count_for_detect, original_out, save_sig
     
 def benchpress_head_loop(i, frame, label, save_sig, recording_sig, folder,
-                           start_time, frame_count, fps, out, original_out, excluded_indices, txt_file, pose, frame_count_for_detect, connections):
+                           start_time, frame_count, fps, out, original_out, txt_file, 
+                           model, frame_count_for_detect):
+    connections = [(0, 1), (0, 2), (2, 4), (1, 3), (3, 5)]
     frame_count += 1
     elapsed_time = time.time() - start_time
     if elapsed_time >= 1:
@@ -344,32 +346,58 @@ def benchpress_head_loop(i, frame, label, save_sig, recording_sig, folder,
         original_out.write(frame)
         
     # frame 處理
-    # MediaPipe Pose Detection
-    results = pose.process(frame)
+    results = model.predict(source=frame, conf=0.5)
     frame_count_for_detect += 1  # Increment frame count for each frame
 
-    if results.pose_landmarks:
-        for idx, landmark in enumerate(results.pose_landmarks.landmark):
-            if idx not in excluded_indices:
-                x, y, z = landmark.x, landmark.y, landmark.z
+    frame_data = []
+    if results[0].keypoints:
+        for result in results[0].keypoints:
+            keypoints = result.xy.tolist()
+
+            if not keypoints or not keypoints[0]:
                 if recording_sig and txt_file is not None:
-                    txt_file.write(f"{frame_count_for_detect},{idx},{x},{y},{z}\n")
-                # 只畫出不在排除範圍內的 landmarks
-                x = int(landmark.x * frame.shape[1])
-                y = int(landmark.y * frame.shape[0])
-                cv2.circle(frame, (x, y), 5, (0, 255, 255), -1)  # Example: Draw a blue circle for landmarks
-        for connection in connections:
-            start_idx, end_idx = connection
-            if start_idx not in excluded_indices and end_idx not in excluded_indices:
-                start_landmark = results.pose_landmarks.landmark[start_idx]
-                end_landmark = results.pose_landmarks.landmark[end_idx]
-                x1, y1 = int(start_landmark.x * frame.shape[1]), int(start_landmark.y * frame.shape[0])
-                x2, y2 = int(end_landmark.x * frame.shape[1]), int(end_landmark.y * frame.shape[0])
-                cv2.line(frame, (x1, y1), (x2, y2), (255, 255, 255), 2)
-    if not results.pose_landmarks:
-        # Write "no detection" if no landmarks are detected
-        if recording_sig and txt_file is not None:
-            txt_file.write(f"{frame_count_for_detect},no detection\n")
+                    txt_file.write(f"{frame_count_for_detect},no detection\n")
+                pass
+            
+            keypoint_list = []
+            for keypoint in keypoints[0]:  
+                if len(keypoint) == 2:  
+                    x, y = keypoint
+                    keypoint_list.append((x, y))
+                    cv2.circle(frame, (int(x), int(y)), 5, (0, 255, 0), -1)
+
+            for (start_idx, end_idx) in connections:
+                if start_idx < len(keypoint_list) and end_idx < len(keypoint_list):
+                    start_point = keypoint_list[start_idx]
+                    end_point = keypoint_list[end_idx]
+                    
+                    if start_point != (0, 0) and end_point != (0, 0):
+                        cv2.line(frame, (int(start_point[0]), int(start_point[1])),
+                                (int(end_point[0]), int(end_point[1])), (255, 0, 0), 2)
+            frame_data.append(keypoint_list)
+                
+        # for idx, landmark in enumerate(results.pose_landmarks.landmark):
+        #     if idx not in excluded_indices:
+        #         x, y, z = landmark.x, landmark.y, landmark.z
+        #         if recording_sig and txt_file is not None:
+        #             txt_file.write(f"{frame_count_for_detect},{idx},{x},{y},{z}\n")
+        #         # 只畫出不在排除範圍內的 landmarks
+        #         x = int(landmark.x * frame.shape[1])
+        #         y = int(landmark.y * frame.shape[0])
+        #         cv2.circle(frame, (x, y), 5, (0, 255, 255), -1)  # Example: Draw a blue circle for landmarks
+        # for connection in connections:
+        #     start_idx, end_idx = connection
+        #     if start_idx not in excluded_indices and end_idx not in excluded_indices:
+        #         start_landmark = results.pose_landmarks.landmark[start_idx]
+        #         end_landmark = results.pose_landmarks.landmark[end_idx]
+        #         x1, y1 = int(start_landmark.x * frame.shape[1]), int(start_landmark.y * frame.shape[0])
+        #         x2, y2 = int(end_landmark.x * frame.shape[1]), int(end_landmark.y * frame.shape[0])
+        #         cv2.line(frame, (x1, y1), (x2, y2), (255, 255, 255), 2)
+                
+    # if not results.pose_landmarks:
+    #     # Write "no detection" if no landmarks are detected
+    #     if recording_sig and txt_file is not None:
+    #         txt_file.write(f"{frame_count_for_detect},no detection\n")
             
     # 錄影開始
     if recording_sig:
@@ -382,6 +410,9 @@ def benchpress_head_loop(i, frame, label, save_sig, recording_sig, folder,
         
         if out is not None:
             out.write(frame)
+        
+        if txt_file is not None:
+            txt_file.write(f"Frame {frame_count_for_detect}: {frame_data}\n")
     
     if not recording_sig:
         frame_count_for_detect = 0
