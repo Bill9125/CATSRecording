@@ -78,7 +78,7 @@ def deadlift_bone_loop(i, frame, label, save_sig, recording_sig, folder,
             out = cv2.VideoWriter(file, fourcc, 29, frame_size)
             print(f"Initialized VideoWriter for camera {i + 1}")
         out.write(frame)
-    if not recording_sig:
+    if not recording_sig and out is None:
         frame_count_for_detect = 0
         # 錄影結束
         if save_sig and out is not None:
@@ -91,44 +91,43 @@ def deadlift_bone_loop(i, frame, label, save_sig, recording_sig, folder,
     # frame 處理
     results = model(source=frame, stream=True, verbose=False)
     frame_count_for_detect += 1
-    for r2 in results:
-        boxes = r2.boxes
-        keypoints = r2.keypoints
-        for k, box in enumerate(boxes):
-            x1, y1, x2, y2 = map(int, box.xyxy[0])
-            # cv2.rectangle(frame2, (x1, y1), (x2, y2), (255, 0, 255), 3)
-            confidence = round(box.conf[0].item(), 2)
-            cls2 = int(box.cls[0].item())
-            cv2.putText(frame, f"person {confidence}",
-                        (max(0, x1), max(20, y1)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-            kpts = keypoints[k]
-                            # 獲取關鍵點的座標和置信度
-            keypoints_xy = kpts.xy  # shape: (1, 17, 2) -> 1 組 17 個關鍵點，每個關鍵點有 (x, y) 座標
+    if results:
+        for r2 in results:
+            boxes = r2.boxes
+            keypoints = r2.keypoints
+            for k, box in enumerate(boxes):
+                x1, y1, x2, y2 = map(int, box.xyxy[0])
+                # cv2.rectangle(frame2, (x1, y1), (x2, y2), (255, 0, 255), 3)
+                confidence = round(box.conf[0].item(), 2)
+                cls2 = int(box.cls[0].item())
+                cv2.putText(frame, f"person {confidence}",
+                            (max(0, x1), max(20, y1)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+                kpts = keypoints[k]
+                                # 獲取關鍵點的座標和置信度
+                keypoints_xy = kpts.xy  # shape: (1, 17, 2) -> 1 組 17 個關鍵點，每個關鍵點有 (x, y) 座標
 
-            for j in range(keypoints_xy.shape[1]):  # keypoints_xy.shape[1] 為 17，表示有 17 個關鍵點
-                
-                if results:
+                for j in range(keypoints_xy.shape[1]):  # keypoints_xy.shape[1] 為 17，表示有 17 個關鍵點
                     if recording_sig and txt_file is not None:
                         txt_file.write(f"{frame_count_for_detect},{j},{int(keypoints_xy[0, j, 0])},{int(keypoints_xy[0, j, 1])}\n")
-                else:
-                    # Write "no detection" if no landmarks are detected
-                    if recording_sig and txt_file is not None:
-                        txt_file.write(f"{frame_count_for_detect},no detection\n")
-            # 繪製骨架
-            kp_coords = []
-            for kp in keypoints.xy[k]:
-                x_kp, y_kp = int(kp[0].item()), int(kp[1].item())  # Get x, y coordinates
-                kp_coords.append((x_kp, y_kp))
-                cv2.circle(frame, (x_kp, y_kp), 5, (0, 255, 0), cv2.FILLED)
-                # print(x_kp, y_kp)
+    
+                # 繪製骨架
+                kp_coords = []
+                for kp in keypoints.xy[k]:
+                    x_kp, y_kp = int(kp[0].item()), int(kp[1].item())  # Get x, y coordinates
+                    kp_coords.append((x_kp, y_kp))
+                    cv2.circle(frame, (x_kp, y_kp), 5, (0, 255, 0), cv2.FILLED)
 
-            # Draw skeleton
-            for start_idx, end_idx in skeleton_connections:
-                if start_idx < len(kp_coords) and end_idx < len(kp_coords):
-                    # Skip lines that connect to (0, 0)
-                    if kp_coords[start_idx] == (0, 0) or kp_coords[end_idx] == (0, 0):
-                        continue
-                    cv2.line(frame, kp_coords[start_idx], kp_coords[end_idx], (0, 255, 255), 2)
+                # Draw skeleton
+                for start_idx, end_idx in skeleton_connections:
+                    if start_idx < len(kp_coords) and end_idx < len(kp_coords):
+                        # Skip lines that connect to (0, 0)
+                        if kp_coords[start_idx] == (0, 0) or kp_coords[end_idx] == (0, 0):
+                            continue
+                        cv2.line(frame, kp_coords[start_idx], kp_coords[end_idx], (0, 255, 255), 2)
+    if not results or all(len(r2.boxes) == 0 for r2 in results):
+        # Write "no detection" if no landmarks are detected
+        if recording_sig and txt_file is not None:
+            txt_file.write(f"{frame_count_for_detect},no detection\n")
     
     cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)

@@ -40,7 +40,7 @@ class Recordingbackend():
         super(Recordingbackend, self).__init__()
         self.subui = ButtonClickApp
         self.vision_src = {}
-        self.struct = {'Deadlift': 4, 'Benchpress': 3, 'Squat': 5}
+        self.struct = {'Deadlift': 5, 'Benchpress': 3, 'Squat': 5}
         dir = 'C:/Users/92A27'
         self.save_path = {'Deadlift': os.path.join(dir, 'MOCAP', 'recordings'),
                           'Benchpress': os.path.join(dir, 'benchpress', 'recordings'),
@@ -81,7 +81,7 @@ class Recordingbackend():
         self.folder = str
         self.yolo_txt_file = str
         self.mediapipe_txt_file = str
-        self.mediapipe_txt_file2 = str
+        self.head_skeleton_txt_file = str
         
         self.stop_event = threading.Event()
         
@@ -205,7 +205,7 @@ class Recordingbackend():
                         start_time, frame_count, fps, out, frame_count_for_detect, original_out, self.save_sig_3 = loop.benchpress_head_loop(
                             i, frame, label, self.save_sig_3, self.recording_sig,
                             self.folder, start_time, frame_count, fps, out, original_out, 
-                            self.head_skeleton_txt_file, self.model[i], frame_count_for_detect)
+                            self.head_skeleton_txt_file, self.models[i], frame_count_for_detect)
                 
                 elif sport == 'squat':
                     if i == 0:
