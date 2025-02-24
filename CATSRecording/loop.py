@@ -21,6 +21,12 @@ def deadlift_bar_loop(i, frame, label, save_sig, recording_sig, folder,
             out = cv2.VideoWriter(file, fourcc, 29, frame_size)
             print(f"Initialized VideoWriter for camera {i + 1}")
         out.write(frame)
+
+        if txt_file is None:
+            txt_file_path = os.path.join(folder, 'yolo_coordinates.txt')
+            txt_file = open(txt_file_path, "w")  # ✅ 錄影開始時開啟檔案
+            frame_count_for_detect = 0  # ✅ 只在錄影開始時歸零
+            print(f"Started writing data to {txt_file_path}")
             
     if not recording_sig:
         frame_count_for_detect = 0
@@ -30,7 +36,11 @@ def deadlift_bar_loop(i, frame, label, save_sig, recording_sig, folder,
             print(f"Released VideoWriter for camera {i + 1}")
             save_sig = False
         out = None
-    barrier.wait()
+        if txt_file is not None:
+            txt_file.close()
+            txt_file = None  # ✅ 確保 `txt_file` 被正確關閉
+            print(f"Closed txt_file for camera {i + 1}")
+        
 
     # frame 處理
     results = model(source=frame, imgsz=320, conf=0.5, verbose=False)
@@ -40,16 +50,16 @@ def deadlift_bar_loop(i, frame, label, save_sig, recording_sig, folder,
         frame = result.plot()
     
     # write result
-    for box in boxes.xywh:
-        detected = True
-        x_center, y_center, width, height = box
-        if recording_sig and txt_file is not None:
+    if recording_sig or txt_file is not None:
+        for box in boxes.xywh:
+            detected = True
+            x_center, y_center, width, height = box
             frame_count_for_detect += 1
             txt_file.write(f"{frame_count_for_detect},{x_center},{y_center},{width},{height}\n")
             
-    if not detected and recording_sig and txt_file is not None:
-        frame_count_for_detect += 1
-        txt_file.write(f"{frame_count_for_detect},no detection\n")
+        if not detected:
+            frame_count_for_detect += 1
+            txt_file.write(f"{frame_count_for_detect},no detection\n")
 
     cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -57,7 +67,7 @@ def deadlift_bar_loop(i, frame, label, save_sig, recording_sig, folder,
     qpixmap = QtGui.QPixmap.fromImage(QtGui.QImage(frame_rgb.data, w, h, ch*w, QtGui.QImage.Format_RGB888))
     scale_qpixmap = qpixmap.scaled(label.width(), label.height(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
     label.setPixmap(scale_qpixmap)
-    return start_time, frame_count, fps, out, frame_count_for_detect, save_sig
+    return start_time, frame_count, fps, out, frame_count_for_detect, save_sig, txt_file
 
 def deadlift_bone_loop(i, frame, label, save_sig, recording_sig, folder,
                        start_time, frame_count, fps, out, model, txt_file, frame_count_for_detect, skeleton_connections, barrier):
@@ -78,56 +88,67 @@ def deadlift_bone_loop(i, frame, label, save_sig, recording_sig, folder,
             out = cv2.VideoWriter(file, fourcc, 29, frame_size)
             print(f"Initialized VideoWriter for camera {i + 1}")
         out.write(frame)
-    if not recording_sig and out is None:
-        frame_count_for_detect = 0
-        # 錄影結束
-        if save_sig and out is not None:
-            out.release()
-            print(f"Released VideoWriter for camera {i + 1}")
-            save_sig = False
-        out = None
-    barrier.wait()
+        if txt_file is None:
+            txt_file_path = os.path.join(folder, 'mediapipe_landmarks.txt')
+            txt_file = open(txt_file_path, "w")  # ✅ 錄影開始時開啟檔案
+            frame_count_for_detect = 0  # ✅ 只在錄影開始時歸零
+            print(f"Started writing data to {txt_file_path}")
+
+    finalizing = not recording_sig and save_sig
+    # ✅ 只有 `save_sig=True` 時才關閉 `txt_file`
+    if finalizing:
+        print(f"Finalizing data writing for camera {i + 1}")
 
     # frame 處理
-    results = model(source=frame, stream=True, verbose=False)
-    frame_count_for_detect += 1
-    if results:
-        for r2 in results:
-            boxes = r2.boxes
-            keypoints = r2.keypoints
-            for k, box in enumerate(boxes):
-                x1, y1, x2, y2 = map(int, box.xyxy[0])
-                # cv2.rectangle(frame2, (x1, y1), (x2, y2), (255, 0, 255), 3)
-                confidence = round(box.conf[0].item(), 2)
-                cls2 = int(box.cls[0].item())
-                cv2.putText(frame, f"person {confidence}",
-                            (max(0, x1), max(20, y1)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-                kpts = keypoints[k]
-                                # 獲取關鍵點的座標和置信度
-                keypoints_xy = kpts.xy  # shape: (1, 17, 2) -> 1 組 17 個關鍵點，每個關鍵點有 (x, y) 座標
+    if recording_sig or finalizing:
+        results = model(source=frame, stream=True, verbose=False)
+        frame_count_for_detect += 1
+        if results:
+            for r2 in results:
+                boxes = r2.boxes
+                keypoints = r2.keypoints
+                for k, box in enumerate(boxes):
+                    x1, y1, x2, y2 = map(int, box.xyxy[0])
+                    # cv2.rectangle(frame2, (x1, y1), (x2, y2), (255, 0, 255), 3)
+                    confidence = round(box.conf[0].item(), 2)
+                    cv2.putText(frame, f"person {confidence}",
+                                (max(0, x1), max(20, y1)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+                    kpts = keypoints[k]
+                    # 獲取關鍵點的座標和置信度
+                    keypoints_xy = kpts.xy  # shape: (1, 17, 2) -> 1 組 17 個關鍵點，每個關鍵點有 (x, y) 座標
+                    if txt_file is not None:
+                        for j in range(keypoints_xy.shape[1]):  # keypoints_xy.shape[1] 為 17，表示有 17 個關鍵點
+                            txt_file.write(f"{frame_count_for_detect},{j},{int(keypoints_xy[0, j, 0])},{int(keypoints_xy[0, j, 1])}\n")
+                            
+                    # 繪製骨架
+                    kp_coords = []
+                    for kp in keypoints.xy[k]:
+                        x_kp, y_kp = int(kp[0].item()), int(kp[1].item())  # Get x, y coordinates
+                        kp_coords.append((x_kp, y_kp))
+                        cv2.circle(frame, (x_kp, y_kp), 5, (0, 255, 0), cv2.FILLED)
 
-                for j in range(keypoints_xy.shape[1]):  # keypoints_xy.shape[1] 為 17，表示有 17 個關鍵點
-                    if recording_sig and txt_file is not None:
-                        txt_file.write(f"{frame_count_for_detect},{j},{int(keypoints_xy[0, j, 0])},{int(keypoints_xy[0, j, 1])}\n")
-    
-                # 繪製骨架
-                kp_coords = []
-                for kp in keypoints.xy[k]:
-                    x_kp, y_kp = int(kp[0].item()), int(kp[1].item())  # Get x, y coordinates
-                    kp_coords.append((x_kp, y_kp))
-                    cv2.circle(frame, (x_kp, y_kp), 5, (0, 255, 0), cv2.FILLED)
+                    # Draw skeleton
+                    kp_coords = [(int(kp[0].item()), int(kp[1].item())) for kp in keypoints.xy[k]]
+                    for start_idx, end_idx in skeleton_connections:
+                        if start_idx < len(kp_coords) and end_idx < len(kp_coords):
+                            cv2.line(frame, kp_coords[start_idx], kp_coords[end_idx], (0, 255, 255), 2)
 
-                # Draw skeleton
-                for start_idx, end_idx in skeleton_connections:
-                    if start_idx < len(kp_coords) and end_idx < len(kp_coords):
-                        # Skip lines that connect to (0, 0)
-                        if kp_coords[start_idx] == (0, 0) or kp_coords[end_idx] == (0, 0):
-                            continue
-                        cv2.line(frame, kp_coords[start_idx], kp_coords[end_idx], (0, 255, 255), 2)
-    if not results or all(len(r2.boxes) == 0 for r2 in results):
-        # Write "no detection" if no landmarks are detected
-        if recording_sig and txt_file is not None:
-            txt_file.write(f"{frame_count_for_detect},no detection\n")
+        if not results or all(len(r2.boxes) == 0 for r2 in results):
+            if txt_file is not None:
+                txt_file.write(f"{frame_count_for_detect},no detection\n")
+
+    # ✅ 錄影完全結束後才關閉 `txt_file`
+    if finalizing:
+        if txt_file is not None:
+            txt_file.close()
+            txt_file = None
+            print(f"Closed txt_file for camera {i + 1}")
+
+        if out is not None:
+            out.release()
+            out = None
+            print(f"Released VideoWriter for camera {i + 1}")
+        save_sig = False  # ✅ 確保 `save_sig` 正確更新
     
     cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -135,7 +156,7 @@ def deadlift_bone_loop(i, frame, label, save_sig, recording_sig, folder,
     qpixmap = QtGui.QPixmap.fromImage(QtGui.QImage(frame_rgb.data, w, h, ch*w, QtGui.QImage.Format_RGB888))
     scale_qpixmap = qpixmap.scaled(label.width(), label.height(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
     label.setPixmap(scale_qpixmap)
-    return start_time, frame_count, fps, out, frame_count_for_detect, save_sig
+    return start_time, frame_count, fps, out, frame_count_for_detect, save_sig, txt_file
     
 def deadlift_general_loop(i, frame, label, save_sig, recording_sig, folder,
                           start_time, frame_count, fps, out, barrier):
@@ -163,8 +184,7 @@ def deadlift_general_loop(i, frame, label, save_sig, recording_sig, folder,
             out.release()
             print(f"Released VideoWriter for camera {i + 1}")
         out = None
-    barrier.wait()
-
+    
     cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     h, w, ch = frame.shape
@@ -192,29 +212,36 @@ def benchpress_bar_loop(i, frame, label, save_sig, recording_sig, folder,
             print(f"Initialized VideoWriter for origin camera {i + 1}")
         original_out.write(frame)
 
+        if txt_file is None:
+            txt_file_path = os.path.join(folder, 'yolo_coordinates.txt')
+            txt_file = open(txt_file_path, "w")  # ✅ 錄影開始時開啟檔案
+            frame_count_for_detect = 0  # ✅ 只在錄影開始時歸零
+            print(f"Started writing data to {txt_file_path}")
+
     # frame 處理
     results = model.predict(source=frame, imgsz=320, conf=0.5, verbose=False)
     boxes = results[0].boxes
     detected = False  # Initialize detected to False at the start of each frame
     for result in results:
         frame = result.plot()
+
     if boxes is not None and len(boxes) > 0:
         # Select the box with the highest confidence
         max_confidence_index = boxes.conf.argmax()  # Get index of highest confidence
         best_box = boxes[max_confidence_index].xywh[0]  # Ensure it's a flat array or list
 
         # Check if best_box has the required four elements
-        if len(best_box) == 4:
-            detected = True
-            x_center, y_center, width, height = best_box
-            if recording_sig and txt_file is not None:
+        if recording_sig and txt_file is not None:
+            if len(best_box) == 4:
+                detected = True
+                x_center, y_center, width, height = best_box
                 frame_count_for_detect += 1
                 txt_file.write(f"{frame_count_for_detect},{x_center},{y_center},{width},{height}\n")
-                
-    # Handle case where no detection is made
-    if not detected and recording_sig and txt_file is not None:
-        frame_count_for_detect += 1
-        txt_file.write(f"{frame_count_for_detect},no detection\n")
+                    
+            # Handle case where no detection is made
+            if not detected:
+                frame_count_for_detect += 1
+                txt_file.write(f"{frame_count_for_detect},no detection\n")
         
     # 錄影開始
     if recording_sig:
@@ -235,6 +262,10 @@ def benchpress_bar_loop(i, frame, label, save_sig, recording_sig, folder,
             save_sig = False
         out = None
         original_out = None
+        if txt_file is not None:
+            txt_file.close()
+            txt_file = None  # ✅ 確保 `txt_file` 被正確關閉
+            print(f"Closed txt_file for camera {i + 1}")
 
     cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -242,7 +273,7 @@ def benchpress_bar_loop(i, frame, label, save_sig, recording_sig, folder,
     qpixmap = QtGui.QPixmap.fromImage(QtGui.QImage(frame_rgb.data, w, h, ch*w, QtGui.QImage.Format_RGB888))
     scale_qpixmap = qpixmap.scaled(label.width(), label.height(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
     label.setPixmap(scale_qpixmap)
-    return start_time, frame_count, fps, out, frame_count_for_detect, original_out, save_sig
+    return start_time, frame_count, fps, out, frame_count_for_detect, original_out, save_sig, txt_file
     
 def benchpress_body_loop(i, frame, label, save_sig, recording_sig, folder,
                            start_time, frame_count, fps, out, original_out, excluded_indices, txt_file, pose, frame_count_for_detect, connections):
@@ -262,6 +293,11 @@ def benchpress_body_loop(i, frame, label, save_sig, recording_sig, folder,
             original_out = cv2.VideoWriter(file, fourcc, 29, frame_size)
             print(f"Initialized VideoWriter for origin camera {i + 1}")
         original_out.write(frame)
+        if txt_file is None:
+            txt_file_path = os.path.join(folder, 'mediapipe_landmarks.txt')
+            txt_file = open(txt_file_path, "w")  # ✅ 錄影開始時開啟檔案
+            frame_count_for_detect = 0  # ✅ 只在錄影開始時歸零
+            print(f"Started writing data to {txt_file_path}")
         
     # frame 處理
     # MediaPipe Pose Detection
@@ -271,8 +307,8 @@ def benchpress_body_loop(i, frame, label, save_sig, recording_sig, folder,
     if results.pose_landmarks:
         for idx, landmark in enumerate(results.pose_landmarks.landmark):
             if idx not in excluded_indices:
-                x, y, z = landmark.x, landmark.y, landmark.z
                 if recording_sig and txt_file is not None:
+                    x, y, z = landmark.x, landmark.y, landmark.z
                     txt_file.write(f"{frame_count_for_detect},{idx},{x},{y},{z}\n")
                 # 只畫出不在排除範圍內的 landmarks
                 x = int(landmark.x * frame.shape[1])
@@ -286,6 +322,7 @@ def benchpress_body_loop(i, frame, label, save_sig, recording_sig, folder,
                 x1, y1 = int(start_landmark.x * frame.shape[1]), int(start_landmark.y * frame.shape[0])
                 x2, y2 = int(end_landmark.x * frame.shape[1]), int(end_landmark.y * frame.shape[0])
                 cv2.line(frame, (x1, y1), (x2, y2), (255, 255, 255), 2)
+
     if not results.pose_landmarks:
         # Write "no detection" if no landmarks are detected
         if recording_sig and txt_file is not None:
@@ -313,6 +350,10 @@ def benchpress_body_loop(i, frame, label, save_sig, recording_sig, folder,
             save_sig = False
         out = None
         original_out = None
+        if txt_file is not None:
+            txt_file.close()
+            txt_file = None  # ✅ 確保 `txt_file` 被正確關閉
+            print(f"Closed txt_file for camera {i + 1}")
     
     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
@@ -320,7 +361,7 @@ def benchpress_body_loop(i, frame, label, save_sig, recording_sig, folder,
     qpixmap = QtGui.QPixmap.fromImage(QtGui.QImage(frame.data, w, h, ch*w, QtGui.QImage.Format_RGB888))
     scale_qpixmap = qpixmap.scaled(label.width(), label.height(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
     label.setPixmap(scale_qpixmap)
-    return start_time, frame_count, fps, out, frame_count_for_detect, original_out, save_sig
+    return start_time, frame_count, fps, out, frame_count_for_detect, original_out, save_sig, txt_file
     
 def benchpress_head_loop(i, frame, label, save_sig, recording_sig, folder,
                            start_time, frame_count, fps, out, original_out, txt_file, 
@@ -343,6 +384,12 @@ def benchpress_head_loop(i, frame, label, save_sig, recording_sig, folder,
             original_out = cv2.VideoWriter(file, fourcc, 29, frame_size)
             print(f"Initialized VideoWriter for origin camera {i + 1}")
         original_out.write(frame)
+
+        if txt_file is None:
+            txt_file_path = os.path.join(folder, 'yolo_skeleton.txt')
+            txt_file = open(txt_file_path, "w")  # ✅ 錄影開始時開啟檔案
+            frame_count_for_detect = 0  # ✅ 只在錄影開始時歸零
+            print(f"Started writing data to {txt_file_path}")
         
     # frame 處理
     results = model.predict(source=frame, conf=0.5)
@@ -374,29 +421,6 @@ def benchpress_head_loop(i, frame, label, save_sig, recording_sig, folder,
                         cv2.line(frame, (int(start_point[0]), int(start_point[1])),
                                 (int(end_point[0]), int(end_point[1])), (255, 0, 0), 2)
             frame_data.append(keypoint_list)
-                
-        # for idx, landmark in enumerate(results.pose_landmarks.landmark):
-        #     if idx not in excluded_indices:
-        #         x, y, z = landmark.x, landmark.y, landmark.z
-        #         if recording_sig and txt_file is not None:
-        #             txt_file.write(f"{frame_count_for_detect},{idx},{x},{y},{z}\n")
-        #         # 只畫出不在排除範圍內的 landmarks
-        #         x = int(landmark.x * frame.shape[1])
-        #         y = int(landmark.y * frame.shape[0])
-        #         cv2.circle(frame, (x, y), 5, (0, 255, 255), -1)  # Example: Draw a blue circle for landmarks
-        # for connection in connections:
-        #     start_idx, end_idx = connection
-        #     if start_idx not in excluded_indices and end_idx not in excluded_indices:
-        #         start_landmark = results.pose_landmarks.landmark[start_idx]
-        #         end_landmark = results.pose_landmarks.landmark[end_idx]
-        #         x1, y1 = int(start_landmark.x * frame.shape[1]), int(start_landmark.y * frame.shape[0])
-        #         x2, y2 = int(end_landmark.x * frame.shape[1]), int(end_landmark.y * frame.shape[0])
-        #         cv2.line(frame, (x1, y1), (x2, y2), (255, 255, 255), 2)
-                
-    # if not results.pose_landmarks:
-    #     # Write "no detection" if no landmarks are detected
-    #     if recording_sig and txt_file is not None:
-    #         txt_file.write(f"{frame_count_for_detect},no detection\n")
             
     # 錄影開始
     if recording_sig:
@@ -406,9 +430,7 @@ def benchpress_head_loop(i, frame, label, save_sig, recording_sig, folder,
             frame_size = (frame.shape[1], frame.shape[0])  # 幀大小 (width, height)
             out = cv2.VideoWriter(file, fourcc, 29, frame_size)
             print(f"Initialized VideoWriter for camera {i + 1}")
-        
-        if out is not None:
-            out.write(frame)
+        out.write(frame)
         
         if txt_file is not None:
             txt_file.write(f"Frame {frame_count_for_detect}: {frame_data}\n")
@@ -423,6 +445,10 @@ def benchpress_head_loop(i, frame, label, save_sig, recording_sig, folder,
             save_sig = False
         out = None
         original_out = None
+        if txt_file is not None:
+            txt_file.close()
+            txt_file = None  # ✅ 確保 `txt_file` 被正確關閉
+            print(f"Closed txt_file for camera {i + 1}")
     
     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
@@ -430,4 +456,4 @@ def benchpress_head_loop(i, frame, label, save_sig, recording_sig, folder,
     qpixmap = QtGui.QPixmap.fromImage(QtGui.QImage(frame.data, w, h, ch*w, QtGui.QImage.Format_RGB888))
     scale_qpixmap = qpixmap.scaled(label.width(), label.height(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
     label.setPixmap(scale_qpixmap)
-    return start_time, frame_count, fps, out, frame_count_for_detect, original_out, save_sig
+    return start_time, frame_count, fps, out, frame_count_for_detect, original_out, save_sig, txt_file

@@ -147,7 +147,7 @@ class Thread_data(threading.Thread):
             self.barrier.wait()
             val = self.Frameslider.value()
             self.line.set_data(x_data[:val], y_data[:val])
-            if self.index == 0 and val % 5 == 0:
+            if self.index == 0 and val % 10 == 0:
                 self.canvas.draw()
             self.barrier.wait()
                 
@@ -319,7 +319,8 @@ class Replaybackend():
             f_num = []
             for video in self.videos:
                 cap = cv2.VideoCapture(video)
-                f_num.append(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                if cap.get(cv2.CAP_PROP_FRAME_COUNT) != 0:
+                    f_num.append(cap.get(cv2.CAP_PROP_FRAME_COUNT))
             framenumber = min(f_num)
 
             # stop 後播放

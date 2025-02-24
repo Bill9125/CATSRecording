@@ -168,6 +168,7 @@ class Recordingbackend():
         fps = 0
         out = None
         original_out = None
+        txt_file = None
         # 基本錄製結構
         while not self.stop_event.is_set():
             cap = self.cameras[i]
@@ -175,15 +176,15 @@ class Recordingbackend():
             if ret:
                 if sport == 'Deadlift':
                     if i == 0:
-                        start_time, frame_count, fps, out, frame_count_for_detect, self.save_sig_1 = loop.deadlift_bar_loop(
+                        start_time, frame_count, fps, out, frame_count_for_detect, self.save_sig_1, txt_file = loop.deadlift_bar_loop(
                             i, frame, label, self.save_sig_1, self.recording_sig,
                             self.folder, start_time, frame_count, fps, out, self.models[i],
-                            self.yolo_txt_file, frame_count_for_detect, barrier)
+                            txt_file, frame_count_for_detect, barrier)
                     elif i == 1:
-                        start_time, frame_count, fps, out, frame_count_for_detect, self.save_sig_2 = loop.deadlift_bone_loop(
+                        start_time, frame_count, fps, out, frame_count_for_detect, self.save_sig_2, txt_file = loop.deadlift_bone_loop(
                             i, frame, label, self.save_sig_2, self.recording_sig,
                             self.folder, start_time, frame_count, fps, out, self.models[i],
-                            self.mediapipe_txt_file, frame_count_for_detect, self.skeleton_connections, barrier)
+                            txt_file, frame_count_for_detect, self.skeleton_connections, barrier)
                     else:
                         start_time, frame_count, fps, out, self.save_sig_3 = loop.deadlift_general_loop(
                             i, frame, label, self.save_sig_3, self.recording_sig,
@@ -191,21 +192,21 @@ class Recordingbackend():
                 
                 elif sport == 'Benchpress':
                     if i == 0:
-                        start_time, frame_count, fps, out, frame_count_for_detect, original_out, self.save_sig_1 = loop.benchpress_bar_loop(
+                        start_time, frame_count, fps, out, frame_count_for_detect, original_out, self.save_sig_1, txt_file = loop.benchpress_bar_loop(
                             i, frame, label, self.save_sig_1, self.recording_sig,
                             self.folder, start_time, frame_count, fps, out, original_out, self.models[i],
-                            self.yolo_txt_file, frame_count_for_detect, barrier)
+                            txt_file, frame_count_for_detect, barrier)
                     elif i == 1:
                         excluded_indices = set(range(0, 11)) | set(range(25, 33)) | set(range(15, 23)) 
-                        start_time, frame_count, fps, out, frame_count_for_detect, original_out, self.save_sig_2 = loop.benchpress_body_loop(
+                        start_time, frame_count, fps, out, frame_count_for_detect, original_out, self.save_sig_2, txt_file = loop.benchpress_body_loop(
                             i, frame, label, self.save_sig_2, self.recording_sig,
                             self.folder, start_time, frame_count, fps, out, original_out,
-                            excluded_indices, self.mediapipe_txt_file, self.pose, frame_count_for_detect, self.POSE_CONNECTIONS_CUSTOM)
+                            excluded_indices, txt_file, self.pose, frame_count_for_detect, self.POSE_CONNECTIONS_CUSTOM)
                     else:
-                        start_time, frame_count, fps, out, frame_count_for_detect, original_out, self.save_sig_3 = loop.benchpress_head_loop(
+                        start_time, frame_count, fps, out, frame_count_for_detect, original_out, self.save_sig_3, txt_file = loop.benchpress_head_loop(
                             i, frame, label, self.save_sig_3, self.recording_sig,
                             self.folder, start_time, frame_count, fps, out, original_out, 
-                            self.head_skeleton_txt_file, self.models[i], frame_count_for_detect)
+                            txt_file, self.models[i], frame_count_for_detect)
                 
                 elif sport == 'squat':
                     if i == 0:
@@ -259,12 +260,8 @@ class Recordingbackend():
         self.out_3 = None
         
         # Initialize text files for saving coordinates
-        yolo_txt_path = os.path.join(self.folder, "yolo_coordinates.txt")
-        mediapipe_txt_path = os.path.join(self.folder, "mediapipe_landmarks.txt")
-        head_skeleton_txt_path = os.path.join(self.folder, "head_skeleton.txt")
-        self.yolo_txt_file = open(yolo_txt_path, "w")
-        self.mediapipe_txt_file = open(mediapipe_txt_path, "w")
-        self.head_skeleton_txt_file = open(head_skeleton_txt_path, "w")
+        # head_skeleton_txt_path = os.path.join(self.folder, "head_skeleton.txt")
+        # self.head_skeleton_txt_file = open(head_skeleton_txt_path, "w")
         self.recording_sig = True
         print("Recording started")
             
@@ -274,15 +271,6 @@ class Recordingbackend():
             self.save_sig_1 = True
             self.save_sig_2 = True
             self.save_sig_3 = True    
-            # if self.yolo_txt_file is not None:
-            #     self.yolo_txt_file.close()
-            #     self.yolo_txt_file = None
-            # if self.mediapipe_txt_file is not None:
-            #     self.mediapipe_txt_file.close()
-            #     self.mediapipe_txt_file = None
-            # if self.mediapipe_txt_file2 is not None:
-            #     self.mediapipe_txt_file2.close()
-            #     self.mediapipe_txt_file2 = None
         
     def data_produce_btn_clicked(self, sport):
         # self.folder = 'C:/Users/92A27/MOCAP/recordings/cam_group_1_recording_3'
