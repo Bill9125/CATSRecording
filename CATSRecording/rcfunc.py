@@ -259,9 +259,6 @@ class Recordingbackend():
         self.out_2 = None
         self.out_3 = None
         
-        # Initialize text files for saving coordinates
-        # head_skeleton_txt_path = os.path.join(self.folder, "head_skeleton.txt")
-        # self.head_skeleton_txt_file = open(head_skeleton_txt_path, "w")
         self.recording_sig = True
         print("Recording started")
             

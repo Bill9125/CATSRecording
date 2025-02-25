@@ -135,5 +135,5 @@ parser.add_argument('--out', type=str)
 args = parser.parse_args()
 dir = args.dir
 out = args.out
-data_path = os.path.join(dir, "vision3_new_skeleton.txt")
+data_path = os.path.join(dir, "yolo_skeleton.txt")
 process_skeleton_data(data_path, out)

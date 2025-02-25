@@ -123,28 +123,28 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.recording_ctrl_btn = QtWidgets.QToolButton(self.ui.Recording_tab)
         self.recording_ctrl_btn.setIcon(self.icons[2])
-        self.recording_ctrl_btn.setIconSize(QtCore.QSize(64, 64))
+        self.recording_ctrl_btn.setIconSize(QtCore.QSize(128, 128))
         self.ctrl_layout.addWidget(self.recording_ctrl_btn)
 
         self.auto_recording_btn = QtWidgets.QPushButton(self.ui.Recording_tab)
-        self.auto_recording_btn.setFont(QtGui.QFont("Times New Roman", 32))
+        self.auto_recording_btn.setFont(QtGui.QFont("Times New Roman", 64))
         self.auto_recording_btn.setText("Auto Recording")
         self.auto_recording_btn.setEnabled(False)
         self.ctrl_layout.addWidget(self.auto_recording_btn)
         
         self.data_produce_btn = QtWidgets.QPushButton(self.ui.Recording_tab)
-        self.data_produce_btn.setFont(QtGui.QFont("Times New Roman", 32))
+        self.data_produce_btn.setFont(QtGui.QFont("Times New Roman", 64))
         self.data_produce_btn.setText("Data Produce")
         self.ctrl_layout.addWidget(self.data_produce_btn)
         
         self.source_ctrl_btn = QtWidgets.QPushButton(self.ui.Recording_tab)
-        self.source_ctrl_btn.setFont(QtGui.QFont("Times New Roman", 32))
+        self.source_ctrl_btn.setFont(QtGui.QFont("Times New Roman", 64))
         self.source_ctrl_btn.setText("Source change")
         self.ctrl_layout.addWidget(self.source_ctrl_btn)
 
         self.back_toolbtn = QtWidgets.QToolButton(self.ui.Recording_tab)
         self.back_toolbtn.setIcon(self.icons[4])
-        self.back_toolbtn.setIconSize(QtCore.QSize(64, 64))
+        self.back_toolbtn.setIconSize(QtCore.QSize(128, 128))
         self.back_toolbtn.clicked.connect(self.back_toolbtn_clicked)
         self.ctrl_layout.addWidget(self.back_toolbtn)
 
@@ -172,8 +172,8 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     
         self.ui.recording_layout.addLayout(self.subject_layout)
 
-        labelsize = [384, 512]
-        self.rc_Vision_labels, self.rc_qpixmaps = self.rpbf.creat_vision_labels_pixmaps(labelsize, self.ui.Recording_tab, self.Deadlift_vision_layout, 'Deadlift', 5)
+        labelsize = [480, 640]
+        self.rc_Vision_labels, self.rc_qpixmaps = self.rpbf.creat_vision_labels_pixmaps([x * 1.2 for x in labelsize], self.ui.Recording_tab, self.Deadlift_vision_layout, 'Deadlift', 5)
         self.data_produce_btn.clicked.connect(lambda: self.rcbf.data_produce_btn_clicked('Deadlift'))
         self.source_ctrl_btn.clicked.connect(lambda: self.rcbf.source_ctrl_btn_clicked('Deadlift', self.rc_Vision_labels))
         self.recording_ctrl_btn.clicked.connect(lambda: self.rcbf.recording_ctrl_btn_clicked('Deadlift'))
@@ -239,7 +239,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.recording_layout.addLayout(self.subject_layout)
 
         labelsize = [640, 480]
-        self.rc_Vision_labels, self.rc_qpixmaps = self.rpbf.creat_vision_labels_pixmaps(labelsize, self.ui.Recording_tab, self.Benchpress_vision_layout, 'Benchpress', 3)
+        self.rc_Vision_labels, self.rc_qpixmaps = self.rpbf.creat_vision_labels_pixmaps([x * 1.5 for x in labelsize], self.ui.Recording_tab, self.Benchpress_vision_layout, 'Benchpress', 3)
         self.data_produce_btn.clicked.connect(lambda: self.rcbf.data_produce_btn_clicked('Benchpress'))
         self.source_ctrl_btn.clicked.connect(lambda: self.rcbf.source_ctrl_btn_clicked('Benchpress', self.rc_Vision_labels))
         self.recording_ctrl_btn.clicked.connect(lambda: self.rcbf.recording_ctrl_btn_clicked('Benchpress'))
@@ -257,13 +257,13 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if sport == 'Deadlift':
             label_size = [480, 640]
             # 左半邊labels
-            self.head_Vis_label, _ = self.rpbf.creat_vision_labels_pixmaps([x for x in label_size], self.ui.Replay_tab, self.ui.head_vis_layout, sport, 1)
-            self.bottom_Vis_labels, _ = self.rpbf.creat_vision_labels_pixmaps([x * 0.7 for x in label_size], self.ui.Replay_tab, self.ui.bottom_vis_layout, sport, 2)
+            self.head_Vis_label, _ = self.rpbf.creat_vision_labels_pixmaps([x * 1.4 for x in label_size], self.ui.Replay_tab, self.ui.head_vis_layout, sport, 1)
+            self.bottom_Vis_labels, _ = self.rpbf.creat_vision_labels_pixmaps([x * 1.1 for x in label_size], self.ui.Replay_tab, self.ui.bottom_vis_layout, sport, 2)
             
             # 右半邊graphic
             data_layout = QtWidgets.QFormLayout()
             self.data_layouts.append(data_layout)
-            graphicview, graphicscene, canvas, axes = self.rpbf.creat_graphic(self.ui.Replay_tab, data_layout, (20,12), 4)
+            graphicview, graphicscene, canvas, axes = self.rpbf.creat_graphic(self.ui.Replay_tab, data_layout, (27.5,16.5), 4)
             self.graph = {'graphicview' : graphicview, 'graphicscene' : graphicscene, 'canvas' : canvas, 'axes' : axes}
             self.ui.data_ctrl_layout_V.addLayout(data_layout)
                 
@@ -278,15 +278,16 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         elif sport == 'Benchpress':
             label_size = [640, 480]
             # 左半邊labels
-            self.head_Vis_label, vertical_slider, horizontal_slider = self.rpbf.creat_vision_labels_pixmaps([x for x in label_size], self.ui.Replay_tab, self.ui.head_vis_layout, sport, 1, type = 'rp')
-            self.bottom_Vis_labels, vertical_sliders, horizontal_sliders = self.rpbf.creat_vision_labels_pixmaps([x * 0.5 for x in label_size], self.ui.Replay_tab, self.ui.bottom_vis_layout, sport, 2, type = 'rp')
+            self.ui.head_vis_layout.setContentsMargins(230, 0, 250, 70)
+            self.head_Vis_label, vertical_slider, horizontal_slider = self.rpbf.creat_vision_labels_pixmaps([x * 1.5 for x in label_size], self.ui.Replay_tab, self.ui.head_vis_layout, sport, 1, type = 'rp')
+            self.bottom_Vis_labels, vertical_sliders, horizontal_sliders = self.rpbf.creat_vision_labels_pixmaps([x * 1.2 for x in label_size], self.ui.Replay_tab, self.ui.bottom_vis_layout, sport, 2, type = 'rp')
             self.V_sliders = vertical_sliders + [vertical_slider]
             self.H_sliders = horizontal_sliders + [horizontal_slider]
             
             # 右半邊labels
             data_layout = QtWidgets.QFormLayout()
             self.data_layouts.append(data_layout)
-            graphicview, graphicscene, canvas, axes = self.rpbf.creat_graphic(self.ui.Replay_tab, data_layout, (15, 9), 3)
+            graphicview, graphicscene, canvas, axes = self.rpbf.creat_graphic(self.ui.Replay_tab, data_layout, (20, 15), 3)
             self.graph = {'graphicview' : graphicview, 'graphicscene' : graphicscene, 'canvas' : canvas, 'axes' : axes}
             self.ui.data_ctrl_layout_V.addLayout(data_layout)
             

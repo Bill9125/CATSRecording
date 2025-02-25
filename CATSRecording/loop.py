@@ -224,24 +224,6 @@ def benchpress_bar_loop(i, frame, label, save_sig, recording_sig, folder,
     detected = False  # Initialize detected to False at the start of each frame
     for result in results:
         frame = result.plot()
-
-    if boxes is not None and len(boxes) > 0:
-        # Select the box with the highest confidence
-        max_confidence_index = boxes.conf.argmax()  # Get index of highest confidence
-        best_box = boxes[max_confidence_index].xywh[0]  # Ensure it's a flat array or list
-
-        # Check if best_box has the required four elements
-        if recording_sig and txt_file is not None:
-            if len(best_box) == 4:
-                detected = True
-                x_center, y_center, width, height = best_box
-                frame_count_for_detect += 1
-                txt_file.write(f"{frame_count_for_detect},{x_center},{y_center},{width},{height}\n")
-                    
-            # Handle case where no detection is made
-            if not detected:
-                frame_count_for_detect += 1
-                txt_file.write(f"{frame_count_for_detect},no detection\n")
         
     # 錄影開始
     if recording_sig:
@@ -252,6 +234,18 @@ def benchpress_bar_loop(i, frame, label, save_sig, recording_sig, folder,
             out = cv2.VideoWriter(file, fourcc, 29, frame_size)
             print(f"Initialized VideoWriter for camera {i + 1}")
         out.write(frame)
+
+    if recording_sig or txt_file is not None:
+        for box in boxes.xywh:
+            detected = True
+            x_center, y_center, width, height = box
+            frame_count_for_detect += 1
+            txt_file.write(f"{frame_count_for_detect},{x_center},{y_center},{width},{height}\n")
+            
+        if not detected:
+            frame_count_for_detect += 1
+            txt_file.write(f"{frame_count_for_detect},no detection\n")
+
     if not recording_sig:
         frame_count_for_detect = 0
         # 錄影結束

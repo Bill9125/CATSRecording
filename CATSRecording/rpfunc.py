@@ -147,7 +147,7 @@ class Thread_data(threading.Thread):
             self.barrier.wait()
             val = self.Frameslider.value()
             self.line.set_data(x_data[:val], y_data[:val])
-            if self.index == 0 and val % 10 == 0:
+            if self.index == 0 and val % 5 == 0:
                 self.canvas.draw()
             self.barrier.wait()
                 
@@ -438,16 +438,16 @@ class Replaybackend():
         horizontal_sliders = []
         Vision_labels = []
         qpixmaps = []
-        qpixmap = QtGui.QPixmap()
-        qpixmaps.append(qpixmap)
-        Vision_label = QtWidgets.QLabel(parentlayout)
-        Vision_label.setFrameShape(QtWidgets.QFrame.Panel)
-        Vision_label.setMinimumSize(labelsize[0], labelsize[1])
-        Vision_label.setMaximumSize(labelsize[0], labelsize[1])
-        Vision_label.setPixmap(qpixmap)
-        Vision_label.setText('')
         if sport == 'Deadlift':
             for _ in range(num):
+                qpixmap = QtGui.QPixmap()
+                qpixmaps.append(qpixmap)
+                Vision_label = QtWidgets.QLabel(parentlayout)
+                Vision_label.setFrameShape(QtWidgets.QFrame.Panel)
+                Vision_label.setMinimumSize(labelsize[0], labelsize[1])
+                Vision_label.setMaximumSize(labelsize[0], labelsize[1])
+                Vision_label.setPixmap(qpixmap)
+                Vision_label.setText('')
                 sublayout.addWidget(Vision_label)
                 sublayout.setAlignment(Vision_label, QtCore.Qt.AlignCenter)
                 Vision_labels.append(Vision_label)
@@ -455,6 +455,14 @@ class Replaybackend():
         if sport == 'Benchpress':
             if type == 'rc':
                 for _ in range(num):
+                    qpixmap = QtGui.QPixmap()
+                    qpixmaps.append(qpixmap)
+                    Vision_label = QtWidgets.QLabel(parentlayout)
+                    Vision_label.setFrameShape(QtWidgets.QFrame.Panel)
+                    Vision_label.setMinimumSize(labelsize[0], labelsize[1])
+                    Vision_label.setMaximumSize(labelsize[0], labelsize[1])
+                    Vision_label.setPixmap(qpixmap)
+                    Vision_label.setText('')
                     sublayout.addWidget(Vision_label)
                     sublayout.setAlignment(Vision_label, QtCore.Qt.AlignCenter)
                     Vision_labels.append(Vision_label)
@@ -463,12 +471,20 @@ class Replaybackend():
                 vertical_slider = QtWidgets.QSlider(orientation = QtCore.Qt.Vertical, parent = parentlayout)
                 horizontal_slider = QtWidgets.QSlider(orientation = QtCore.Qt.Horizontal, parent = parentlayout)   
                 if num == 1:
+                    qpixmap = QtGui.QPixmap()
+                    qpixmaps.append(qpixmap)
+                    Vision_label = QtWidgets.QLabel(parentlayout)
+                    Vision_label.setFrameShape(QtWidgets.QFrame.Panel)
+                    Vision_label.setMinimumSize(labelsize[0], labelsize[1])
+                    Vision_label.setMaximumSize(labelsize[0], labelsize[1])
+                    # Vision_label.setAlignment(QtCore.Qt.AlignCenter)
+                    Vision_label.setPixmap(qpixmap)
                     sublayout.addWidget(Vision_label, 0, 0)
                     sublayout.addWidget(vertical_slider, 0, 1)
-                    horizontal_slider.setFixedWidth(640)
-                    vertical_slider.setFixedHeight(480)
+                    horizontal_slider.setFixedWidth(labelsize[0])
+                    vertical_slider.setFixedHeight(labelsize[1])
                     sublayout.addWidget(horizontal_slider, 1, 0)
-                    sublayout.setAlignment(Vision_label, QtCore.Qt.AlignCenter)
+                    # sublayout.setAlignment(vertical_slider, QtCore.Qt.AlignCenter)
                     Vision_labels.append(Vision_label)
                     return Vision_label, vertical_slider, horizontal_slider
                 
@@ -476,14 +492,14 @@ class Replaybackend():
                     for _ in range(num):
                         # ✅ 創建新元件，避免重複使用舊的
                         Vision_label = QtWidgets.QLabel("Vision")
-                        Vision_label.setFixedSize(320, 240)
-                        Vision_label.setStyleSheet("background-color: lightgray; border: 1px solid black;")
+                        Vision_label.setMinimumSize(labelsize[0], labelsize[1])
+                        Vision_label.setMaximumSize(labelsize[0], labelsize[1])
 
                         vertical_slider = QtWidgets.QSlider(QtCore.Qt.Vertical)
                         horizontal_slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
 
-                        vertical_slider.setFixedHeight(240)  # 限制垂直 Slider 高度
-                        horizontal_slider.setFixedWidth(320)  # 限制水平 Slider 寬度
+                        vertical_slider.setFixedHeight(labelsize[1])  # 限制垂直 Slider 高度
+                        horizontal_slider.setFixedWidth(labelsize[0])  # 限制水平 Slider 寬度
 
                         # ✅ 建立 GridLayout
                         vis_layout = QtWidgets.QGridLayout()
