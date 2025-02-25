@@ -1,9 +1,6 @@
-import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
 import numpy as np
 import os
 import argparse
-import cv2
 import json
 
 # 函式：讀取骨架數據的 txt 檔案

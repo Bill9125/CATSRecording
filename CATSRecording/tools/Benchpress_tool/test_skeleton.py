@@ -64,7 +64,7 @@ def process_video(video_path, output_video_path, output_txt_path):
 
                 frame_data.append(keypoint_list)
 
-            out.write(annotated_frame)
+            # out.write(annotated_frame)
             f.write(f"Frame {frame_idx}: {frame_data}\n")
             frame_idx += 1
 
