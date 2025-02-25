@@ -171,8 +171,9 @@ class Replaybackend():
         self.firstclicked_S = True
         self.data_path = {'Deadlift': ['Body_Length.json', 'Hip_Angle.json', 
                                        'Knee_Angle.json', 'Knee_to_Hip.json'],
-                          'Benchpress' : ['Body_Armpit_Angles.json', 'Bar_Position.json', 
-                                          'Head_Angle.json']}
+                          'Benchpress' : ['Head_Armpit_Angle.json']}
+        # , 'Bar_Position.json', 
+        #                                   'Head_Armpit_Angle.json']}
         self.folders = {}
         self.threads = []
         self.rp_Vision_labels = []
@@ -202,11 +203,12 @@ class Replaybackend():
     def Benchpress_btn_pressed(
         self, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons,
         Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout,
-        head_label, bottom_labels, graph
-        ):
+        head_label, bottom_labels, V_sliders, H_sliders, graph):
         self.currentsport = 'Benchpress'
-        self.rp_Vision_labels = head_label + bottom_labels
+        self.rp_Vision_labels = [head_label] + bottom_labels
         self.data_graph = graph
+        self.V_sliders = V_sliders
+        self.H_sliders = H_sliders
         self.rp_btn_press(
             self.currentsport, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons,
             Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout,
@@ -281,8 +283,9 @@ class Replaybackend():
                 for i in range(len(self.data_path[self.currentsport])):
                     with open(f'../config/{self.currentsport}_data/{self.data_path[self.currentsport][i]}',
                                 mode='r', encoding='utf-8') as file:
-                        data = json.load(file)
-                        self.datas.append(data)
+                        if file:
+                            data = json.load(file)
+                            self.datas.append(data)
 
         ## 硬舉avi只需要 1, 2, 3 視角
         if self.currentsport == 'Deadlift':
@@ -400,29 +403,29 @@ class Replaybackend():
                     self.rp_qpixmaps[i] = QtGui.QPixmap.fromImage(image)
                     scaled_pixmap = self.rp_qpixmaps[i].scaled(self.rp_Vision_labels[i].size(), QtCore.Qt.IgnoreAspectRatio)
                     self.rp_Vision_labels[i].setPixmap(scaled_pixmap)
-        if self.datas:
-            for i, data in enumerate(self.datas):
-                x_data = data['frames']
-                y_data = data['values']
-                min_length = min(len(x_data), len(y_data))
-                x_data = x_data[:min_length]
-                y_data = y_data[:min_length]
-                if min_length > 200:
-                    trimmed_data = y_data[100:-100]  # 只取中间部分数据
-                else:
-                    trimmed_data = y_data  # 如果数据少于 200 帧，保留所有数据
-                y_min = min(trimmed_data) * 0.9
-                y_max = max(trimmed_data) * 1.1
+        # if self.datas:
+        #     for i, data in enumerate(self.datas):
+        #         x_data = data['frames']
+        #         y_data = data['values']
+        #         min_length = min(len(x_data), len(y_data))
+        #         x_data = x_data[:min_length]
+        #         y_data = y_data[:min_length]
+        #         if min_length > 200:
+        #             trimmed_data = y_data[100:-100]  # 只取中间部分数据
+        #         else:
+        #             trimmed_data = y_data  # 如果数据少于 200 帧，保留所有数据
+        #         y_min = min(trimmed_data) * 0.9
+        #         y_max = max(trimmed_data) * 1.1
                 
-                self.data_graph['axes'][i].clear()
-                self.data_graph['axes'][i].set_ylim(y_min, y_max)
-                self.data_graph['axes'][i].plot(x_data, y_data, label = f"{data['title']}")
-                self.data_graph['axes'][i].set_ylabel(f"{data['y_label']}")
-                self.data_graph['axes'][i].legend()
+        #         self.data_graph['axes'][i].clear()
+        #         self.data_graph['axes'][i].set_ylim(y_min, y_max)
+        #         self.data_graph['axes'][i].plot(x_data, y_data, label = f"{data['title']}")
+        #         self.data_graph['axes'][i].set_ylabel(f"{data['y_label']}")
+        #         self.data_graph['axes'][i].legend()
                 
-            self.data_graph['axes'][-1].set_xlabel('frames')
-            self.data_graph['canvas'].draw()
-            self.data_graph['graphicscene'].addWidget(self.data_graph['canvas'])
+        #     self.data_graph['axes'][-1].set_xlabel('frames')
+        #     self.data_graph['canvas'].draw()
+        #     self.data_graph['graphicscene'].addWidget(self.data_graph['canvas'])
         else:
             for ax in self.data_graph['axes']:
                 ax.clear()
@@ -430,18 +433,20 @@ class Replaybackend():
                 
 
     def creat_vision_labels_pixmaps(self, labelsize, parentlayout, sublayout, sport, num, type ='rc'):
+        vertical_sliders = []
+        horizontal_sliders = []
         Vision_labels = []
         qpixmaps = []
+        qpixmap = QtGui.QPixmap()
+        qpixmaps.append(qpixmap)
+        Vision_label = QtWidgets.QLabel(parentlayout)
+        Vision_label.setFrameShape(QtWidgets.QFrame.Panel)
+        Vision_label.setMinimumSize(labelsize[0], labelsize[1])
+        Vision_label.setMaximumSize(labelsize[0], labelsize[1])
+        Vision_label.setPixmap(qpixmap)
+        Vision_label.setText('')
         if sport == 'Deadlift':
             for _ in range(num):
-                qpixmap = QtGui.QPixmap()
-                qpixmaps.append(qpixmap)
-                Vision_label = QtWidgets.QLabel(parentlayout)
-                Vision_label.setFrameShape(QtWidgets.QFrame.Panel)
-                Vision_label.setMinimumSize(labelsize[0], labelsize[1])
-                Vision_label.setMaximumSize(labelsize[0], labelsize[1])
-                Vision_label.setPixmap(qpixmap)
-                Vision_label.setText('')
                 sublayout.addWidget(Vision_label)
                 sublayout.setAlignment(Vision_label, QtCore.Qt.AlignCenter)
                 Vision_labels.append(Vision_label)
@@ -449,59 +454,54 @@ class Replaybackend():
         if sport == 'Benchpress':
             if type == 'rc':
                 for _ in range(num):
-                    qpixmap = QtGui.QPixmap()
-                    qpixmaps.append(qpixmap)
-                    Vision_label = QtWidgets.QLabel(parentlayout)
-                    Vision_label.setFrameShape(QtWidgets.QFrame.Panel)
-                    Vision_label.setMinimumSize(labelsize[0], labelsize[1])
-                    Vision_label.setMaximumSize(labelsize[0], labelsize[1])
-                    Vision_label.setPixmap(qpixmap)
-                    Vision_label.setText('')
                     sublayout.addWidget(Vision_label)
                     sublayout.setAlignment(Vision_label, QtCore.Qt.AlignCenter)
                     Vision_labels.append(Vision_label)
                 return Vision_labels, qpixmaps
             if type == 'rp':
-                # label = QtWidgets.QLabel(parentlayout)
                 vertical_slider = QtWidgets.QSlider(orientation = QtCore.Qt.Vertical, parent = parentlayout)
-                horizontal_slider = QtWidgets.QSlider(parentlayout)   
+                horizontal_slider = QtWidgets.QSlider(orientation = QtCore.Qt.Horizontal, parent = parentlayout)   
                 if num == 1:
-                    qpixmap = QtGui.QPixmap()
-                    qpixmaps.append(qpixmap)
-                    Vision_label = QtWidgets.QLabel(parentlayout)
-                    Vision_label.setFrameShape(QtWidgets.QFrame.Panel)
-                    Vision_label.setMinimumSize(labelsize[0], labelsize[1])
-                    Vision_label.setMaximumSize(labelsize[0], labelsize[1])
-                    Vision_label.setPixmap(qpixmap)
-                    Vision_label.setText('')
                     sublayout.addWidget(Vision_label, 0, 0)
                     sublayout.addWidget(vertical_slider, 0, 1)
+                    horizontal_slider.setFixedWidth(640)
+                    vertical_slider.setFixedHeight(480)
                     sublayout.addWidget(horizontal_slider, 1, 0)
                     sublayout.setAlignment(Vision_label, QtCore.Qt.AlignCenter)
                     Vision_labels.append(Vision_label)
-                    return Vision_labels, qpixmaps
+                    return Vision_label, vertical_slider, horizontal_slider
                 
                 if  num == 2:
-                    
-                    sublayout.addLayout()
-                    qpixmap = QtGui.QPixmap()
-                    qpixmaps.append(qpixmap)
-                    Vision_label = QtWidgets.QLabel(parentlayout)
-                    Vision_label.setFrameShape(QtWidgets.QFrame.Panel)
-                    Vision_label.setMinimumSize(labelsize[0], labelsize[1])
-                    Vision_label.setMaximumSize(labelsize[0], labelsize[1])
-                    Vision_label.setPixmap(qpixmap)
-                    Vision_label.setText('')
-                     
-                    sublayout.addWidget(Vision_label, 0, 0)
-                    sublayout.addWidget(vertical_slider, 0, 1)
-                    sublayout.addWidget(horizontal_slider, 1, 0)
-                    sublayout.setAlignment(Vision_label, QtCore.Qt.AlignCenter)
-                Vision_labels.append(Vision_label)
+                    for _ in range(num):
+                        # ✅ 創建新元件，避免重複使用舊的
+                        Vision_label = QtWidgets.QLabel("Vision")
+                        Vision_label.setFixedSize(320, 240)
+                        Vision_label.setStyleSheet("background-color: lightgray; border: 1px solid black;")
+
+                        vertical_slider = QtWidgets.QSlider(QtCore.Qt.Vertical)
+                        horizontal_slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+
+                        vertical_slider.setFixedHeight(240)  # 限制垂直 Slider 高度
+                        horizontal_slider.setFixedWidth(320)  # 限制水平 Slider 寬度
+
+                        # ✅ 建立 GridLayout
+                        vis_layout = QtWidgets.QGridLayout()
+                        vis_layout.addWidget(Vision_label, 0, 0)
+                        vis_layout.addWidget(vertical_slider, 0, 1)
+                        vis_layout.addWidget(horizontal_slider, 1, 0, 1, 2)
+
+                        # ✅ 包裝 GridLayout 進 QWidget，才能加入 HLayout
+                        temp_widget = QtWidgets.QWidget()
+                        temp_widget.setLayout(vis_layout)
+                        sublayout.addWidget(temp_widget, alignment=QtCore.Qt.AlignCenter)  # 讓 Widget 置中
+                        Vision_labels.append(Vision_label)
+                        vertical_sliders.append(vertical_slider)
+                        horizontal_sliders.append(horizontal_slider)
+                    return Vision_labels, vertical_sliders, horizontal_sliders
         
     
-    def creat_graphic(self, parentlayout, sublayout, num):
-        figure = Figure(figsize=(20,12))
+    def creat_graphic(self, parentlayout, sublayout, size, num):
+        figure = Figure(figsize=size)
         canvas = FigureCanvas(figure)
         axes = figure.subplots(num, 1, sharex=True)
         graphicview = QtWidgets.QGraphicsView(parentlayout)

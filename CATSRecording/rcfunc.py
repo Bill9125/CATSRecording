@@ -286,7 +286,8 @@ class Recordingbackend():
         
     def data_produce_btn_clicked(self, sport):
         # self.folder = 'C:/Users/92A27/MOCAP/recordings/cam_group_1_recording_3'
-        os.system(f'python ./tools/interpolate.py {self.folder}')
-        os.system(f'python ./tools/data_produce.py {self.folder} --out ../config')
+        if sport == 'Deadlift':
+            os.system(f'python ./tools/Deadlift_tool/interpolate.py {self.folder}')
+            os.system(f'python ./tools/Deadlift_tool/data_produce.py {self.folder} --out ../config')
         os.system(f'python ./tools/trajectory.py {self.folder}')
         print('後製已完成')

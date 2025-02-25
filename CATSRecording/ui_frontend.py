@@ -263,7 +263,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
             # 右半邊graphic
             data_layout = QtWidgets.QFormLayout()
             self.data_layouts.append(data_layout)
-            graphicview, graphicscene, canvas, axes = self.rpbf.creat_graphic(self.ui.Replay_tab, data_layout, 4)
+            graphicview, graphicscene, canvas, axes = self.rpbf.creat_graphic(self.ui.Replay_tab, data_layout, (20,12), 4)
             self.graph = {'graphicview' : graphicview, 'graphicscene' : graphicscene, 'canvas' : canvas, 'axes' : axes}
             self.ui.data_ctrl_layout_V.addLayout(data_layout)
                 
@@ -278,13 +278,15 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         elif sport == 'Benchpress':
             label_size = [640, 480]
             # 左半邊labels
-            self.head_Vis_label, self.rc_qpixmaps = self.rpbf.creat_vision_labels_pixmaps([x for x in label_size], self.ui.Replay_tab, self.ui.head_vis_layout, sport, 1, type = 'rp')
-            self.bottom_Vis_labels, self.bottom_Vis_qpixmaps = self.rpbf.creat_vision_labels_pixmaps([x for x in label_size], self.ui.Replay_tab, self.ui.bottom_vis_layout, sport, 2, type = 'rp')
+            self.head_Vis_label, vertical_slider, horizontal_slider = self.rpbf.creat_vision_labels_pixmaps([x for x in label_size], self.ui.Replay_tab, self.ui.head_vis_layout, sport, 1, type = 'rp')
+            self.bottom_Vis_labels, vertical_sliders, horizontal_sliders = self.rpbf.creat_vision_labels_pixmaps([x * 0.5 for x in label_size], self.ui.Replay_tab, self.ui.bottom_vis_layout, sport, 2, type = 'rp')
+            self.V_sliders = vertical_sliders + [vertical_slider]
+            self.H_sliders = horizontal_sliders + [horizontal_slider]
             
             # 右半邊labels
             data_layout = QtWidgets.QFormLayout()
             self.data_layouts.append(data_layout)
-            graphicview, graphicscene, canvas, axes = self.rpbf.creat_graphic(self.ui.Replay_tab, data_layout, 3)
+            graphicview, graphicscene, canvas, axes = self.rpbf.creat_graphic(self.ui.Replay_tab, data_layout, (15, 9), 3)
             self.graph = {'graphicview' : graphicview, 'graphicscene' : graphicscene, 'canvas' : canvas, 'axes' : axes}
             self.ui.data_ctrl_layout_V.addLayout(data_layout)
             
@@ -294,7 +296,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.rpbf.Benchpress_btn_pressed(
                 self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.icons, self.ui.Stop_btn, 
                 self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox, self.ui.Replay_tab, self.ui.play_layout,
-                self.head_Vis_label, self.bottom_Vis_labels, self.graph)
+                self.head_Vis_label, self.bottom_Vis_labels, self.V_sliders, self.H_sliders, self.graph)
             
         # elif sport == 'Squat':
         #     self.head_Vis_label, self.head_Vis_qpixmap = self.rpbf.creat_vision_labels_pixmaps([480, 640], self.ui.Replay_tab, self.ui.head_vis_layout, sport)
