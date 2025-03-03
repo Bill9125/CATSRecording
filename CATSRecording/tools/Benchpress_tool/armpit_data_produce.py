@@ -66,7 +66,7 @@ else:
 
 # ✅ 轉換成 JSON 格式
 data = {
-    "title": "Shoulder-Hip Angles",
+    "title": "Armpit Angles",
     "y_label": "Angle (degrees)",
     "y_min": y_min,
     "y_max": y_max,

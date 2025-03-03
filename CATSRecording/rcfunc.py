@@ -270,7 +270,7 @@ class Recordingbackend():
             self.save_sig_3 = True    
         
     def data_produce_btn_clicked(self, sport):
-        self.folder = 'C:/Users/92A27/benchpress/recordings/2'
+        self.folder = 'C:/Users/92A27/benchpress/recordings/recording_20250303_111615'
         # self.folder = 'C:/Users/92A27/MOCAP/recordings/recording_20250226_113742'
         
         if sport == 'Deadlift':

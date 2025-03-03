@@ -310,12 +310,6 @@ class Replaybackend():
                             if os.path.basename(video) in ('original_vision1.avi', 'vision2.avi', 'original_vision3.avi')
                             ]
                 self.videos[1], self.videos[2] = self.videos[2], self.videos[1]
-                for i in range(len(self.data_path[self.currentsport])):
-                    with open(f'../config/{self.currentsport}_data/{self.data_path[self.currentsport][i]}',
-                                mode='r', encoding='utf-8') as file:
-                        if file:
-                            data = json.load(file)
-                            self.datas.append(data)
             if len(videos) == 7:
                 self.videos = [video for video in videos 
                             if os.path.basename(video) in ('vision1_drawed.avi', 'vision2.avi', 'original_vision3.avi')
@@ -328,7 +322,6 @@ class Replaybackend():
                             data = json.load(file)
                             self.datas.append(data)
                 
-
         ## 硬舉avi只需要 1, 2, 3 視角
         if self.currentsport == 'Deadlift':
             # 未後製

@@ -8,7 +8,7 @@ dir = args.dir
 out = args.out
 # 讀取 yolo 檔案
 yolo_txt_path = os.path.join(dir, "yolo_coordinates_interpolated.txt")  # 你的 txt 檔案路徑
-output_json_path = os.path.join(out, "Bar_Position.json")  # 輸出的 JSON 檔案
+output_json_path = os.path.join(out, 'Benchpress_data', "Bar_Position.json")  # 輸出的 JSON 檔案
 
 # 初始化數據存儲
 frames = []
@@ -25,14 +25,11 @@ with open(yolo_txt_path, "r") as file:
         x_center = float(parts[1])  # X 中心
         
         frames.append(frame_count)
-        values.append(x_center)  # 存成 (x, y) 格式
+        values.append(x_center)
 
-# 計算 x_min, x_max, y_min, y_max
 if values:
-    x_values = [val[0] for val in values]  # 取所有 x_center
-
-    x_min = min(x_values) * 0.9  # X 軸最小值，留 10% 緩衝
-    x_max = max(x_values) * 1.1  # X 軸最大值，留 10% 緩衝
+    x_min = min(values) * 0.9  # X 軸最小值，留 10% 緩衝
+    x_max = max(values) * 1.1  # X 軸最大值，留 10% 緩衝
 else:
     x_min = x_max = 0
 
