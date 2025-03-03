@@ -318,7 +318,7 @@ class Replaybackend():
                             self.datas.append(data)
             if len(videos) == 7:
                 self.videos = [video for video in videos 
-                            if os.path.basename(video) in ('vision1_drawed.avi', 'vision2.avi', 'origin_vision3.avi')
+                            if os.path.basename(video) in ('vision1_drawed.avi', 'vision2.avi', 'original_vision3.avi')
                             ]
                 self.videos[1], self.videos[2] = self.videos[2], self.videos[1]
                 for i in range(len(self.data_path[self.currentsport])):
