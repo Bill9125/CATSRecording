@@ -7,7 +7,7 @@ args = parser.parse_args()
 dir = args.dir
 out = args.out
 # 讀取 yolo 檔案
-yolo_txt_path = os.path.join(dir, "yolo_coordinates.txt")  # 你的 txt 檔案路徑
+yolo_txt_path = os.path.join(dir, "yolo_coordinates_interpolated.txt")  # 你的 txt 檔案路徑
 output_json_path = os.path.join(out, "Bar_Position.json")  # 輸出的 JSON 檔案
 
 # 初始化數據存儲
@@ -23,44 +23,27 @@ with open(yolo_txt_path, "r") as file:
         
         frame_count = int(parts[0])  # 幀數
         x_center = float(parts[1])  # X 中心
-        y_center = float(parts[2])  # Y 中心
         
         frames.append(frame_count)
-        values.append((x_center, y_center))  # 存成 (x, y) 格式
+        values.append(x_center)  # 存成 (x, y) 格式
 
 # 計算 x_min, x_max, y_min, y_max
 if values:
     x_values = [val[0] for val in values]  # 取所有 x_center
-    y_values = [val[1] for val in values]  # 取所有 y_center
 
     x_min = min(x_values) * 0.9  # X 軸最小值，留 10% 緩衝
     x_max = max(x_values) * 1.1  # X 軸最大值，留 10% 緩衝
-    y_min = min(y_values) * 0.9  # Y 軸最小值，留 10% 緩衝
-    y_max = max(y_values) * 1.1  # Y 軸最大值，留 10% 緩衝
 else:
-    x_min = x_max = y_min = y_max = 0
+    x_min = x_max = 0
 
 # 轉換成 JSON 格式
 data = {
     "title": "Barbell Center Positions",
     "y_label": "Position (pixels)",
-    "x_min": x_min,
-    "x_max": x_max,
-    "y_min": y_min,
-    "y_max": y_max,
+    "y_min": x_min,
+    "y_max": x_max,
     "frames": frames,
-    "values": values  # (x_center, y_center)
-}
-
-
-# 轉換成 JSON 格式
-data = {
-    "title": "Barbell Center Positions",
-    "y_label": "Position (pixels)",
-    "y_min": y_min,
-    "y_max": y_max,
-    "frames": frames,
-    "values": values  # (x_center, y_center)
+    "values": values
 }
 
 # 存成 JSON 檔案

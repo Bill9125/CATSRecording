@@ -159,10 +159,6 @@ yolo_frames = yolo_data[:, 0]  # frame numbers
 mediapipe_data_1 = np.loadtxt(os.path.join(dir, 'mediapipe_landmarks_1st_interp.txt'), delimiter=',')
 landmarks_1 = np.unique(mediapipe_data_1[:, 1])  # unique landmark numbers
 
-# 讀取第二份 MediaPipe 的資料
-# mediapipe_data_2 = np.loadtxt('mediapipe_landmarks_2_1st_interp.txt', delimiter=',')
-# landmarks_2 = np.unique(mediapipe_data_2[:, 1])  # unique landmark numbers
-
 def interpolate_mediapipe(yolo_frames, mediapipe_data, landmarks):
     interpolated_data = []
     # original_data = []
@@ -209,8 +205,6 @@ def interpolate_mediapipe(yolo_frames, mediapipe_data, landmarks):
 
 # 處理第一份 MediaPipe 資料
 interpolated_data_1 = interpolate_mediapipe(yolo_frames, mediapipe_data_1, landmarks_1)
-# 處理第二份 MediaPipe 資料
-# interpolated_data_2 = interpolate_mediapipe(yolo_frames, mediapipe_data_2, landmarks_2)
 
 output_mediapipe = os.path.join(dir, 'interpolated_mediapipe_landmarks_1.txt')
 # 將內插後的資料寫入 TXT 檔案

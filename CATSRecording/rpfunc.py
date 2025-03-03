@@ -1,11 +1,46 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 import os, glob, sys, time
 import cv2, threading
+from PyQt5.QtGui import QPainter, QPen
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import json
 
+class LineLabel(QtWidgets.QLabel):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedSize(400, 300)  # 設定 QLabel 大小
+        self.vertical_line_x = 200  # 初始垂直線位置
+        self.horizontal_line_y = 150  # 初始水平線位置
 
+    def set_vertical_line(self, value):
+        """更新垂直線的位置 (X 軸) 並重新繪製"""
+        self.vertical_line_x = value
+        self.update()  # 重新觸發 paintEvent()
+
+    def set_horizontal_line(self, value):
+        """更新水平線的位置 (Y 軸) 並重新繪製"""
+        self.horizontal_line_y = value
+        self.update()  # 重新觸發 paintEvent()
+
+    def paintEvent(self, event):
+        super().paintEvent(event)  # 保持 QLabel 原本的行為
+
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        pen = QPen(QtCore.Qt.red, 3, QtCore.Qt.SolidLine)  # 設定紅色 3px 的線條
+        painter.setPen(pen)
+
+        # 畫垂直線
+        painter.drawLine(self.vertical_line_x, 0, self.vertical_line_x, self.height())
+
+        # 畫水平線
+        painter.drawLine(0, self.horizontal_line_y, self.width(), self.horizontal_line_y)
+
+        painter.end()
+
+        
 class MyThread(threading.Thread):
     def __init__(self, caps, index, Play_btn, icons, fast_forward_combobox,
                     Frameslider, framenumber, Vision_labels, qpixmaps, barrier):
@@ -171,9 +206,8 @@ class Replaybackend():
         self.firstclicked_S = True
         self.data_path = {'Deadlift': ['Body_Length.json', 'Hip_Angle.json', 
                                        'Knee_Angle.json', 'Knee_to_Hip.json'],
-                          'Benchpress' : ['Head_Armpit_Angle.json']}
-        # , 'Bar_Position.json', 
-        #                                   'Head_Armpit_Angle.json']}
+                          'Benchpress' : ['Armpit_Angle.json', 'Bar_Position.json', 
+                                          'Shoulder_Angle.json']}
         self.folders = {}
         self.threads = []
         self.rp_Vision_labels = []
@@ -404,29 +438,29 @@ class Replaybackend():
                     self.rp_qpixmaps[i] = QtGui.QPixmap.fromImage(image)
                     scaled_pixmap = self.rp_qpixmaps[i].scaled(self.rp_Vision_labels[i].size(), QtCore.Qt.IgnoreAspectRatio)
                     self.rp_Vision_labels[i].setPixmap(scaled_pixmap)
-        # if self.datas:
-        #     for i, data in enumerate(self.datas):
-        #         x_data = data['frames']
-        #         y_data = data['values']
-        #         min_length = min(len(x_data), len(y_data))
-        #         x_data = x_data[:min_length]
-        #         y_data = y_data[:min_length]
-        #         if min_length > 200:
-        #             trimmed_data = y_data[100:-100]  # 只取中间部分数据
-        #         else:
-        #             trimmed_data = y_data  # 如果数据少于 200 帧，保留所有数据
-        #         y_min = min(trimmed_data) * 0.9
-        #         y_max = max(trimmed_data) * 1.1
+        if self.datas:
+            for i, data in enumerate(self.datas):
+                x_data = data['frames']
+                y_data = data['values']
+                min_length = min(len(x_data), len(y_data))
+                x_data = x_data[:min_length]
+                y_data = y_data[:min_length]
+                if min_length > 200:
+                    trimmed_data = y_data[100:-100]  # 只取中间部分数据
+                else:
+                    trimmed_data = y_data  # 如果数据少于 200 帧，保留所有数据
+                y_min = min(trimmed_data) * 0.9
+                y_max = max(trimmed_data) * 1.1
                 
-        #         self.data_graph['axes'][i].clear()
-        #         self.data_graph['axes'][i].set_ylim(y_min, y_max)
-        #         self.data_graph['axes'][i].plot(x_data, y_data, label = f"{data['title']}")
-        #         self.data_graph['axes'][i].set_ylabel(f"{data['y_label']}")
-        #         self.data_graph['axes'][i].legend()
+                self.data_graph['axes'][i].clear()
+                self.data_graph['axes'][i].set_ylim(y_min, y_max)
+                self.data_graph['axes'][i].plot(x_data, y_data, label = f"{data['title']}")
+                self.data_graph['axes'][i].set_ylabel(f"{data['y_label']}")
+                self.data_graph['axes'][i].legend()
                 
-        #     self.data_graph['axes'][-1].set_xlabel('frames')
-        #     self.data_graph['canvas'].draw()
-        #     self.data_graph['graphicscene'].addWidget(self.data_graph['canvas'])
+            self.data_graph['axes'][-1].set_xlabel('frames')
+            self.data_graph['canvas'].draw()
+            self.data_graph['graphicscene'].addWidget(self.data_graph['canvas'])
         else:
             for ax in self.data_graph['axes']:
                 ax.clear()
@@ -467,39 +501,49 @@ class Replaybackend():
                     sublayout.setAlignment(Vision_label, QtCore.Qt.AlignCenter)
                     Vision_labels.append(Vision_label)
                 return Vision_labels, qpixmaps
-            if type == 'rp':
-                vertical_slider = QtWidgets.QSlider(orientation = QtCore.Qt.Vertical, parent = parentlayout)
-                horizontal_slider = QtWidgets.QSlider(orientation = QtCore.Qt.Horizontal, parent = parentlayout)   
+            if type == 'rp':   
                 if num == 1:
+                    vertical_slider = QtWidgets.QSlider(orientation = QtCore.Qt.Vertical, parent = parentlayout)
+                    horizontal_slider = QtWidgets.QSlider(orientation = QtCore.Qt.Horizontal, parent = parentlayout)
                     qpixmap = QtGui.QPixmap()
                     qpixmaps.append(qpixmap)
-                    Vision_label = QtWidgets.QLabel(parentlayout)
+                    Vision_label = LineLabel(parentlayout)
                     Vision_label.setFrameShape(QtWidgets.QFrame.Panel)
                     Vision_label.setMinimumSize(labelsize[0], labelsize[1])
                     Vision_label.setMaximumSize(labelsize[0], labelsize[1])
-                    # Vision_label.setAlignment(QtCore.Qt.AlignCenter)
                     Vision_label.setPixmap(qpixmap)
                     sublayout.addWidget(Vision_label, 0, 0)
                     sublayout.addWidget(vertical_slider, 0, 1)
                     horizontal_slider.setFixedWidth(labelsize[0])
+                    horizontal_slider.setValue(0)
+                    horizontal_slider.valueChanged.connect(Vision_label.set_horizontal_line)
                     vertical_slider.setFixedHeight(labelsize[1])
+                    vertical_slider.setInvertedAppearance(True)
+                    vertical_slider.setValue(0)
+                    vertical_slider.valueChanged.connect(Vision_label.set_vertical_line)
                     sublayout.addWidget(horizontal_slider, 1, 0)
-                    # sublayout.setAlignment(vertical_slider, QtCore.Qt.AlignCenter)
                     Vision_labels.append(Vision_label)
                     return Vision_label, vertical_slider, horizontal_slider
                 
                 if  num == 2:
                     for _ in range(num):
                         # ✅ 創建新元件，避免重複使用舊的
-                        Vision_label = QtWidgets.QLabel("Vision")
+                        qpixmap = QtGui.QPixmap()
+                        Vision_label = LineLabel(parentlayout)
                         Vision_label.setMinimumSize(labelsize[0], labelsize[1])
                         Vision_label.setMaximumSize(labelsize[0], labelsize[1])
+                        Vision_label.setPixmap(qpixmap)
 
-                        vertical_slider = QtWidgets.QSlider(QtCore.Qt.Vertical)
-                        horizontal_slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+                        vertical_slider = QtWidgets.QSlider(QtCore.Qt.Vertical, parent = parentlayout)
+                        horizontal_slider = QtWidgets.QSlider(QtCore.Qt.Horizontal, parent = parentlayout)
 
                         vertical_slider.setFixedHeight(labelsize[1])  # 限制垂直 Slider 高度
+                        vertical_slider.setInvertedAppearance(True)
+                        vertical_slider.setValue(0)
+                        vertical_slider.valueChanged.connect(Vision_label.set_vertical_line)
                         horizontal_slider.setFixedWidth(labelsize[0])  # 限制水平 Slider 寬度
+                        horizontal_slider.setValue(0)
+                        horizontal_slider.valueChanged.connect(Vision_label.set_horizontal_line)
 
                         # ✅ 建立 GridLayout
                         vis_layout = QtWidgets.QGridLayout()
