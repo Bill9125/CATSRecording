@@ -84,14 +84,11 @@ def save_json(title, y_label, frames, values, output_path):
     # 過濾 None 並確保是 float
     valid_data = [float(v) for v in trimmed_data if v is not None and isinstance(v, (int, float))]
 
-    y_min = min(valid_data) * 0.9 if valid_data else 0
-    y_max = max(valid_data) * 1.1 if valid_data else 180
-
     data = {
         "title": title,
         "y_label": y_label,
-        "y_min": round(y_min, 2),
-        "y_max": round(y_max, 2),
+        "y_min": 80,
+        "y_max": 200,
         "frames": frames,
         "values": values
     }

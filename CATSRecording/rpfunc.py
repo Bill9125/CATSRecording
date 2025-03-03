@@ -5,6 +5,7 @@ from PyQt5.QtGui import QPainter, QPen
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import json
+import numpy as np
 
 class LineLabel(QtWidgets.QLabel):
     def __init__(self, parent=None):
@@ -125,6 +126,9 @@ class MyThread(threading.Thread):
     def stop(self):
         self._stop_event.set()
         
+import threading
+import numpy as np
+
 class Thread_data(threading.Thread):
     def __init__(self, index, gragh, data, barrier, fast_forward_combobox, Frameslider, framenumber):
         threading.Thread.__init__(self, daemon=True)
@@ -132,6 +136,7 @@ class Thread_data(threading.Thread):
         self._pause_event.set()
         self._stop_event = threading.Event()
         self._stop_event.clear()
+        
         self.index = index
         self.ax = gragh['axes'][index]
         self.canvas = gragh['canvas']
@@ -144,40 +149,61 @@ class Thread_data(threading.Thread):
         self.is_slide_end = False
         self.is_slide_start = False
         
-        self.line, = gragh['axes'][index].plot([], [], color="red")
-        
-    def run(self):
-        x_data = self.data['frames']
-        y_data = self.data['values']
-        self.ax.set_xlim(min(x_data), max(x_data))
-        y_min = self.data['y_min']
-        y_max = self.data['y_max']
-        self.ax.set_ylim(y_min, y_max)
+        # ✅ 確保 `y_data` 格式正確
+        self.x_data = self.data['frames']
+        self.y_data = self.data['values']
+
+        if isinstance(self.y_data[0], (list, tuple)) and len(self.y_data[0]) == 2:
+            # ✅ 如果 `y_data` 是二維 (e.g., [(val1, val2), (val3, val4), ...])
+            self.right_values = [v[0] for v in self.y_data]  # 右側數據
+            self.left_values = [v[1] for v in self.y_data]   # 左側數據
+            self.line1, = self.ax.plot([], [], color="red", label="Right")
+            self.line2, = self.ax.plot([], [], color="blue", label="Left")
+            self.is_2d = True
+        else:
+            # ✅ 如果 `y_data` 是一維 (e.g., [val1, val2, val3, ...])
+            self.line, = self.ax.plot([], [], color="red")
+            self.is_2d = False
+
+        # ✅ 設定軸範圍
+        self.ax.set_xlim(min(self.x_data), max(self.x_data))
+        self.ax.set_ylim(self.data['y_min'], self.data['y_max'])
         self.ax.set_ylabel(f"{self.data['y_label']}")
         self.ax.legend()
+
+    def run(self):
         while not self._stop_event.is_set():
-            # 迴圈暫停條件
             self._pause_event.wait()
-            
+
             if self.is_slide_start:
                 if self.is_slide_end:
-                    self.line.set_data([], [])  # **清除舊數據**
+                    # ✅ 清除舊數據
+                    if self.is_2d:
+                        self.line1.set_data([], [])
+                        self.line2.set_data([], [])
+                    else:
+                        self.line.set_data([], [])
+
                     self.is_slide_end = False
                     self.is_slide_start = False
                 continue
-            
-            # 迴圈終止條件
+
             if self.Frameslider.value() >= self.framenumber:
                 break
-                
-            # 等待所有 thread 完成同步
+
             self.barrier.wait()
             val = self.Frameslider.value()
-            self.line.set_data(x_data[:val], y_data[:val])
+
             if self.index == 0 and val % 5 == 0:
+                if self.is_2d:
+                    self.line1.set_data(self.x_data[:val], self.right_values[:val])
+                    self.line2.set_data(self.x_data[:val], self.left_values[:val])
+                else:
+                    self.line.set_data(self.x_data[:val], self.y_data[:val])
+
                 self.canvas.draw()
             self.barrier.wait()
-                
+
     def pause(self):
         self.is_pause = True
         self._pause_event.clear()
@@ -185,9 +211,91 @@ class Thread_data(threading.Thread):
     def resume(self):
         self.is_pause = False
         self._pause_event.set()
+import threading
+import numpy as np
 
-    # def stop(self):
-    #     self._stop_event.set()
+class Thread_data(threading.Thread):
+    def __init__(self, index, gragh, data, barrier, fast_forward_combobox, Frameslider, framenumber):
+        threading.Thread.__init__(self, daemon=True)
+        self._pause_event = threading.Event()
+        self._pause_event.set()
+        self._stop_event = threading.Event()
+        self._stop_event.clear()
+        
+        self.index = index
+        self.ax = gragh['axes'][index]
+        self.canvas = gragh['canvas']
+        self.data = data
+        self.fast_forward_combobox = fast_forward_combobox
+        self.Frameslider = Frameslider
+        self.framenumber = framenumber
+        self.barrier = barrier
+        self.is_pause = False
+        self.is_slide_end = False
+        self.is_slide_start = False
+        
+        # ✅ 確保 `y_data` 格式正確
+        self.x_data = self.data['frames']
+        self.y_data = self.data['values']
+
+        if isinstance(self.y_data[0], (list, tuple)) and len(self.y_data[0]) == 2:
+            # ✅ 如果 `y_data` 是二維 (e.g., [(val1, val2), (val3, val4), ...])
+            self.right_values = [v[0] for v in self.y_data]  # 右側數據
+            self.left_values = [v[1] for v in self.y_data]   # 左側數據
+            self.line1, = self.ax.plot([], [], color="red", label="Right")
+            self.line2, = self.ax.plot([], [], color="blue", label="Left")
+            self.is_2d = True
+        else:
+            # ✅ 如果 `y_data` 是一維 (e.g., [val1, val2, val3, ...])
+            self.line, = self.ax.plot([], [], color="red")
+            self.is_2d = False
+
+        # ✅ 設定軸範圍
+        self.ax.set_xlim(min(self.x_data), max(self.x_data))
+        self.ax.set_ylim(self.data['y_min'], self.data['y_max'])
+        self.ax.set_ylabel(f"{self.data['y_label']}")
+        self.ax.legend()
+
+    def run(self):
+        while not self._stop_event.is_set():
+            self._pause_event.wait()
+
+            if self.is_slide_start:
+                if self.is_slide_end:
+                    # ✅ 清除舊數據
+                    if self.is_2d:
+                        self.line1.set_data([], [])
+                        self.line2.set_data([], [])
+                    else:
+                        self.line.set_data([], [])
+
+                    self.is_slide_end = False
+                    self.is_slide_start = False
+                continue
+
+            if self.Frameslider.value() >= self.framenumber:
+                break
+
+            self.barrier.wait()
+            val = self.Frameslider.value()
+
+            if self.index == 0 and val % 7 == 0:
+                if self.is_2d:
+                    self.line1.set_data(self.x_data[:val], self.right_values[:val])
+                    self.line2.set_data(self.x_data[:val], self.left_values[:val])
+                else:
+                    self.line.set_data(self.x_data[:val], self.y_data[:val])
+
+                self.canvas.draw()
+            self.barrier.wait()
+
+    def pause(self):
+        self.is_pause = True
+        self._pause_event.clear()
+
+    def resume(self):
+        self.is_pause = False
+        self._pause_event.set()
             
 class Replaybackend():
     def __init__(self):
@@ -198,7 +306,7 @@ class Replaybackend():
         self.firstclicked_S = True
         self.data_path = {'Deadlift': ['Body_Length.json', 'Hip_Angle.json', 
                                        'Knee_Angle.json', 'Knee_to_Hip.json'],
-                          'Benchpress' : ['Armpit_Angle.json', 'Bar_Position.json', 
+                          'Benchpress' : ['Bar_Position.json', 'Armpit_Angle.json', 
                                           'Shoulder_Angle.json', 'Elbow_Angle.json']}
         self.folders = {}
         self.threads = []
