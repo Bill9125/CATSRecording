@@ -9,18 +9,17 @@ import json
 class LineLabel(QtWidgets.QLabel):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setFixedSize(400, 300)  # 設定 QLabel 大小
-        self.vertical_line_x = 200  # 初始垂直線位置
-        self.horizontal_line_y = 150  # 初始水平線位置
+        self.vertical_line_x = 0  # 初始垂直線位置
+        self.horizontal_line_y = 0  # 初始水平線位置
 
     def set_vertical_line(self, value):
         """更新垂直線的位置 (X 軸) 並重新繪製"""
-        self.vertical_line_x = value
+        self.horizontal_line_y = value
         self.update()  # 重新觸發 paintEvent()
 
     def set_horizontal_line(self, value):
         """更新水平線的位置 (Y 軸) 並重新繪製"""
-        self.horizontal_line_y = value
+        self.vertical_line_x = value
         self.update()  # 重新觸發 paintEvent()
 
     def paintEvent(self, event):
@@ -151,9 +150,6 @@ class Thread_data(threading.Thread):
         x_data = self.data['frames']
         y_data = self.data['values']
         self.ax.set_xlim(min(x_data), max(x_data))
-        min_length = min(len(x_data), len(y_data))
-        x_data = x_data[:min_length]
-        y_data = y_data[:min_length]
         y_min = self.data['y_min']
         y_max = self.data['y_max']
         self.ax.set_ylim(y_min, y_max)
@@ -513,8 +509,10 @@ class Replaybackend():
                     sublayout.addWidget(vertical_slider, 0, 1)
                     horizontal_slider.setFixedWidth(labelsize[0])
                     horizontal_slider.setValue(0)
+                    horizontal_slider.setMaximum(labelsize[0])
                     horizontal_slider.valueChanged.connect(Vision_label.set_horizontal_line)
                     vertical_slider.setFixedHeight(labelsize[1])
+                    vertical_slider.setMaximum(labelsize[1])
                     vertical_slider.setInvertedAppearance(True)
                     vertical_slider.setValue(0)
                     vertical_slider.valueChanged.connect(Vision_label.set_vertical_line)
@@ -535,10 +533,12 @@ class Replaybackend():
                         horizontal_slider = QtWidgets.QSlider(QtCore.Qt.Horizontal, parent = parentlayout)
 
                         vertical_slider.setFixedHeight(labelsize[1])  # 限制垂直 Slider 高度
+                        vertical_slider.setMaximum(labelsize[1])
                         vertical_slider.setInvertedAppearance(True)
                         vertical_slider.setValue(0)
                         vertical_slider.valueChanged.connect(Vision_label.set_vertical_line)
                         horizontal_slider.setFixedWidth(labelsize[0])  # 限制水平 Slider 寬度
+                        horizontal_slider.setMaximum(labelsize[0])
                         horizontal_slider.setValue(0)
                         horizontal_slider.valueChanged.connect(Vision_label.set_horizontal_line)
 
