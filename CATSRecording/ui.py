@@ -99,10 +99,18 @@ class Ui_MainWindow(object):
         self.File_comboBox = QtWidgets.QComboBox(self.Replay_tab)
         self.File_comboBox.setObjectName("File_comboBox")
         self.top_controls_layout.addWidget(self.File_comboBox)
+        
+        self.search_LineEdit = QtWidgets.QLineEdit(self.Replay_tab)
+        self.search_LineEdit.setObjectName('search_LineEdit')
+        self.search_LineEdit.setText('請輸入想尋找的文件')
+        self.top_controls_layout.addWidget(self.search_LineEdit)
+        
         self.top_controls_layout.setStretch(0, 1)
         self.top_controls_layout.setStretch(1, 1)
         self.top_controls_layout.setStretch(2, 1)
         self.top_controls_layout.setStretch(3, 20)
+        self.top_controls_layout.setStretch(4, 5)
+        
         self.top_controls_layout.setContentsMargins(0, 0, 500, 0)
         self.replay_layout.addLayout(self.top_controls_layout)
 

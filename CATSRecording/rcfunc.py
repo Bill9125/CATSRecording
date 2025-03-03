@@ -237,10 +237,16 @@ class Recordingbackend():
             self.mbox.addButton(QtWidgets.QMessageBox.Ok)
             self.mbox.show()
 
-    def recording_ctrl_btn_clicked(self, sport):
+    def recording_ctrl_btn_clicked(self, sport, button_1, button_2, button_3):
         if not self.recording_sig:
+            button_1.setEnabled(False)
+            button_2.setEnabled(False)
+            button_3.setEnabled(False)
             self.start_recording(sport)
         else:
+            button_1.setEnabled(True)
+            button_2.setEnabled(True)
+            button_3.setEnabled(True)
             self.stop_recording()
             
     def player_reset(self, name):
@@ -270,7 +276,7 @@ class Recordingbackend():
             self.save_sig_3 = True    
         
     def data_produce_btn_clicked(self, sport):
-        self.folder = 'C:/Users/92A27/benchpress/recordings/2'
+        # self.folder = 'C:/Users/92A27/benchpress/recordings/2'
         if sport == 'Deadlift':
             # 對槓端及骨架做內插
             os.system(f'python ./tools/Deadlift_tool/interpolate.py {self.folder}')

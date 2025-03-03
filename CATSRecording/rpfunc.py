@@ -389,11 +389,11 @@ class Replaybackend():
             Deadlift_btn.setStyleSheet("font-size:18px;background-color: #666666")
 
         File_comboBox.clear()
-        list = os.listdir(self.folders[sport])
+        self.all_items = os.listdir(self.folders[sport])
         # 這裡combobox有變動
-        for folder in list[::-1]:
+        for folder in self.all_items[::-1]:
             File_comboBox.addItems([folder])
-
+            
         Play_btn.setEnabled(True)
         Stop_btn.setEnabled(True)
         Frameslider.setEnabled(True)
@@ -413,12 +413,14 @@ class Replaybackend():
                 self.videos = [video for video in videos 
                             if os.path.basename(video) in ('original_vision1.avi', 'vision2.avi', 'original_vision3.avi')
                             ]
-                self.videos[1], self.videos[2] = self.videos[2], self.videos[1]
+                if self.videos:
+                    self.videos[1], self.videos[2] = self.videos[2], self.videos[1]
             if len(videos) == 7:
                 self.videos = [video for video in videos 
                             if os.path.basename(video) in ('vision1_drawed.avi', 'vision2.avi', 'original_vision3.avi')
                             ]
-                self.videos[1], self.videos[2] = self.videos[2], self.videos[1]
+                if self.videos:
+                    self.videos[1], self.videos[2] = self.videos[2], self.videos[1]
                 for i in range(len(self.data_path[self.currentsport])):
                     with open(f'../config/{self.currentsport}_data/{self.data_path[self.currentsport][i]}',
                                 mode='r', encoding='utf-8') as file:
@@ -432,13 +434,15 @@ class Replaybackend():
             if len(videos) == 5:
                 self.videos = [video for video in videos
                             if os.path.basename(video) in ('vision1.avi', 'vision2.avi', 'vision3.avi')]
-                self.videos = [self.videos[1], self.videos[2], self.videos[0]]
+                if self.videos:
+                    self.videos = [self.videos[1], self.videos[2], self.videos[0]]
                 self.datas = []
             # 已後製
             elif len(videos) == 6:
                 self.videos = [video for video in videos
                             if os.path.basename(video) in ('vision1_drawed.avi', 'vision2.avi', 'vision3.avi')]
-                self.videos = [self.videos[1], self.videos[2], self.videos[0]]
+                if self.videos:
+                    self.videos = [self.videos[1], self.videos[2], self.videos[0]]
                 # 抓取計算完的檔案
                 for i in range(len(self.data_path[self.currentsport])):
                     with open(f'../config/{self.currentsport}_data/{self.data_path[self.currentsport][i]}',
@@ -693,7 +697,15 @@ class Replaybackend():
         val = Frameslider.value()
         if val >= Frameslider.maximum():
             self.stop(Frameslider, Play_btn, icons)
+            
+    def search_text_changed(self, comboBox, filter_text):
+        comboBox.clear()
         
+        # 過濾符合條件的項目
+        filtered_items = [item for item in self.all_items if filter_text in item.lower()]
+        
+        # 重新加入篩選後的項目
+        comboBox.addItems(filtered_items)
         
     # 遍歷 layout，清空所有子佈局和控件
     def clear_layout(self, layout):

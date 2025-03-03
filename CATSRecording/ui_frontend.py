@@ -50,6 +50,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.Frameslider.sliderPressed.connect(self.rpbf.slider_Pressed)
         self.ui.Frameslider.sliderReleased.connect(self.rpbf.slider_released)
         self.ui.Frameslider.valueChanged.connect(lambda: self.rpbf.slider_changed(self.ui.Frameslider, self.ui.Play_btn, self.icons))
+        self.ui.search_LineEdit.textChanged.connect(lambda: self.rpbf.search_text_changed(self.ui.File_comboBox, self.ui.search_LineEdit.text()))
 
     def rc_Deadlift_clicked(self):
         self.names.clear()
@@ -176,7 +177,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.rc_Vision_labels, self.rc_qpixmaps = self.rpbf.creat_vision_labels_pixmaps([x * 1.2 for x in labelsize], self.ui.Recording_tab, self.Deadlift_vision_layout, 'Deadlift', 5)
         self.data_produce_btn.clicked.connect(lambda: self.rcbf.data_produce_btn_clicked('Deadlift'))
         self.source_ctrl_btn.clicked.connect(lambda: self.rcbf.source_ctrl_btn_clicked('Deadlift', self.rc_Vision_labels))
-        self.recording_ctrl_btn.clicked.connect(lambda: self.rcbf.recording_ctrl_btn_clicked('Deadlift'))
+        self.recording_ctrl_btn.clicked.connect(lambda: self.rcbf.recording_ctrl_btn_clicked('Deadlift', self.data_produce_btn, self.source_ctrl_btn, self.back_toolbtn))
         
     def rc_Benchpress_layout_set(self):
         # clear recording layout
@@ -247,7 +248,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.rc_Vision_labels, self.rc_qpixmaps = self.rpbf.creat_vision_labels_pixmaps([x * 1.5 for x in labelsize], self.ui.Recording_tab, self.Benchpress_vision_layout, 'Benchpress', 3)
         self.data_produce_btn.clicked.connect(lambda: self.rcbf.data_produce_btn_clicked('Benchpress'))
         self.source_ctrl_btn.clicked.connect(lambda: self.rcbf.source_ctrl_btn_clicked('Benchpress', self.rc_Vision_labels))
-        self.recording_ctrl_btn.clicked.connect(lambda: self.rcbf.recording_ctrl_btn_clicked('Benchpress'))
+        self.recording_ctrl_btn.clicked.connect(lambda: self.rcbf.recording_ctrl_btn_clicked('Deadlift', self.data_produce_btn, self.source_ctrl_btn, self.back_toolbtn))
 
     def rp_layout_set(self, sport):
         self.layout_clear(self.ui.head_vis_layout)
@@ -292,7 +293,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
             # 右半邊labels
             data_layout = QtWidgets.QFormLayout()
             self.data_layouts.append(data_layout)
-            graphicview, graphicscene, canvas, axes = self.rpbf.creat_graphic(self.ui.Replay_tab, data_layout, (10, 5), 4)
+            graphicview, graphicscene, canvas, axes = self.rpbf.creat_graphic(self.ui.Replay_tab, data_layout, (20, 15), 4)
             self.graph = {'graphicview' : graphicview, 'graphicscene' : graphicscene, 'canvas' : canvas, 'axes' : axes}
             self.ui.data_ctrl_layout_V.addLayout(data_layout)
             
