@@ -270,17 +270,21 @@ class Recordingbackend():
             self.save_sig_3 = True    
         
     def data_produce_btn_clicked(self, sport):
-        # self.folder = 'C:/jinglun/CATSRecording/data/recording_Benchpress/1'
-        # 對槓端及骨架做內插
-        os.system(f'python ./tools/interpolate.py {self.folder}')
+        self.folder = 'C:/Users/92A27/benchpress/recordings/recording_20250303_111615'
+        self.folder = 'C:/Users/92A27/MOCAP/recordings/recording_20250226_113742'
+        
         if sport == 'Deadlift':
+            # 對槓端及骨架做內插
+            os.system(f'python ./tools/Deadlift_tool/interpolate.py {self.folder}')
             os.system(f'python ./tools/Deadlift_tool/data_produce.py {self.folder} --out ../config')
         if sport == 'Benchpress':
+             # 對槓端及骨架做內插
+            os.system(f'python ./tools/Benchpress_tool/interpolate_function.py {self.folder}')
             # 臥推要多做一個骨架內插
             os.system(f'python ./tools/Benchpress_tool/interpolate_yolo_skeleton.py {self.folder}')
             # 內插完數據做config檔
             # shoulder
-            os.system(f'python ./tools/Benchpress_tool/elbow_shoulder_data_produce.py {self.folder} --out ../config')
+            os.system(f'python ./tools/Benchpress_tool/shoulder_elbow_data_produce.py {self.folder} --out ../config')
             # armpit
             os.system(f'python ./tools/Benchpress_tool/armpit_data_produce.py {self.folder} --out ../config')
             # bar

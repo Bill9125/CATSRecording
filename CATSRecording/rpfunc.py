@@ -154,12 +154,8 @@ class Thread_data(threading.Thread):
         min_length = min(len(x_data), len(y_data))
         x_data = x_data[:min_length]
         y_data = y_data[:min_length]
-        if min_length > 200:
-            trimmed_data = y_data[100:-100]  # 只取中间部分数据
-        else:
-            trimmed_data = y_data  # 如果数据少于 200 帧，保留所有数据
-        y_min = min(trimmed_data) * 0.9
-        y_max = max(trimmed_data) * 1.1
+        y_min = self.data['y_min']
+        y_max = self.data['y_max']
         self.ax.set_ylim(y_min, y_max)
         self.ax.set_ylabel(f"{self.data['y_label']}")
         self.ax.legend()
@@ -207,7 +203,7 @@ class Replaybackend():
         self.data_path = {'Deadlift': ['Body_Length.json', 'Hip_Angle.json', 
                                        'Knee_Angle.json', 'Knee_to_Hip.json'],
                           'Benchpress' : ['Armpit_Angle.json', 'Bar_Position.json', 
-                                          'Shoulder_Angle.json']}
+                                          'Shoulder_Angle.json', 'Elbow_Angle.json']}
         self.folders = {}
         self.threads = []
         self.rp_Vision_labels = []
@@ -320,6 +316,18 @@ class Replaybackend():
                         if file:
                             data = json.load(file)
                             self.datas.append(data)
+            if len(videos) == 7:
+                self.videos = [video for video in videos 
+                            if os.path.basename(video) in ('vision1_drawed.avi', 'vision2.avi', 'origin_vision3.avi')
+                            ]
+                self.videos[1], self.videos[2] = self.videos[2], self.videos[1]
+                for i in range(len(self.data_path[self.currentsport])):
+                    with open(f'../config/{self.currentsport}_data/{self.data_path[self.currentsport][i]}',
+                                mode='r', encoding='utf-8') as file:
+                        if file:
+                            data = json.load(file)
+                            self.datas.append(data)
+                
 
         ## 硬舉avi只需要 1, 2, 3 視角
         if self.currentsport == 'Deadlift':
@@ -445,12 +453,8 @@ class Replaybackend():
                 min_length = min(len(x_data), len(y_data))
                 x_data = x_data[:min_length]
                 y_data = y_data[:min_length]
-                if min_length > 200:
-                    trimmed_data = y_data[100:-100]  # 只取中间部分数据
-                else:
-                    trimmed_data = y_data  # 如果数据少于 200 帧，保留所有数据
-                y_min = min(trimmed_data) * 0.9
-                y_max = max(trimmed_data) * 1.1
+                y_min = data['y_min']
+                y_max = data['y_max']
                 
                 self.data_graph['axes'][i].clear()
                 self.data_graph['axes'][i].set_ylim(y_min, y_max)

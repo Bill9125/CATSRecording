@@ -292,7 +292,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
             # 右半邊labels
             data_layout = QtWidgets.QFormLayout()
             self.data_layouts.append(data_layout)
-            graphicview, graphicscene, canvas, axes = self.rpbf.creat_graphic(self.ui.Replay_tab, data_layout, (20, 15), 3)
+            graphicview, graphicscene, canvas, axes = self.rpbf.creat_graphic(self.ui.Replay_tab, data_layout, (20, 15), 4)
             self.graph = {'graphicview' : graphicview, 'graphicscene' : graphicscene, 'canvas' : canvas, 'axes' : axes}
             self.ui.data_ctrl_layout_V.addLayout(data_layout)
             

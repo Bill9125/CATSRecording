@@ -5,7 +5,6 @@ import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument('dir', type=str)
-parser.add_argument('--out', type=str)
 args = parser.parse_args()
 dir = args.dir
 ####處理一部影片的
