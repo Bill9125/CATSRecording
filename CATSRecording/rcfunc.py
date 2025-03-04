@@ -239,15 +239,15 @@ class Recordingbackend():
 
     def recording_ctrl_btn_clicked(self, sport, button_1, button_2, button_3):
         if not self.recording_sig:
+            self.start_recording(sport)
             button_1.setEnabled(False)
             button_2.setEnabled(False)
             button_3.setEnabled(False)
-            self.start_recording(sport)
         else:
+            self.stop_recording()
             button_1.setEnabled(True)
             button_2.setEnabled(True)
             button_3.setEnabled(True)
-            self.stop_recording()
             
     def player_reset(self, name):
         self.player = name.text()
@@ -257,7 +257,7 @@ class Recordingbackend():
         now = datetime.now()
         timestamp = now.strftime("%Y%m%d_%H%M%S")
         if self.player:
-            self.folder = os.path.join(self.save_path[sport], self.player, f"recording_{timestamp}")
+            self.folder = os.path.join(self.save_path[sport], f"recording_{timestamp}_{self.player}")
         else:
             self.folder = os.path.join(self.save_path[sport], f"recording_{timestamp}")
         os.makedirs(self.folder, exist_ok=True)

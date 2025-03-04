@@ -98,11 +98,14 @@ class Ui_MainWindow(object):
 
         self.File_comboBox = QtWidgets.QComboBox(self.Replay_tab)
         self.File_comboBox.setObjectName("File_comboBox")
+        self.File_comboBox.setEditable(False)
+        self.File_comboBox.setStyleSheet("font-size:20px; color:yellow;")
         self.top_controls_layout.addWidget(self.File_comboBox)
         
         self.search_LineEdit = QtWidgets.QLineEdit(self.Replay_tab)
         self.search_LineEdit.setObjectName('search_LineEdit')
         self.search_LineEdit.setText('請輸入想尋找的文件')
+        self.search_LineEdit.setStyleSheet("font-size:20px; color:yellow;")
         self.top_controls_layout.addWidget(self.search_LineEdit)
         
         self.top_controls_layout.setStretch(0, 1)
@@ -142,6 +145,7 @@ class Ui_MainWindow(object):
         self.TimeCount_LineEdit = QtWidgets.QLineEdit()
         self.TimeCount_LineEdit.setEnabled(True)
         self.TimeCount_LineEdit.setAlignment(QtCore.Qt.AlignCenter)
+        self.TimeCount_LineEdit.setStyleSheet('color:yellow;')
         self.TimeCount_LineEdit.setReadOnly(True)
         self.TimeCount_LineEdit.setObjectName("TimeCount_LineEdit")
 
@@ -154,6 +158,8 @@ class Ui_MainWindow(object):
         self.fast_forward_combobox = QtWidgets.QComboBox()
         self.fast_forward_combobox.setEnabled(False)
         self.fast_forward_combobox.setObjectName("fast_forward_combobox")
+        self.fast_forward_combobox.setEditable(False)
+        self.fast_forward_combobox.setStyleSheet("font-size:20px; color:yellow;")
 
         self.bottom_controls_layout.addWidget(self.fast_forward_combobox)
         self.bottom_controls_layout.addWidget(self.Frameslider)

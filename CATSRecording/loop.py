@@ -386,7 +386,7 @@ def benchpress_head_loop(i, frame, label, save_sig, recording_sig, folder,
             print(f"Started writing data to {txt_file_path}")
         
     # frame 處理
-    results = model.predict(source=frame, conf=0.5)
+    results = model.predict(source=frame, conf=0.5, verbose = False)
     frame_count_for_detect += 1  # Increment frame count for each frame
 
     frame_data = []

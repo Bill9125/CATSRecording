@@ -161,6 +161,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     text.setFocus(True)
                     text.setAlignment(QtCore.Qt.AlignCenter)
                     text.setText(f'Name {x+1}')
+                    text.setStyleSheet("font-size:20px; color:yellow;")
                     self.names.append(text)
                     self.subject_layout.addWidget(text, y, x)    
                 if y == 1:
@@ -232,6 +233,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     text.setFocus(True)
                     text.setAlignment(QtCore.Qt.AlignCenter)
                     text.setText(f'Name {x+1}')
+                    text.setStyleSheet("font-size:20px; color:yellow;")
                     self.names.append(text)
                     self.subject_layout.addWidget(text, y, x)    
                 if y == 1:
@@ -248,7 +250,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.rc_Vision_labels, self.rc_qpixmaps = self.rpbf.creat_vision_labels_pixmaps([x * 1.5 for x in labelsize], self.ui.Recording_tab, self.Benchpress_vision_layout, 'Benchpress', 3)
         self.data_produce_btn.clicked.connect(lambda: self.rcbf.data_produce_btn_clicked('Benchpress'))
         self.source_ctrl_btn.clicked.connect(lambda: self.rcbf.source_ctrl_btn_clicked('Benchpress', self.rc_Vision_labels))
-        self.recording_ctrl_btn.clicked.connect(lambda: self.rcbf.recording_ctrl_btn_clicked('Deadlift', self.data_produce_btn, self.source_ctrl_btn, self.back_toolbtn))
+        self.recording_ctrl_btn.clicked.connect(lambda: self.rcbf.recording_ctrl_btn_clicked('Benchpress', self.data_produce_btn, self.source_ctrl_btn, self.back_toolbtn))
 
     def rp_layout_set(self, sport):
         self.layout_clear(self.ui.head_vis_layout)

@@ -194,7 +194,7 @@ class Thread_data(threading.Thread):
             self.barrier.wait()
             val = self.Frameslider.value()
 
-            if self.index == 0 and val % 5 == 0:
+            if self.index == 0 and val % 7 == 0:
                 if self.is_2d:
                     self.line1.set_data(self.x_data[:val], self.right_values[:val])
                     self.line2.set_data(self.x_data[:val], self.left_values[:val])
