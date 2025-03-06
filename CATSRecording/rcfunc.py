@@ -148,7 +148,7 @@ class Recordingbackend():
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
         if sport == 'Deadlift':
             bar_model = YOLO("../model/deadlift/yolo_bar_model/best.pt")
-            bone_model = YOLO("../model/deadlift/yolov8_model/yolov8n-pose.pt")
+            bone_model = YOLO("../model/deadlift/yolov8_model/best.pt")
             bar_model.to(device)
             bone_model.to(device)
             return [bar_model, bone_model]
