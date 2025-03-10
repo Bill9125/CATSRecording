@@ -23,7 +23,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.B_layout_inited = False
         self.S_layout_inited = False
         
-        icon_srcs = glob.glob(self.resource_path('ui_src/*.png'))
+        icon_srcs = glob.glob('./ui_src/*.png')
         for icon in icon_srcs:
             self.icons.append(QtGui.QIcon(icon))
         self.ui.Play_btn.setIcon(self.icons[1])
@@ -320,10 +320,4 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
             widget = layout.itemAt(i).widget()
             if widget is not None:
                 widget.deleteLater()
-        
-    def resource_path(self, relative_path):
-        base_path = getattr(sys, '_MEIPASS', os.path.abspath("."))
-        return os.path.join(base_path, relative_path)
-    
-
 

@@ -107,7 +107,7 @@ class Recordingbackend():
         for i in range(self.struct[sport]):
             self.vision_src[f'Vision{i+1}'] = i
 
-        with open('../config/click_order.json', mode='r', newline='', encoding='utf-8') as file:
+        with open('./config/click_order.json', mode='r', newline='', encoding='utf-8') as file:
             data = json.load(file)
             for i in range(self.struct[sport]):
                 self.vision_src[f'Vision{i+1}'] = int(data[sport][i])
@@ -147,15 +147,15 @@ class Recordingbackend():
     def model_select(self, sport):
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
         if sport == 'Deadlift':
-            bar_model = YOLO("../model/deadlift/yolo_bar_model/best.pt")
-            bone_model = YOLO("../model/deadlift/yolov8_model/yolov8n-pose.pt")
+            bar_model = YOLO("./model/deadlift/yolo_bar_model/best.pt")
+            bone_model = YOLO("./model/deadlift/yolov8_model/yolov8n-pose.pt")
             bar_model.to(device)
             bone_model.to(device)
             return [bar_model, bone_model]
         elif sport =='Benchpress':
-            bar_model = YOLO("../model/benchpress/yolo_bar_model/best.pt")
-            body_model = YOLO("../model/benchpress/body_model/yolov8n-pose.pt")
-            head_model = YOLO("../model/benchpress/head_model/yolo11m.pt")
+            bar_model = YOLO("./model/benchpress/yolo_bar_model/best.pt")
+            body_model = YOLO("./model/benchpress/body_model/yolov8n-pose.pt")
+            head_model = YOLO("./model/benchpress/head_model/yolo11m.pt")
             bar_model.to(device)
             body_model.to(device)
             head_model.to(device)

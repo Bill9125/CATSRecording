@@ -279,25 +279,17 @@ class Replaybackend():
         ):
                 
         if sport == 'Deadlift':
-            folderPath = self.resource_path('C:/Users/92A27/MOCAP/recordings')
+            folderPath = 'C:/Users/92A27/MOCAP/recordings'
             self.folders[sport] = folderPath
             Deadlift_btn.setStyleSheet("font-size:18px;background-color: #888888")
             Benchpress_btn.setStyleSheet("font-size:18px;background-color: #666666")
             Squat_btn.setStyleSheet("font-size:18px;background-color: #666666")
         
         elif sport == 'Benchpress':
-            folderPath = self.resource_path('C:/Users/92A27/benchpress/recordings')
+            folderPath = 'C:/Users/92A27/benchpress/recordings'
             self.folders[sport] = folderPath
             Benchpress_btn.setStyleSheet("font-size:18px;background-color: #888888")
             Squat_btn.setStyleSheet("font-size:18px;background-color: #666666")
-            Deadlift_btn.setStyleSheet("font-size:18px;background-color: #666666")
-
-        elif sport == 'Squat':
-            folderPath = self.resource_path(f'C:/Users/92A27/barbell_squart/recordings')
-            self.folders[sport] = folderPath
-            self.rp_Vision_labels, self.rp_qpixmaps = self.creat_vision_labels_pixmaps([384, 512], rp_tab, play_layout, 5)
-            Squat_btn.setStyleSheet("font-size:18px;background-color: #888888")
-            Benchpress_btn.setStyleSheet("font-size:18px;background-color: #666666")
             Deadlift_btn.setStyleSheet("font-size:18px;background-color: #666666")
 
         File_comboBox.clear()
@@ -334,7 +326,7 @@ class Replaybackend():
                 if self.videos:
                     self.videos[1], self.videos[2] = self.videos[2], self.videos[1]
                 for i in range(len(self.data_path[self.currentsport])):
-                    with open(f'../config/{self.currentsport}_data/{self.data_path[self.currentsport][i]}',
+                    with open(f'./config/{self.currentsport}_data/{self.data_path[self.currentsport][i]}',
                                 mode='r', encoding='utf-8') as file:
                         if file:
                             data = json.load(file)
@@ -357,7 +349,7 @@ class Replaybackend():
                     self.videos = [self.videos[1], self.videos[2], self.videos[0]]
                 # 抓取計算完的檔案
                 for i in range(len(self.data_path[self.currentsport])):
-                    with open(f'../config/{self.currentsport}_data/{self.data_path[self.currentsport][i]}',
+                    with open(f'./config/{self.currentsport}_data/{self.data_path[self.currentsport][i]}',
                                 mode='r', encoding='utf-8') as file:
                         data = json.load(file)
                         self.datas.append(data)
@@ -631,9 +623,4 @@ class Replaybackend():
                 if sub_layout:
                     self.clear_layout(sub_layout)  # 遞迴刪除子佈局
         layout.update()  # 更新佈局，確保視圖刷新
-        
-
-    def resource_path(self, relative_path):
-        base_path = getattr(sys, '_MEIPASS', os.path.abspath("."))
-        return os.path.join(base_path, relative_path)
 
