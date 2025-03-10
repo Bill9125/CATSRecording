@@ -125,9 +125,6 @@ class MyThread(threading.Thread):
 
     def stop(self):
         self._stop_event.set()
-        
-import threading
-import numpy as np
 
 class Thread_data(threading.Thread):
     def __init__(self, index, gragh, data, barrier, fast_forward_combobox, Frameslider, framenumber):
@@ -157,8 +154,8 @@ class Thread_data(threading.Thread):
             # ✅ 如果 `y_data` 是二維 (e.g., [(val1, val2), (val3, val4), ...])
             self.right_values = [v[0] for v in self.y_data]  # 右側數據
             self.left_values = [v[1] for v in self.y_data]   # 左側數據
-            self.line1, = self.ax.plot([], [], color="red", label="Right")
-            self.line2, = self.ax.plot([], [], color="blue", label="Left")
+            self.line1, = self.ax.plot([], [], color="blue")
+            self.line2, = self.ax.plot([], [], color="red")
             self.is_2d = True
         else:
             # ✅ 如果 `y_data` 是一維 (e.g., [val1, val2, val3, ...])
@@ -193,14 +190,14 @@ class Thread_data(threading.Thread):
 
             self.barrier.wait()
             val = self.Frameslider.value()
+
+            if self.is_2d:
+                self.line1.set_data(self.x_data[:val], self.right_values[:val])
+                self.line2.set_data(self.x_data[:val], self.left_values[:val])
+            else:
+                self.line.set_data(self.x_data[:val], self.y_data[:val])
 
             if self.index == 0 and val % 7 == 0:
-                if self.is_2d:
-                    self.line1.set_data(self.x_data[:val], self.right_values[:val])
-                    self.line2.set_data(self.x_data[:val], self.left_values[:val])
-                else:
-                    self.line.set_data(self.x_data[:val], self.y_data[:val])
-
                 self.canvas.draw()
             self.barrier.wait()
 
@@ -211,92 +208,7 @@ class Thread_data(threading.Thread):
     def resume(self):
         self.is_pause = False
         self._pause_event.set()
-import threading
-import numpy as np
 
-class Thread_data(threading.Thread):
-    def __init__(self, index, gragh, data, barrier, fast_forward_combobox, Frameslider, framenumber):
-        threading.Thread.__init__(self, daemon=True)
-        self._pause_event = threading.Event()
-        self._pause_event.set()
-        self._stop_event = threading.Event()
-        self._stop_event.clear()
-        
-        self.index = index
-        self.ax = gragh['axes'][index]
-        self.canvas = gragh['canvas']
-        self.data = data
-        self.fast_forward_combobox = fast_forward_combobox
-        self.Frameslider = Frameslider
-        self.framenumber = framenumber
-        self.barrier = barrier
-        self.is_pause = False
-        self.is_slide_end = False
-        self.is_slide_start = False
-        
-        # ✅ 確保 `y_data` 格式正確
-        self.x_data = self.data['frames']
-        self.y_data = self.data['values']
-
-        if isinstance(self.y_data[0], (list, tuple)) and len(self.y_data[0]) == 2:
-            # ✅ 如果 `y_data` 是二維 (e.g., [(val1, val2), (val3, val4), ...])
-            self.right_values = [v[0] for v in self.y_data]  # 右側數據
-            self.left_values = [v[1] for v in self.y_data]   # 左側數據
-            self.line1, = self.ax.plot([], [], color="red", label="Right")
-            self.line2, = self.ax.plot([], [], color="blue", label="Left")
-            self.is_2d = True
-        else:
-            # ✅ 如果 `y_data` 是一維 (e.g., [val1, val2, val3, ...])
-            self.line, = self.ax.plot([], [], color="red")
-            self.is_2d = False
-
-        # ✅ 設定軸範圍
-        self.ax.set_xlim(min(self.x_data), max(self.x_data))
-        self.ax.set_ylim(self.data['y_min'], self.data['y_max'])
-        self.ax.set_ylabel(f"{self.data['y_label']}")
-        self.ax.legend()
-
-    def run(self):
-        while not self._stop_event.is_set():
-            self._pause_event.wait()
-
-            if self.is_slide_start:
-                if self.is_slide_end:
-                    # ✅ 清除舊數據
-                    if self.is_2d:
-                        self.line1.set_data([], [])
-                        self.line2.set_data([], [])
-                    else:
-                        self.line.set_data([], [])
-
-                    self.is_slide_end = False
-                    self.is_slide_start = False
-                continue
-
-            if self.Frameslider.value() >= self.framenumber:
-                break
-
-            self.barrier.wait()
-            val = self.Frameslider.value()
-
-            if self.index == 0 and val % 10 == 0:
-                if self.is_2d:
-                    self.line1.set_data(self.x_data[:val], self.right_values[:val])
-                    self.line2.set_data(self.x_data[:val], self.left_values[:val])
-                else:
-                    self.line.set_data(self.x_data[:val], self.y_data[:val])
-
-                self.canvas.draw()
-            self.barrier.wait()
-
-    def pause(self):
-        self.is_pause = True
-        self._pause_event.clear()
-
-    def resume(self):
-        self.is_pause = False
-        self._pause_event.set()
-            
 class Replaybackend():
     def __init__(self):
         super(Replaybackend, self).__init__()

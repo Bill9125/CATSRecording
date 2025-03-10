@@ -80,7 +80,7 @@ def deadlift_bone_loop(i, frame, label, save_sig, recording_sig, folder,
     
     frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
 
-    # 錄影開始
+    # ✅ 錄影開始
     if recording_sig:
         if out is None:
             file = os.path.join(folder, f'vision{i + 1}.avi')
@@ -98,50 +98,48 @@ def deadlift_bone_loop(i, frame, label, save_sig, recording_sig, folder,
 
     finalizing = not recording_sig and save_sig
 
-    # frame 處理
-    if recording_sig or finalizing:
-        results = list(model(source=frame, stream=True, verbose=False))
-        frame_count_for_detect += 1
+    # ✅ YOLO 偵測骨架
+    results = list(model(source=frame, stream=True, verbose=False))
+    frame_count_for_detect += 1
 
-        if results and results[0].boxes:  # ✅ 確保有偵測到人
-            r2 = results[0]  # ✅ 只取第一個偵測結果（限制為單一人）
-            boxes = r2.boxes
-            keypoints = r2.keypoints
+    if results and results[0].keypoints:  # ✅ 確保有偵測到人
+        r2 = results[0]  # ✅ 只取第一個偵測結果
+        keypoints = r2.keypoints
+        kpts = keypoints[0]  # ✅ 只取第一個人的骨架點
+        keypoints_xy = kpts.xy  # shape: (1, 17, 2) -> 17 個關鍵點
 
-            x1, y1, x2, y2 = map(int, boxes.xyxy[0])  # ✅ 只取第一個人的 bounding box
-            confidence = round(boxes.conf[0].item(), 2)
-            cv2.putText(frame, f"person {confidence}",
-                        (max(0, x1), max(20, y1)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+        # ✅ 過濾無效骨架點 (0,0)
+        kp_coords = []
+        frame_data = []  # 存放該幀的骨架點
+        for idx, kp in enumerate(keypoints_xy[0]):
+            x_kp, y_kp = int(kp[0].item()), int(kp[1].item())
 
-            kpts = keypoints[0]  # ✅ 只取第一個人的骨架點
-            keypoints_xy = kpts.xy  # shape: (1, 17, 2) -> 17 個關鍵點
-
-            if txt_file is not None:
-                for j in range(keypoints_xy.shape[1]):
-                    txt_file.write(f"{frame_count_for_detect},{j},{int(keypoints_xy[0, j, 0])},{int(keypoints_xy[0, j, 1])}\n")
-
-            # **繪製骨架**
-            kp_coords = []
-            for idx, kp in enumerate(keypoints.xy[0]):
-                if idx == 2:  # 🔹 **跳過右眼**
-                    continue
-                x_kp, y_kp = int(kp[0].item()), int(kp[1].item())
+            # ✅ 若骨架點為 (0,0)，則標記為 None（不畫）
+            if x_kp == 0 and y_kp == 0:
+                kp_coords.append(None)
+            else:
                 kp_coords.append((x_kp, y_kp))
                 cv2.circle(frame, (x_kp, y_kp), 5, (0, 255, 0), cv2.FILLED)
+            
+            frame_data.append(f"{frame_count_for_detect},{idx},{x_kp},{y_kp}")
 
-            # **畫出骨架**
-            for start_idx, end_idx in skeleton_connections:
-                if start_idx == 2 or end_idx == 2:  # 🔹 **跳過右眼的骨架線**
-                    continue
-                if start_idx < len(kp_coords) and end_idx < len(kp_coords):
-                    cv2.line(frame, kp_coords[start_idx], kp_coords[end_idx], (0, 255, 255), 2)
+        # ✅ 繪製骨架連線，若其中一個點為 None，則不畫線
+        for start_idx, end_idx in skeleton_connections:
+            if start_idx < len(kp_coords) and end_idx < len(kp_coords):
+                if kp_coords[start_idx] is None or kp_coords[end_idx] is None:
+                    continue  # 跳過未偵測到的點
+                cv2.line(frame, kp_coords[start_idx], kp_coords[end_idx], (0, 255, 255), 2)
 
-        else:
-            # ❌ 沒有偵測到人，寫入 "no detection"
-            if txt_file is not None:
-                txt_file.write(f"{frame_count_for_detect},no detection\n")
+        # ✅ **將骨架點資訊寫入 `txt_file`**
+        if txt_file is not None:
+            txt_file.write("\n".join(frame_data) + "\n")
 
-    # ✅ 錄影完全結束後才關閉 txt_file
+    else:
+        # ❌ **沒有偵測到人，寫入 "no detection"**
+        if txt_file is not None:
+            txt_file.write(f"{frame_count_for_detect},no detection\n")
+
+    # ✅ **錄影完全結束後才關閉 `txt_file`**
     if finalizing:
         if txt_file is not None:
             txt_file.close()
@@ -154,6 +152,7 @@ def deadlift_bone_loop(i, frame, label, save_sig, recording_sig, folder,
             print(f"Released VideoWriter for camera {i + 1}")
         save_sig = False
 
+    # ✅ 繪製 FPS
     cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     h, w, ch = frame.shape
@@ -163,7 +162,6 @@ def deadlift_bone_loop(i, frame, label, save_sig, recording_sig, folder,
     return start_time, frame_count, fps, out, frame_count_for_detect, save_sig, txt_file
 
 
-    
 def deadlift_general_loop(i, frame, label, save_sig, recording_sig, folder,
                           start_time, frame_count, fps, out, barrier):
     frame_count += 1
