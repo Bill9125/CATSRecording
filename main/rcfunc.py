@@ -280,7 +280,7 @@ class Recordingbackend():
         if sport == 'Deadlift':
             # 對槓端及骨架做內插
             os.system(f'python ./tools/Deadlift_tool/interpolate.py {self.folder}')
-            os.system(f'python ./tools/Deadlift_tool/data_produce.py {self.folder} --out ../config')
+            os.system(f'python ./tools/Deadlift_tool/data_produce.py {self.folder} --out ./config')
         if sport == 'Benchpress':
              # 對槓端及骨架做內插
             os.system(f'python ./tools/Benchpress_tool/interpolate_function.py {self.folder}')
@@ -288,11 +288,11 @@ class Recordingbackend():
             os.system(f'python ./tools/Benchpress_tool/interpolate_yolo_skeleton.py {self.folder}')
             # 內插完數據做config檔
             # shoulder
-            os.system(f'python ./tools/Benchpress_tool/shoulder_elbow_data_produce.py {self.folder} --out ../config')
+            os.system(f'python ./tools/Benchpress_tool/shoulder_elbow_data_produce.py {self.folder} --out ./config')
             # armpit
-            os.system(f'python ./tools/Benchpress_tool/armpit_data_produce.py {self.folder} --out ../config')
+            os.system(f'python ./tools/Benchpress_tool/armpit_data_produce.py {self.folder} --out ./config')
             # bar
-            os.system(f'python ./tools/Benchpress_tool/bar_data_produce.py {self.folder} --out ../config')
+            os.system(f'python ./tools/Benchpress_tool/bar_data_produce.py {self.folder} --out ./config')
         # 後製軌跡影片
         os.system(f'python ./tools/trajectory.py {self.folder}')
         print('後製已完成')

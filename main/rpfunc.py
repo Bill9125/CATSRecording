@@ -197,7 +197,7 @@ class Thread_data(threading.Thread):
             else:
                 self.line.set_data(self.x_data[:val], self.y_data[:val])
 
-            if self.index == 0 and val % 7 == 0:
+            if self.index == 0 and val % 10 == 0:
                 self.canvas.draw()
             self.barrier.wait()
 
