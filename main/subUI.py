@@ -56,7 +56,7 @@ class ButtonClickApp(QMainWindow):
 
     def save_to_json(self):
         # 將點擊順序寫入 JSON 文件
-        file_path = '../config/click_order.json'
+        file_path = './config/click_order.json'
         try:
             # 如果文件存在且不是空的，讀取現有數據
             if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
