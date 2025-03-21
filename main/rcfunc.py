@@ -281,6 +281,7 @@ class Recordingbackend():
             # 對槓端及骨架做內插
             os.system(f'python ./tools/Deadlift_tool/interpolate.py {self.folder}')
             os.system(f'python ./tools/Deadlift_tool/data_produce.py {self.folder} --out ./config')
+            # os.system(f'python ./tools/Deadlift_tool/data_split.py {self.folder} --out ./config')
         if sport == 'Benchpress':
              # 對槓端及骨架做內插
             os.system(f'python ./tools/Benchpress_tool/interpolate_function.py {self.folder}')

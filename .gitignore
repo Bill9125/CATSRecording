@@ -9,3 +9,4 @@ V1_ui.ui
 data
 config
 .vscode
+.DS_Store
