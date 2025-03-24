@@ -29,13 +29,10 @@ class Ui_MainWindow(object):
         self.main_layout = QtWidgets.QVBoxLayout(self.centralwidget)
         self.main_layout.setContentsMargins(space_10, space_10, space_10, space_10)
 
-        self.replay_tabWidget = QtWidgets.QTabWidget(self.centralwidget)
-        self.replay_tabWidget.setEnabled(True)
+        self.tabs = QtWidgets.QTabWidget(self.centralwidget)
         font = QtGui.QFont()
         font.setFamily("Times New Roman")
         font.setPointSize(16)
-        self.replay_tabWidget.setFont(font)
-        self.replay_tabWidget.setObjectName("replay_tabWidget")
 
         # Recording tab
         self.Recording_tab = QtWidgets.QWidget()
@@ -69,7 +66,6 @@ class Ui_MainWindow(object):
         self.grid_Layout_recording.addWidget(self.rc_Squat_btn, 3, 0, 1, 1)
 
         self.recording_layout.addLayout(self.grid_Layout_recording)
-        self.replay_tabWidget.addTab(self.Recording_tab, "")
 
         # Replay tab
         font.setPointSize(18)
@@ -170,9 +166,10 @@ class Ui_MainWindow(object):
         self.bottom_controls_layout.setStretch(3, 90)
         self.bottom_controls_layout.setStretch(4, 5)
         
-        self.replay_tabWidget.addTab(self.Replay_tab, "")
-
-        self.main_layout.addWidget(self.replay_tabWidget)
+        self.tabs.addTab(self.Recording_tab, "Recording")
+        self.tabs.addTab(self.Replay_tab, 'replay')
+        self.main_layout.addWidget(self.tabs)
+        
         MainWindow.setCentralWidget(self.centralwidget)
 
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
@@ -180,7 +177,6 @@ class Ui_MainWindow(object):
         MainWindow.setStatusBar(self.statusbar)
 
         self.retranslateUi(MainWindow)
-        self.replay_tabWidget.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
@@ -190,9 +186,7 @@ class Ui_MainWindow(object):
         self.rc_Squat_btn.setText(_translate("MainWindow", "Squat"))
         self.rc_Deadlift_btn.setText(_translate("MainWindow", "Deadlift"))
         self.manual_checkbox.setText(_translate("MainWindow", "manual recording"))
-        self.replay_tabWidget.setTabText(self.replay_tabWidget.indexOf(self.Recording_tab), _translate("MainWindow", "Recording"))
         self.TimeCount_LineEdit.setPlaceholderText(_translate("MainWindow", "00:00"))
         self.rp_Deadlift_btn.setText(_translate("MainWindow", "Deadlift"))
         self.rp_Benchpress_btn.setText(_translate("MainWindow", "Benchpress"))
         self.rp_Squat_btn.setText(_translate("MainWindow", "Squat"))
-        self.replay_tabWidget.setTabText(self.replay_tabWidget.indexOf(self.Replay_tab), _translate("MainWindow", "Replay"))

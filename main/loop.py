@@ -27,20 +27,6 @@ def deadlift_bar_loop(i, frame, label, save_sig, recording_sig, folder,
             txt_file = open(txt_file_path, "w")  # ✅ 錄影開始時開啟檔案
             frame_count_for_detect = 0  # ✅ 只在錄影開始時歸零
             print(f"Started writing data to {txt_file_path}")
-            
-    if not recording_sig:
-        frame_count_for_detect = 0
-        # 錄影結束
-        if save_sig and out is not None:
-            out.release()
-            print(f"Released VideoWriter for camera {i + 1}")
-            save_sig = False
-        out = None
-        if txt_file is not None:
-            txt_file.close()
-            txt_file = None  # ✅ 確保 `txt_file` 被正確關閉
-            print(f"Closed txt_file for camera {i + 1}")
-        
 
     # frame 處理
     results = model(source=frame, imgsz=320, conf=0.5, verbose=False)
@@ -60,6 +46,20 @@ def deadlift_bar_loop(i, frame, label, save_sig, recording_sig, folder,
         if not detected:
             frame_count_for_detect += 1
             txt_file.write(f"{frame_count_for_detect},no detection\n")
+
+    barrier.wait()
+    if not recording_sig:
+        frame_count_for_detect = 0
+        # 錄影結束
+        if save_sig and out is not None:
+            out.release()
+            print(f"Released VideoWriter for camera {i + 1}")
+            save_sig = False
+        out = None
+        if txt_file is not None:
+            txt_file.close()
+            txt_file = None  # ✅ 確保 `txt_file` 被正確關閉
+            print(f"Closed txt_file for camera {i + 1}")
 
     cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -96,8 +96,6 @@ def deadlift_bone_loop(i, frame, label, save_sig, recording_sig, folder,
             frame_count_for_detect = 0
             print(f"Started writing data to {txt_file_path}")
 
-    finalizing = not recording_sig and save_sig
-
     # ✅ YOLO 偵測骨架
     results = list(model(source=frame, stream=True, verbose=False))
     frame_count_for_detect += 1
@@ -127,7 +125,7 @@ def deadlift_bone_loop(i, frame, label, save_sig, recording_sig, folder,
         for start_idx, end_idx in skeleton_connections:
             if start_idx < len(kp_coords) and end_idx < len(kp_coords):
                 if kp_coords[start_idx] is None or kp_coords[end_idx] is None:
-                    continue  # 跳過未偵測到的點
+                    continue
                 cv2.line(frame, kp_coords[start_idx], kp_coords[end_idx], (0, 255, 255), 2)
 
         # ✅ **將骨架點資訊寫入 `txt_file`**
@@ -140,7 +138,8 @@ def deadlift_bone_loop(i, frame, label, save_sig, recording_sig, folder,
             txt_file.write(f"{frame_count_for_detect},no detection\n")
 
     # ✅ **錄影完全結束後才關閉 `txt_file`**
-    if finalizing:
+    barrier.wait()
+    if not recording_sig:
         if txt_file is not None:
             txt_file.close()
             txt_file = None
@@ -183,6 +182,7 @@ def deadlift_general_loop(i, frame, label, save_sig, recording_sig, folder,
         out.write(frame)
     
     # 錄影結束    
+    barrier.wait()
     if not recording_sig:
         if out is not None:
             out.release()

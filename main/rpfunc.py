@@ -6,6 +6,18 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import json
 import numpy as np
+from PyQt5.QtCore import pyqtSignal, QObject
+
+class GraphUpdater(QObject):
+    update_signal = pyqtSignal()
+
+    def __init__(self, canvas):
+        super().__init__()
+        self.canvas = canvas
+        self.update_signal.connect(self.canvas.draw)
+
+    def update(self):
+        self.update_signal.emit()
 
 class LineLabel(QtWidgets.QLabel):
     def __init__(self, parent=None):
@@ -169,7 +181,10 @@ class Thread_data(threading.Thread):
         self.ax.legend()
 
     def run(self):
+        start_time = time.time()
         while not self._stop_event.is_set():
+            speed_rate = self.fast_forward_combobox.currentText()
+            spf = 1 / 30
             self._pause_event.wait()
 
             if self.is_slide_start:
@@ -196,10 +211,10 @@ class Thread_data(threading.Thread):
                 self.line2.set_data(self.x_data[:val], self.left_values[:val])
             else:
                 self.line.set_data(self.x_data[:val], self.y_data[:val])
-
-            if self.index == 0 and val % 10 == 0:
-                self.canvas.draw()
-            self.barrier.wait()
+            if (time.time() - start_time) >= (spf / float(speed_rate)):
+                if self.index == 0:
+                    self.canvas.draw()
+                    start_time = time.time()
 
     def pause(self):
         self.is_pause = True
@@ -415,9 +430,15 @@ class Replaybackend():
         
     # threads 全部刪除，重新播放
     def del_mythreads(self):
-        for thread in self.threads:
-            thread._stop_event.set()
-        self.threads.clear()
+        if self.threads:
+            for thread in self.threads:
+                thread._stop_event.set()
+            self.threads.clear()
+
+    def tab_changed(self):
+        self.del_mythreads()
+        self.is_stop = True
+        self.index = 0
     
     def slider_released(self):
         for thread in self.threads:

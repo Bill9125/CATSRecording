@@ -29,6 +29,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.Play_btn.setIcon(self.icons[1])
         self.ui.Stop_btn.setIcon(self.icons[3])
 
+        self.ui.tabs.currentChanged.connect(self.tab_changed)
         self.ui.rc_Deadlift_btn.clicked.connect(self.rc_Deadlift_clicked)
         self.ui.rc_Benchpress_btn.clicked.connect(self.rc_Benchpress_clicked)
         self.ui.rp_Deadlift_btn.clicked.connect(lambda :self.rp_layout_set('Deadlift'))
@@ -51,6 +52,19 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.Frameslider.sliderReleased.connect(self.rpbf.slider_released)
         self.ui.Frameslider.valueChanged.connect(lambda: self.rpbf.slider_changed(self.ui.Frameslider, self.ui.Play_btn, self.icons))
         self.ui.search_LineEdit.textChanged.connect(lambda: self.rpbf.search_text_changed(self.ui.File_comboBox, self.ui.search_LineEdit.text()))
+
+    def tab_changed(self, index):
+        if index == 0:
+            self.layout_clear(self.ui.head_vis_layout)
+            self.layout_clear(self.ui.bottom_vis_layout)
+            self.layout_clear(self.ui.data_ctrl_layout_V)
+            if self.data_layouts:
+                for layout in self.data_layouts:
+                    self.layout_clear(layout)
+            if self.ui.bottom_controls_layout in [self.ui.data_ctrl_layout_V.itemAt(i).layout() for i in range(self.ui.data_ctrl_layout_V.count())]:
+                self.ui.data_ctrl_layout_V.removeItem(self.ui.bottom_controls_layout)
+            self.data_layouts = []
+            self.rpbf.tab_changed()
 
     def rc_Deadlift_clicked(self):
         self.names.clear()
