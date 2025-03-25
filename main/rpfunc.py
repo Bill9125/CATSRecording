@@ -232,7 +232,7 @@ class Replaybackend():
         self.firstclicked_B = True
         self.firstclicked_S = True
         self.data_path = {'Deadlift': ['Body_Length.json', 'Hip_Angle.json', 
-                                       'Knee_Angle.json', 'Knee_to_Hip.json'],
+                                       'Knee_Angle.json', 'Knee_to_Hip.json', 'Score.json'],
                           'Benchpress' : ['Bar_Position.json', 'Armpit_Angle.json', 
                                           'Shoulder_Angle.json', 'Elbow_Angle.json']}
         self.folders = {}
@@ -241,6 +241,7 @@ class Replaybackend():
         self.rp_qpixmaps = []
         self.videos = []
         self.caps = []
+        self.pred_result = []
         self.currentsport = ''
         self.ocv = True
         self.index = 0
@@ -368,6 +369,9 @@ class Replaybackend():
                                 mode='r', encoding='utf-8') as file:
                         data = json.load(file)
                         self.datas.append(data)
+            
+                self.info_data = self.datas[:4]
+                self.pred_data = self.datas[4]
         
         for _ in range(len(self.videos)):
             pixmap = QtGui.QPixmap()
@@ -397,7 +401,7 @@ class Replaybackend():
                 if self.caps:
                     self.caps.clear()
                 self.barrier_play = threading.Barrier(len(self.videos))
-                self.barrier_data = threading.Barrier(len(self.datas))
+                self.barrier_data = threading.Barrier(len(self.info_data))
                 for i, video in enumerate(self.videos):
                     cap = cv2.VideoCapture(video)
                     self.caps.append(cap)
@@ -408,7 +412,7 @@ class Replaybackend():
                     self.threads.append(thread_play)
                     
                 if self.datas:
-                    for i, data in enumerate(self.datas):
+                    for i, data in enumerate(self.info_data):
                         data_thread = Thread_data(i, self.data_graph, data, self.barrier_data, fast_forward_combobox, Frameslider, framenumber)
                         data_thread.start()
                         self.threads.append(data_thread)
@@ -473,7 +477,7 @@ class Replaybackend():
                     scaled_pixmap = self.rp_qpixmaps[i].scaled(self.rp_Vision_labels[i].size(), QtCore.Qt.IgnoreAspectRatio)
                     self.rp_Vision_labels[i].setPixmap(scaled_pixmap)
         if self.datas:
-            for i, data in enumerate(self.datas):
+            for i, data in enumerate(self.info_data):
                 x_data = data['frames']
                 y_data = data['values']
                 min_length = min(len(x_data), len(y_data))
@@ -491,12 +495,18 @@ class Replaybackend():
             self.data_graph['axes'][-1].set_xlabel('frames')
             self.data_graph['canvas'].draw()
             self.data_graph['graphicscene'].addWidget(self.data_graph['canvas'])
+            
+            for NoSet, info in self.pred_data['results'].items():
+                score = info[0]
+                confs = []
+                for conf in info[1]:
+                    confs.append(round(conf[1]*100))
+                self.pred_result.append((NoSet, score, confs))
         else:
             for ax in self.data_graph['axes']:
                 ax.clear()
             self.data_graph['canvas'].draw()
                 
-
     def creat_vision_labels_pixmaps(self, labelsize, parentlayout, sublayout, sport, num, type ='rc'):
         vertical_sliders = []
         horizontal_sliders = []
@@ -599,24 +609,50 @@ class Replaybackend():
         figure = Figure(figsize=size)
         canvas = FigureCanvas(figure)
         axes = figure.subplots(num, 1, sharex=True)
+        with open(f'./config/Deadlift_data/Score.json', mode='r', encoding='utf-8') as file:
+            data = json.load(file)
+            for NoSet, info in data['results'].items():
+                pass
+        # 創建 QGraphicsView 和 QGraphicsScene
         graphicview = QtWidgets.QGraphicsView(parentlayout)
         graphicscene = QtWidgets.QGraphicsScene(parentlayout)
-        table = QtWidgets.QTableWidget(5, 3)  # 5 行 3 列
-        table.setHorizontalHeaderLabels(["A", "B", "C"])
-        table.setVerticalHeaderLabels(["1", "2", "3", "4", "5"])
-        table.setFixedSize(300, 150)  # 設定表格大小
-        # 將圖表和表格加入場景
-        table_proxy = graphicscene.addWidget(table)
-        canvas_proxy = graphicscene.addWidget(canvas)
 
-        # 調整位置
-        # canvas_proxy.setPos(10, 10)  # 圖表
-        # table_proxy.setPos(10, 300)  # 表格放在圖表下方
+        # **建立外部表格**
+        table = QtWidgets.QTableWidget(2, int(NoSet)+1)
+        table.setVerticalHeaderLabels(["Score", "Confidence"])
+        table.horizontalHeader().setDefaultAlignment(QtCore.Qt.AlignCenter)
+        table.verticalHeader().setDefaultAlignment(QtCore.Qt.AlignCenter)
+        for row in range(table.rowCount()):
+            for column in range(table.columnCount()):
+                item = table.item(row, column)
+                if item:
+                    item.setTextAlignment(QtCore.Qt.AlignCenter)
+
+        # **外部表格自適應大小**
+        table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+        table.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+        table.setFixedSize(2500, 200)  # **設定表格大小**
+        
+        # **將圖表和表格加入場景**
+        canvas_proxy = graphicscene.addWidget(canvas)
+        table_proxy = graphicscene.addWidget(table)
+
+        # **確保場景大小與 `graphicview` 一致**
+        graphicview.setScene(graphicscene) 
+
+        # **讓表格置中**
+        scene_width = graphicview.sceneRect().width()
+        table_x = (scene_width - table.width()) / 2
+        table_proxy.setPos(table_x, 10)  # **表格放在上方**
+        canvas_proxy.setPos(10, table.height() + 20)  # **圖表放在表格下方**
+
+        # 設定 Layout
         sublayout.setWidget(1, QtWidgets.QFormLayout.FieldRole, graphicview)
         sublayout.setFormAlignment(QtCore.Qt.AlignCenter)
-        graphicview.setScene(graphicscene)
-        return graphicview, graphicscene, canvas, axes
-        
+
+        return graphicview, graphicscene, canvas, axes, table
+
+
 
     def stop(self, Frameslider, Play_btn, icons):
         print('stop')
