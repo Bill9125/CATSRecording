@@ -10,8 +10,9 @@ import math
 import os
 import numpy as np
 import pandas as pd
-
-
+import argparse
+import glob
+import re
 
 def read_skeleton_data(filename):
     data = {}
@@ -288,34 +289,6 @@ def plot_metrics_in_tkinter():
             valleys.append(left_valley)
             valleys1.append(right_valley)
 
-#     ======= 繪製原始數據 =======
-#     axes[0].plot(valid_frames, valid_angles, color='gray', alpha=0.7)
-#     axes[0].plot(np.array(valid_frames)[peaks], valid_angles[peaks], 'ro')  # 紅色標記峰值
-#     axes[0].plot(np.array(valid_frames)[valleys], valid_angles[valleys], 'yo')  # 黃色標記谷底
-#     axes[0].plot(np.array(valid_frames)[valleys1], valid_angles[valleys1], 'go')  # 綠色標記谷底
-#     axes[0].set_title("Raw Left Knee Angle with Peaks and Valleys")
-#     axes[0].set_xlabel("Frame")
-#     axes[0].set_ylabel("Angle (degrees)")
-#     axes[0].legend()
-#     axes[0].grid()
-
-#     # ======= 繪製平滑後數據 =======
-#     axes[1].plot(valid_frames, smoothed_angles, color='blue')
-#     axes[1].plot(np.array(valid_frames)[peaks], smoothed_angles[peaks], 'ro')
-#     axes[1].plot(np.array(valid_frames)[valleys], smoothed_angles[valleys], 'yo')
-#     axes[1].plot(np.array(valid_frames)[valleys1], smoothed_angles[valleys1], 'go')
-#     axes[1].set_title("Smoothed Left Knee Angle with Peaks and Valleys")
-#     axes[1].set_xlabel("Frame")
-#     axes[1].set_ylabel("Angle (degrees)")
-#     axes[1].legend()
-#     axes[1].grid()
-
-    print(valleys, valleys1)
-
-#     canvas = FigureCanvasTkAgg(fig, root)
-#     canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-#     root.mainloop()
-
 def calculate_distance(x1, y1, x2, y2):
     """計算兩點之間的歐氏距離"""
     return math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
@@ -370,22 +343,22 @@ def process_file(input_file, output_file):
     except Exception as e:
         print(f"處理檔案時發生錯誤：{input_file}，錯誤訊息：{e}")
 
-def process_all_folders(base_path):
-    # 遞迴遍歷所有子資料夾
-    for root, dirs, files in os.walk(base_path):
-        for filename in files:
-            if filename.startswith("skeleton_") and filename.endswith(".txt"):
-                input_file = os.path.join(root, filename)
-                
-                # 在上層資料夾建立 processed 資料夾
-                parent_folder = os.path.dirname(root)
-                output_folder = os.path.join(parent_folder, "angle")
-                os.makedirs(output_folder, exist_ok=True)
+def process_all_folders(skeleton_path):
+    skeleton_txts = glob.glob(os.path.join(skeleton_path, '*.txt'))
+    for txt in skeleton_txts:
+        match = re.search(r'skeleton_(\d+)', txt)
+        if match:
+            # 在上層資料夾建立 processed 資料夾
+            parent_folder = os.path.dirname(skeleton_path)
+            output_folder = os.path.join(parent_folder, "angle")
+            os.makedirs(output_folder, exist_ok=True)
 
-                # 輸出檔案路徑
-                output_file = os.path.join(output_folder, f"angle_{filename}")
-                process_file(input_file, output_file)
-                print(f"已處理檔案：{input_file}，結果保存至：{output_file}")
+            # 輸出檔案路徑
+            output_file = os.path.join(output_folder, f"angle_{os.path.basename(skeleton_path)}_{int(match.group(1))}.txt")
+            process_file(txt, output_file)
+            print(f"已處理檔案：{txt}，結果保存至：{output_file}")
+        else:
+            print("File no matching.")
 
 def linear_interpolate_fixed_length(df, frame_col=0, target_length=110):
     """對 DataFrame 進行線性內插，使其長度固定為 target_length。"""
@@ -408,7 +381,8 @@ def merge_and_interpolate(angle_path, bar_path, output_path, target_length=110):
     bar_dict = {f.split("_")[-1]: f for f in bar_files}
     
     common_keys = set(angle_dict.keys()) & set(bar_dict.keys())  # 找到對應的檔案
-
+    print(angle_dict)
+    print(bar_dict)
     for key in sorted(common_keys):
         angle_file = angle_dict[key]
         bar_file = bar_dict[key]
@@ -433,25 +407,12 @@ def merge_and_interpolate(angle_path, bar_path, output_path, target_length=110):
 
         except Exception as e:
             print(f"Error processing {angle_file} and {bar_file}: {e}")
-def process_all_folders1(root_path, target_length=110):
-    """遍歷 root_path 內的所有子資料夾，並處理其中的 angle 和 bar。"""
-    for category in os.listdir(root_path):
-        category_path = os.path.join(root_path, category)
-        if not os.path.isdir(category_path):
-            continue  # 跳過非資料夾的檔案
-
-        for recording in os.listdir(category_path):
-            recording_path = os.path.join(category_path, recording)
-            if not os.path.isdir(recording_path):
-                continue
-            
-            angle_path = os.path.join(recording_path, "angle")
-            bar_path = os.path.join(recording_path, "bar")
-            output_path = os.path.join(recording_path, "out")
-
-            if os.path.exists(angle_path) and os.path.exists(bar_path):
-                print(f"Processing {recording_path} ...")
-                merge_and_interpolate(angle_path, bar_path, output_path, target_length)
+def process_all_folders1(path, target_length=110):
+    angle_path = os.path.join(path, "angle")
+    bar_path = os.path.join(path, "bar")
+    output_path = os.path.join(path, "out")
+    print(f"Processing {path} ...")
+    merge_and_interpolate(angle_path, bar_path, output_path, target_length)
 
 def remove_outliers(df):
     """移除超過3個標準差的極端值，並用該列均值取代。"""
@@ -465,120 +426,81 @@ def remove_outliers(df):
     df_filtered = df.mask((df < lower_bound) | (df > upper_bound), mean, axis=1)
     return df_filtered
 
-def process_filtered_files(root_path):
-    """遍歷所有 merged 資料夾內的檔案，去除極端值後輸出到 filtered 資料夾。"""
-    for category in os.listdir(root_path):
-        category_path = os.path.join(root_path, category)
-        if not os.path.isdir(category_path):
-            continue  # 跳過非資料夾的檔案
+def process_filtered_files(path):
+    merged_path = os.path.join(path, "out")  # 原始數據
+    filtered_path = os.path.join(path, "data/filtered")  # 存放處理後數據的資料夾
 
-        for recording in os.listdir(category_path):
-            recording_path = os.path.join(category_path, recording)
-            if not os.path.isdir(recording_path):
-                continue
-            
-            merged_path = os.path.join(recording_path, "out")  # 原始數據
-            filtered_path = os.path.join(recording_path, "data/filtered")  # 存放處理後數據的資料夾
+    if not os.path.exists(filtered_path):
+        os.makedirs(filtered_path)  # 建立 filtered 資料夾
 
-            if not os.path.exists(merged_path):
-                continue  # 若 merged 資料夾不存在則跳過
-            if not os.path.exists(filtered_path):
-                os.makedirs(filtered_path)  # 建立 filtered 資料夾
+    for file in sorted(os.listdir(merged_path)):
+        if file.startswith("merged_"):  # 只處理 merged_ 開頭的檔案
+            input_file = os.path.join(merged_path, file)
+            output_file = os.path.join(filtered_path, file)
 
-            for file in sorted(os.listdir(merged_path)):
-                if file.startswith("merged_"):  # 只處理 merged_ 開頭的檔案
-                    input_file = os.path.join(merged_path, file)
-                    output_file = os.path.join(filtered_path, file)
+            try:
+                df = pd.read_csv(input_file, header=None)
+                df_filtered = remove_outliers(df)  # 移除極端值
 
-                    try:
-                        df = pd.read_csv(input_file, header=None)
-                        df_filtered = remove_outliers(df)  # 移除極端值
+                df_filtered.to_csv(output_file, index=False, header=False, float_format="%.4f")
+                print(f"Processed Filtered: {input_file} -> {output_file}")
 
-                        df_filtered.to_csv(output_file, index=False, header=False, float_format="%.4f")
-                        print(f"Processed Filtered: {input_file} -> {output_file}")
-
-                    except Exception as e:
-                        print(f"Error processing {input_file}: {e}")
+            except Exception as e:
+                print(f"Error processing {input_file}: {e}")
 
 def compute_differences(df):
     """計算 DataFrame 每行與前一行的變化量，第一行補 0。"""
     delta_df = df.diff().fillna(0)  # 第一行 NaN 填補為 0
     return delta_df
 
-def process_delta_files(root_path):
-    """遍歷所有 out 資料夾內的 merged_ 檔案，計算變化量並輸出到 delta 資料夾。"""
-    for category in os.listdir(root_path):
-        category_path = os.path.join(root_path, category)
-        if not os.path.isdir(category_path):
-            continue  # 跳過非資料夾的檔案
+def process_delta_files(path):
+    out_path = os.path.join(path, "data/filtered")
+    delta_path = os.path.join(path, "data/filtered_delta")
 
-        for recording in os.listdir(category_path):
-            recording_path = os.path.join(category_path, recording)
-            if not os.path.isdir(recording_path):
-                continue
-            
-            out_path = os.path.join(recording_path, "data\\filtered")
-            delta_path = os.path.join(recording_path, "data\\filtered_delta")
+    if not os.path.exists(delta_path):
+        os.makedirs(delta_path)  # 建立 delta 資料夾
 
-            if not os.path.exists(out_path):
-                continue  # 若 out 資料夾不存在則跳過
-            if not os.path.exists(delta_path):
-                os.makedirs(delta_path)  # 建立 delta 資料夾
+    for file in sorted(os.listdir(out_path)):
+        if file.startswith("merged_"):  # 只處理 merged_ 開頭的檔案
+            input_file = os.path.join(out_path, file)
+            output_file = os.path.join(delta_path, file)
 
-            for file in sorted(os.listdir(out_path)):
-                if file.startswith("merged_"):  # 只處理 merged_ 開頭的檔案
-                    input_file = os.path.join(out_path, file)
-                    output_file = os.path.join(delta_path, file)
+            try:
+                df = pd.read_csv(input_file, header=None)
+                df_diff = compute_differences(df)  # 計算變化量
 
-                    try:
-                        df = pd.read_csv(input_file, header=None)
-                        df_diff = compute_differences(df)  # 計算變化量
+                df_diff.to_csv(output_file, index=False, header=False, float_format="%.4f")
+                print(f"Processed Δ: {input_file} -> {output_file}")
 
-                        df_diff.to_csv(output_file, index=False, header=False, float_format="%.4f")
-                        print(f"Processed Δ: {input_file} -> {output_file}")
-
-                    except Exception as e:
-                        print(f"Error processing {input_file}: {e}")
+            except Exception as e:
+                print(f"Error processing {input_file}: {e}")
 
 def compute_second_differences(df):
     """計算 DataFrame 每行與前一行的變化量的變化量，第一行補 0。"""
     delta2_df = df.diff().fillna(0)  # 計算變化量的變化量
     return delta2_df
 
-def process_second_differences(root_path):
-    """遍歷所有 delta 資料夾內的檔案，計算變化量的變化量並輸出到 delta2 資料夾。"""
-    for category in os.listdir(root_path):
-        category_path = os.path.join(root_path, category)
-        if not os.path.isdir(category_path):
-            continue  # 跳過非資料夾的檔案
+def process_second_differences(path):
+    delta_path = os.path.join(path, "data/filtered_delta")
+    delta2_path = os.path.join(path, "data/filtered_delta_square")
 
-        for recording in os.listdir(category_path):
-            recording_path = os.path.join(category_path, recording)
-            if not os.path.isdir(recording_path):
-                continue
-            
-            delta_path = os.path.join(recording_path, "data/filtered_delta")
-            delta2_path = os.path.join(recording_path, "data/filtered_delta_square")
+    if not os.path.exists(delta2_path):
+        os.makedirs(delta2_path)  # 建立 delta2 資料夾
 
-            if not os.path.exists(delta_path):
-                continue  # 若 delta 資料夾不存在則跳過
-            if not os.path.exists(delta2_path):
-                os.makedirs(delta2_path)  # 建立 delta2 資料夾
+    for file in sorted(os.listdir(delta_path)):
+        if file.startswith("merged_"):  # 只處理 merged_ 開頭的檔案
+            input_file = os.path.join(delta_path, file)
+            output_file = os.path.join(delta2_path, file)
 
-            for file in sorted(os.listdir(delta_path)):
-                if file.startswith("merged_"):  # 只處理 merged_ 開頭的檔案
-                    input_file = os.path.join(delta_path, file)
-                    output_file = os.path.join(delta2_path, file)
+            try:
+                df = pd.read_csv(input_file, header=None)
+                df_delta2 = compute_second_differences(df)  # 計算變化量的變化量
 
-                    try:
-                        df = pd.read_csv(input_file, header=None)
-                        df_delta2 = compute_second_differences(df)  # 計算變化量的變化量
+                df_delta2.to_csv(output_file, index=False, header=False, float_format="%.4f")
+                print(f"Processed Δ²: {input_file} -> {output_file}")
 
-                        df_delta2.to_csv(output_file, index=False, header=False, float_format="%.4f")
-                        print(f"Processed Δ²: {input_file} -> {output_file}")
-
-                    except Exception as e:
-                        print(f"Error processing {input_file}: {e}")
+            except Exception as e:
+                print(f"Error processing {input_file}: {e}")
 
 def compute_delta_ratio(data):
     """計算變化量與原始值的比 (B - A) / A"""
@@ -587,38 +509,24 @@ def compute_delta_ratio(data):
     delta_ratio = np.vstack([np.zeros((1, data.shape[1])) , delta_ratio])  # 第一行補 0
     return delta_ratio
 
-def process_delta_ratio(root_path, input_folder="data\\filtered", output_folder="data\\filtered_delta2"):
-    """讀取 `out/`，計算 (B - A) / A 並存入 `out_delta2/`"""
-    for category in os.listdir(root_path):
-        category_path = os.path.join(root_path, category)
-        if not os.path.isdir(category_path):
-            continue
+def process_delta_ratio(path, input_folder="data\\filtered", output_folder="data\\filtered_delta2"):
+    input_path = os.path.join(path, input_folder)
+    output_path = os.path.join(path, output_folder)
 
-        for recording in os.listdir(category_path):
-            recording_path = os.path.join(category_path, recording)
-            if not os.path.isdir(recording_path):
-                continue
+    os.makedirs(output_path, exist_ok=True)  # 確保輸出資料夾存在
 
-            input_path = os.path.join(recording_path, input_folder)
-            output_path = os.path.join(recording_path, output_folder)
+    for file in sorted(os.listdir(input_path)):
+        if file.startswith("merged_"):  # 只處理 merged_*.txt
+            file_path = os.path.join(input_path, file)
+            try:
+                df = pd.read_csv(file_path, header=None)
+                delta_ratio_data = compute_delta_ratio(df.to_numpy(dtype=np.float32))
+                pd.DataFrame(delta_ratio_data).to_csv(os.path.join(output_path, file), 
+                                                        index=False, header=False, float_format="%.6f")
+                print(f"Processed delta ratio: {file_path} -> {output_path}/{file}")
 
-            if not os.path.exists(input_path):
-                continue  # 沒有這個資料夾就跳過
-            
-            os.makedirs(output_path, exist_ok=True)  # 確保輸出資料夾存在
-
-            for file in sorted(os.listdir(input_path)):
-                if file.startswith("merged_"):  # 只處理 merged_*.txt
-                    file_path = os.path.join(input_path, file)
-                    try:
-                        df = pd.read_csv(file_path, header=None)
-                        delta_ratio_data = compute_delta_ratio(df.to_numpy(dtype=np.float32))
-                        pd.DataFrame(delta_ratio_data).to_csv(os.path.join(output_path, file), 
-                                                              index=False, header=False, float_format="%.6f")
-                        print(f"Processed delta ratio: {file_path} -> {output_path}/{file}")
-
-                    except Exception as e:
-                        print(f"Error processing {file_path}: {e}")
+            except Exception as e:
+                print(f"Error processing {file_path}: {e}")
 
 def z_score_normalization(df):
     """對 DataFrame 進行 Z-score 標準化，每一列 (特徵) 依據自身均值與標準差計算。"""
@@ -629,40 +537,27 @@ def z_score_normalization(df):
     zscore_df = (df - mean) / std
     return zscore_df
 
-def process_zscore_from_merged(root_path):
-    """遍歷所有 merged 資料夾內的檔案，對數據進行 Z-score 標準化並輸出到 zscore 資料夾。"""
-    for category in os.listdir(root_path):
-        category_path = os.path.join(root_path, category)
-        if not os.path.isdir(category_path):
-            continue  # 跳過非資料夾的檔案
+def process_zscore_from_merged(path):
+    merged_path = os.path.join(path, "data\\filtered")  # 原始數據
+    zscore_path = os.path.join(path, "data\\filtered_zscore")  # 存放 Z-score 的資料夾
 
-        for recording in os.listdir(category_path):
-            recording_path = os.path.join(category_path, recording)
-            if not os.path.isdir(recording_path):
-                continue
-            
-            merged_path = os.path.join(recording_path, "data\\filtered")  # 原始數據
-            zscore_path = os.path.join(recording_path, "data\\filtered_zscore")  # 存放 Z-score 的資料夾
+    if not os.path.exists(zscore_path):
+        os.makedirs(zscore_path)  # 建立 zscore 資料夾
 
-            if not os.path.exists(merged_path):
-                continue  # 若 merged 資料夾不存在則跳過
-            if not os.path.exists(zscore_path):
-                os.makedirs(zscore_path)  # 建立 zscore 資料夾
+    for file in sorted(os.listdir(merged_path)):
+        if file.startswith("merged_"):  # 只處理 merged_ 開頭的檔案
+            input_file = os.path.join(merged_path, file)
+            output_file = os.path.join(zscore_path, file)
 
-            for file in sorted(os.listdir(merged_path)):
-                if file.startswith("merged_"):  # 只處理 merged_ 開頭的檔案
-                    input_file = os.path.join(merged_path, file)
-                    output_file = os.path.join(zscore_path, file)
+            try:
+                df = pd.read_csv(input_file, header=None)
+                df_zscore = z_score_normalization(df)  # 計算 Z-score 標準化
 
-                    try:
-                        df = pd.read_csv(input_file, header=None)
-                        df_zscore = z_score_normalization(df)  # 計算 Z-score 標準化
+                df_zscore.to_csv(output_file, index=False, header=False, float_format="%.4f")
+                print(f"Processed Z-score: {input_file} -> {output_file}")
 
-                        df_zscore.to_csv(output_file, index=False, header=False, float_format="%.4f")
-                        print(f"Processed Z-score: {input_file} -> {output_file}")
-
-                    except Exception as e:
-                        print(f"Error processing {input_file}: {e}")
+            except Exception as e:
+                print(f"Error processing {input_file}: {e}")
 
 def normalize_data(data):
     """將數據正規化到 [-1, 1]"""
@@ -676,91 +571,58 @@ def normalize_data(data):
     norm_data = 2 * (data - min_val) / range_val - 1
     return norm_data
 
-def process_normalization(root_path, input_folder, output_folder):
-    """讀取 out_delta/ 或 out_delta2/，正規化後存入新資料夾"""
-    for category in os.listdir(root_path):
-        category_path = os.path.join(root_path, category)
-        if not os.path.isdir(category_path):
-            continue  # 跳過非資料夾
+def process_normalization(path, input_folder, output_folder):
+    input_path = os.path.join(path, input_folder)
+    output_path = os.path.join(path, output_folder)
 
-        for recording in os.listdir(category_path):
-            recording_path = os.path.join(category_path, recording)
-            if not os.path.isdir(recording_path):
-                continue
+    os.makedirs(output_path, exist_ok=True)  # 確保輸出資料夾存在
 
-            input_path = os.path.join(recording_path, input_folder)
-            output_path = os.path.join(recording_path, output_folder)
+    for file in sorted(os.listdir(input_path)):
+        if file.startswith("merged_"):  # 處理所有 merged_*.txt
+            file_path = os.path.join(input_path, file)
+            try:
+                df = pd.read_csv(file_path, header=None)
+                norm_data = normalize_data(df.to_numpy(dtype=np.float32))
+                pd.DataFrame(norm_data).to_csv(os.path.join(output_path, file), 
+                                                index=False, header=False, float_format="%.6f")
+                print(f"Normalized: {file_path} -> {output_path}/{file}")
 
-            if not os.path.exists(input_path):
-                continue  # 沒有這個資料夾就跳過
-            
-            os.makedirs(output_path, exist_ok=True)  # 確保輸出資料夾存在
-
-            for file in sorted(os.listdir(input_path)):
-                if file.startswith("merged_"):  # 處理所有 merged_*.txt
-                    file_path = os.path.join(input_path, file)
-                    try:
-                        df = pd.read_csv(file_path, header=None)
-                        norm_data = normalize_data(df.to_numpy(dtype=np.float32))
-                        pd.DataFrame(norm_data).to_csv(os.path.join(output_path, file), 
-                                                       index=False, header=False, float_format="%.6f")
-                        print(f"Normalized: {file_path} -> {output_path}/{file}")
-
-                    except Exception as e:
-                        print(f"Error processing {file_path}: {e}")
+            except Exception as e:
+                print(f"Error processing {file_path}: {e}")
 
 # 指定最上層資料夾
-base_path = "D:/labdata/MOCAP/test/Category_1/"
-root_path = 'D:\\labdata\\MOCAP\\test\\'
-# 取得 base_path 下的所有子資料夾
-for sub_folder in os.listdir(base_path):
-    path = os.path.join(base_path, sub_folder)
+parser = argparse.ArgumentParser()
+parser.add_argument('dir',type=str)
+args = parser.parse_args()
+path = args.dir
 
-    # 確保 path 是資料夾
-    if not os.path.isdir(path):
-        continue
+# 設定檔案路徑
+skeleton_file_path = os.path.join(path, 'interpolated_mediapipe_landmarks_1.txt')
+bar_file_path = os.path.join(path, 'yolo_coordinates_interpolated.txt')
+output_folder = os.path.join(path, 'clips')
+output_folder1 = os.path.join(path, 'skeleton')
+output_folder2 = os.path.join(path, 'bar')
 
+# 讀取數據
+skeleton_data = read_skeleton_data(skeleton_file_path)
+frames, left_knee_angles = calculate_angles(skeleton_data)
 
-    # 設定檔案路徑
-    skeleton_file_path = os.path.join(path, 'yolo_skeleton_coordinates_1st_interp.txt')
-    bar_file_path = os.path.join(path, 'yolo_coordinates_interpolated.txt')
-    video_path = os.path.join(path, 'vision1.avi')
-    output_folder = os.path.join(path, 'clips')
-    output_folder1 = os.path.join(path, 'skeleton')
+# 執行切割
+plot_metrics_in_tkinter()
+split_skeleton_data(skeleton_file_path, output_folder1, valleys, valleys1,bar_file_path)
+split_bar_data(bar_file_path, output_folder2, valleys, valleys1,bar_file_path)
 
-    output_folder2 = os.path.join(path, 'bar')
-
-    # 檢查檔案是否存在，避免錯誤
-    if not os.path.exists(skeleton_file_path):
-        print(f"檔案 {skeleton_file_path} 不存在，跳過該資料夾")
-        continue
-
-#         讀取數據
-    skeleton_data = read_skeleton_data(skeleton_file_path)
-    frames, left_knee_angles = calculate_angles(skeleton_data)
-
-    # 顯示波形圖
-    plot_metrics_in_tkinter()
-    split_video(video_path, output_folder, valleys, valleys1,bar_file_path, fps=30)
-    # 執行切割
-    split_skeleton_data(skeleton_file_path, output_folder1, valleys, valleys1,bar_file_path)
-    split_bar_data(bar_file_path, output_folder2, valleys, valleys1,bar_file_path)
-    
-
-process_all_folders(base_path)
-
-
-
+process_all_folders(output_folder1)
 # Example usage
-process_all_folders1(root_path, target_length=110)
-process_filtered_files(root_path)
-process_delta_files(root_path)
-process_second_differences(root_path)
-process_delta_ratio(root_path)
-process_zscore_from_merged(root_path)
+process_all_folders1(path, target_length=110)
+process_filtered_files(path)
+process_delta_files(path)
+process_second_differences(path)
+process_delta_ratio(path)
+process_zscore_from_merged(path)
 # 處理 delta 和 delta2
-process_normalization(root_path, "data\\filtered", "data1\\filtered_norm")
-process_normalization(root_path, "data\\filtered_delta", "data1\\filtered_delta_norm")
-process_normalization(root_path, "data\\filtered_delta2", "data1\\filtered_delta2_norm")
-process_normalization(root_path, "data\\filtered_zscore", "data1\\filtered_zscore_norm")
-process_normalization(root_path, "data\\filtered_delta_square", "data1\\filtered_delta_square_norm")
+process_normalization(path, "data\\filtered", "data_norm\\filtered_norm")
+process_normalization(path, "data\\filtered_delta", "data_norm\\filtered_delta_norm")
+process_normalization(path, "data\\filtered_delta2", "data_norm\\filtered_delta2_norm")
+process_normalization(path, "data\\filtered_zscore", "data_norm\\filtered_zscore_norm")
+process_normalization(path, "data\\filtered_delta_square", "data_norm\\filtered_delta_square_norm")

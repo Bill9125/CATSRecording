@@ -2,6 +2,7 @@ import torch.nn as nn
 import torch
 import argparse
 import os, glob, json
+import numpy as np
 
 class ResidualBlock(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, downsample=False):
@@ -68,7 +69,7 @@ class ResNet32(nn.Module):
         return x
 
 def merge_data(folder):
-    feartures = []
+    features = []
     delta_path = os.path.join(folder, 'filtered_delta_norm')
     delta2_path = os.path.join(folder, 'filtered_delta2_norm')
     square_path = os.path.join(folder, 'filtered_delta_square_norm')
@@ -87,8 +88,8 @@ def merge_data(folder):
     orins = glob.glob(os.path.join(orin_path, '*.txt'))
     
     data_per_ind = list(fetch(zip(deltas, delta2s, zscores, squares, orins)))  # Ensure list output
-    feartures.extend(data_per_ind)
-    return feartures
+    features.extend(data_per_ind)
+    return features
 
 def fetch(uds):
     data_per_ind = []
@@ -102,28 +103,35 @@ def fetch(uds):
         for num in zip(*parsed_data):
             data_per_ind.append([item for sublist in num for item in sublist])
             if len(data_per_ind) == 110:
-                yield data_per_ind
+                yield torch.tensor(data_per_ind, dtype=torch.float32)  # 確保是 Tensor
                 data_per_ind = []
 
-def predict(model, fearture):
+def predict(model, feature):
+    if not isinstance(feature, torch.Tensor):
+        feature = torch.as_tensor(feature, dtype=torch.float32)
+    feature = feature.clone().detach().to(device)  # ✅ 修正方式
+    feature = feature.unsqueeze(0)  # 增加 batch 維度
     with torch.no_grad():
-        output = model(fearture)  # 獲取模型輸出
+        output = model(feature)  # 獲取模型輸出
         predicted_class = torch.argmax(output, dim=1)  # 取得最大信心值的類別
         confidence_scores = torch.softmax(output, dim=1)  # 計算分類信心值
-    return predicted_class, confidence_scores
+    return predicted_class.item(), confidence_scores.cpu().numpy()
 
 def save_to_config(y_data, output_file):
+    # 遍歷數據並將 float32 轉為 Python 原生 float
+    def convert(o):
+        if isinstance(o, (torch.Tensor, np.ndarray)):
+            return o.tolist()  # 轉換為 Python list
+        elif isinstance(o, np.float32):  
+            return float(o)  # 轉換為 Python float
+        elif isinstance(o, torch.float32):  
+            return float(o)  # 轉換為 Python float
+        return o
     
-    config_data = {
-        "": y_data
-    }
-
-    # 生成 JSON 配置文件路径
-    config_path = output_file
-
-    # 保存 JSON 文件
-    with open(config_path, "w", encoding="utf-8") as f:
-        json.dump(config_data, f, indent=4)
+    config_data = {"results": y_data}  # 儲存 key
+    
+    with open(output_file, "w", encoding="utf-8") as f:
+        json.dump(config_data, f, indent=4, default=convert)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('dir',type=str)
@@ -134,17 +142,41 @@ out = args.out
 output_file = os.path.join(out, 'Deadlift_data', 'Score.json')
 
 data = {}
-category = {'1': 'Nice lift', '2': 'Wrong feet position', '3': 'Butt fly', '4': 'Skip Knee', '5': 'Hunchback'}
+category = {'2': 'Wrong feet position', '3': 'Butt fly', '4': 'Skip Knee', '5': 'Hunchback'}
+results = {}
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-feartures = merge_data(dir)
+data_path = os.path.join(dir, 'data_norm')
+features = merge_data(data_path)
 for num, name in category.items():
     model = ResNet32(input_dim = 25)
-    model.load_state_dict(torch.load(f"../../model/deadlift/Pscore_model/{str(num)}/ResNet32_Model.pth"), map_location=device)
+    state_dict = torch.load(
+        f"./model/deadlift/Pscore_model/{str(num)}/ResNet32_Model.pth",
+        map_location=device,
+        weights_only=True
+    )
+    model.load_state_dict(state_dict)
     model.to(device)
     model.eval()
-    for i, fearture in enumerate(feartures):
-        pred, conf = predict(model, fearture)
-        if pred == 1:
-            print(f'Set {i} is {name}')
+    # 把每一下的結果丟入模型
+    for i, feature in enumerate(features):
+        if f"{i}" not in results:
+            results[f"{i}"] = []  # 初始化 key
+        pred, conf = predict(model, feature)
+        result = (pred, conf[0])
+        results[f'{i}'].append(result)
 
+rounded_results = {}
+score = {}
+
+for key, values in results.items():
+    rounded_values = []
+    decs = []
+    for pred, conf in values:
+        rounded_conf = [round(c, 4) for c in conf]  # 保留到小數第 4 位
+        decs.append(rounded_conf[1])
+        rounded_values.append(rounded_conf)
+    score = 1 - sum(decs)*0.25
+    rounded_results[key] = (score, rounded_values)
+        
+save_to_config(rounded_results, output_file)
 
