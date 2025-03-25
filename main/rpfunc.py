@@ -606,12 +606,12 @@ class Replaybackend():
         table.setVerticalHeaderLabels(["1", "2", "3", "4", "5"])
         table.setFixedSize(300, 150)  # 設定表格大小
         # 將圖表和表格加入場景
-        canvas_proxy = graphicscene.addWidget(canvas)
         table_proxy = graphicscene.addWidget(table)
+        canvas_proxy = graphicscene.addWidget(canvas)
 
         # 調整位置
-        canvas_proxy.setPos(10, 10)  # 圖表
-        table_proxy.setPos(10, 300)  # 表格放在圖表下方
+        # canvas_proxy.setPos(10, 10)  # 圖表
+        # table_proxy.setPos(10, 300)  # 表格放在圖表下方
         sublayout.setWidget(1, QtWidgets.QFormLayout.FieldRole, graphicview)
         sublayout.setFormAlignment(QtCore.Qt.AlignCenter)
         graphicview.setScene(graphicscene)
