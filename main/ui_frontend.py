@@ -295,7 +295,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.rpbf.Deadlift_btn_pressed(
                 self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.icons, self.ui.Stop_btn, 
                 self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox, self.ui.Replay_tab, self.ui.play_layout,
-                self.head_Vis_label, self.bottom_Vis_labels, self.graph)
+                self.head_Vis_label, self.bottom_Vis_labels, self.graph, table)
             
         elif sport == 'Benchpress':
             label_size = [640, 480]
@@ -319,7 +319,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.rpbf.Benchpress_btn_pressed(
                 self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.icons, self.ui.Stop_btn, 
                 self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox, self.ui.Replay_tab, self.ui.play_layout,
-                self.head_Vis_label, self.bottom_Vis_labels, self.V_sliders, self.H_sliders, self.graph)
+                self.head_Vis_label, self.bottom_Vis_labels, self.V_sliders, self.H_sliders, self.graph, table)
             
         # elif sport == 'Squat':
         #     self.head_Vis_label, self.head_Vis_qpixmap = self.rpbf.creat_vision_labels_pixmaps([480, 640], self.ui.Replay_tab, self.ui.head_vis_layout, sport)

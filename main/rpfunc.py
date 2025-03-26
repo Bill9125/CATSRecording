@@ -114,6 +114,7 @@ class MyThread(threading.Thread):
                 # 讓第 0 個 threading 處理 slider
                 if self.index == 0:
                     val = self.Frameslider.value()
+                    print(val)
                     self.Frameslider.setValue(val + 1)
                 _ , frame = self.cap.read()
                 frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -242,6 +243,8 @@ class Replaybackend():
         self.videos = []
         self.caps = []
         self.pred_result = []
+        self.info_data = []
+        self.pred_data = []
         self.currentsport = ''
         self.ocv = True
         self.index = 0
@@ -252,20 +255,22 @@ class Replaybackend():
     def Deadlift_btn_pressed(
         self, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons,
         Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout,
-        head_label, bottom_labels, graph
+        head_label, bottom_labels, graph, table
         ):
+        self.table = table
         self.currentsport = 'Deadlift'
         self.rp_Vision_labels = head_label + bottom_labels
         self.data_graph = graph
         self.rp_btn_press(
             self.currentsport, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons,
-            Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout,
+            Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout
             )
         
     def Benchpress_btn_pressed(
         self, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons,
         Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout,
-        head_label, bottom_labels, V_sliders, H_sliders, graph):
+        head_label, bottom_labels, V_sliders, H_sliders, graph, table
+        ):
         self.currentsport = 'Benchpress'
         self.rp_Vision_labels = [head_label] + bottom_labels
         self.data_graph = graph
@@ -273,7 +278,7 @@ class Replaybackend():
         self.H_sliders = H_sliders
         self.rp_btn_press(
             self.currentsport, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons,
-            Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout,
+            Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout
             )
         
     def Squat_btn_pressed(
@@ -291,7 +296,7 @@ class Replaybackend():
         
     def rp_btn_press(
         self, sport, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons, 
-        Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout,
+        Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout
         ):
                 
         if sport == 'Deadlift':
@@ -369,7 +374,7 @@ class Replaybackend():
                                 mode='r', encoding='utf-8') as file:
                         data = json.load(file)
                         self.datas.append(data)
-            
+                # 將 data 分為角度資訊以及分數
                 self.info_data = self.datas[:4]
                 self.pred_data = self.datas[4]
         
@@ -495,13 +500,32 @@ class Replaybackend():
             self.data_graph['axes'][-1].set_xlabel('frames')
             self.data_graph['canvas'].draw()
             self.data_graph['graphicscene'].addWidget(self.data_graph['canvas'])
-            
+            confs = []
             for NoSet, info in self.pred_data['results'].items():
                 score = info[0]
-                confs = []
+                item = QtWidgets.QTableWidgetItem(f"{str(round(float(score)*100, 1))}")
+                # Set font properties (e.g., bold, size 12)
+                font = QtGui.QFont("Arial", 24, QtGui.QFont.Bold)
+                item.setFont(font)
+                # Set the alignment (e.g., center)
+                item.setTextAlignment(QtCore.Qt.AlignCenter)
+                self.table.setItem(0, int(NoSet), item)
+                temp = []
                 for conf in info[1]:
-                    confs.append(round(conf[1]*100))
-                self.pred_result.append((NoSet, score, confs))
+                    temp.append(round(conf[1]*100))
+                confs = confs + temp
+            for i, panel in enumerate(self.conf_panels):
+                label = QtWidgets.QLabel(f"{str(confs[i])}")
+                label.setStyleSheet("font-size:35px; color: #FF3333; border: none;")
+                # Allow the label to resize automatically
+                label.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+                font = QtGui.QFont("Arial", 24, QtGui.QFont.Bold)  # Set font to Arial, size 14, bold
+                label.setFont(font)
+                label.setAlignment(QtCore.Qt.AlignCenter)  # Center-align the text
+
+                panel_layout = QtWidgets.QVBoxLayout()
+                panel_layout.addWidget(label)
+                panel.setLayout(panel_layout)
         else:
             for ax in self.data_graph['axes']:
                 ax.clear()
@@ -622,11 +646,29 @@ class Replaybackend():
         table.setVerticalHeaderLabels(["Score", "Confidence"])
         table.horizontalHeader().setDefaultAlignment(QtCore.Qt.AlignCenter)
         table.verticalHeader().setDefaultAlignment(QtCore.Qt.AlignCenter)
+        table.horizontalHeader().hide()
+        table.verticalHeader().hide()
         for row in range(table.rowCount()):
             for column in range(table.columnCount()):
                 item = table.item(row, column)
                 if item:
                     item.setTextAlignment(QtCore.Qt.AlignCenter)
+         # **將第 2 列的每一個儲存格內加入 QHBoxLayout 並分成 4 小區塊**
+        self.conf_panels = []
+        for col in range(int(NoSet)+1):  # 遍歷 A, B, C 欄
+            cell_widget = QtWidgets.QWidget()  # 創建 QWidget 作為容器
+            layout_inside = QtWidgets.QHBoxLayout(cell_widget)  # 創建 QHBoxLayout
+            layout_inside.setContentsMargins(0, 0, 0, 0)  # 移除邊距
+            layout_inside.setSpacing(5)  # 設定間距
+
+            # **建立 4 個 Panel**
+            for i in range(4):
+                panel = QtWidgets.QFrame()
+                panel.setStyleSheet(f"background-color: rgb({50+i*50}, {100+i*30}, 200); border: 1px solid black;")
+                panel.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+                self.conf_panels.append(panel)
+                layout_inside.addWidget(panel)  # 加入 Layout
+            table.setCellWidget(1, col, cell_widget)  # **將 QWidget 設為 CellWidget**
 
         # **外部表格自適應大小**
         table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
