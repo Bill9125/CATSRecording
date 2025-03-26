@@ -515,8 +515,8 @@ class Replaybackend():
                     temp.append(round(conf[1]*100))
                 confs = confs + temp
             for i, panel in enumerate(self.conf_panels):
-                label = QtWidgets.QLabel(f"{str(confs[i])}")
-                label.setStyleSheet("font-size:35px; color: #FF3333; border: none;")
+                label = QtWidgets.QLabel(f"{str(confs[i])}%")
+                label.setStyleSheet("font-size:20px; color: #070807; border: none;")
                 # Allow the label to resize automatically
                 label.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
                 font = QtGui.QFont("Arial", 24, QtGui.QFont.Bold)  # Set font to Arial, size 14, bold
@@ -656,6 +656,10 @@ class Replaybackend():
          # **將第 2 列的每一個儲存格內加入 QHBoxLayout 並分成 4 小區塊**
         self.conf_panels = []
         for col in range(int(NoSet)+1):  # 遍歷 A, B, C 欄
+            if col % 2 ==0:
+                font = 'background-color: #eaf0e9; border: 1px solid black;'
+            else:
+                font = 'background-color: #d0d4be; border: 1px solid black;'
             cell_widget = QtWidgets.QWidget()  # 創建 QWidget 作為容器
             layout_inside = QtWidgets.QHBoxLayout(cell_widget)  # 創建 QHBoxLayout
             layout_inside.setContentsMargins(0, 0, 0, 0)  # 移除邊距
@@ -664,7 +668,7 @@ class Replaybackend():
             # **建立 4 個 Panel**
             for i in range(4):
                 panel = QtWidgets.QFrame()
-                panel.setStyleSheet(f"background-color: rgb({50+i*50}, {100+i*30}, 200); border: 1px solid black;")
+                panel.setStyleSheet(font)
                 panel.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
                 self.conf_panels.append(panel)
                 layout_inside.addWidget(panel)  # 加入 Layout

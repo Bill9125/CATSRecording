@@ -276,6 +276,7 @@ class Recordingbackend():
             self.save_sig_3 = True    
         
     def data_produce_btn_clicked(self, sport):
+        # self.folder = 'C:/Users/92A27/MOCAP/recordings/recording_20250324_145044_BVT'
         if sport == 'Deadlift':
             # 對槓端及骨架做內插
             os.system(f'python ./tools/Deadlift_tool/interpolate.py {self.folder}')
