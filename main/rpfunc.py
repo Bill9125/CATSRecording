@@ -114,7 +114,6 @@ class MyThread(threading.Thread):
                 # 讓第 0 個 threading 處理 slider
                 if self.index == 0:
                     val = self.Frameslider.value()
-                    print(val)
                     self.Frameslider.setValue(val + 1)
                 _ , frame = self.cap.read()
                 frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -363,7 +362,7 @@ class Replaybackend():
                     self.videos = [self.videos[1], self.videos[2], self.videos[0]]
                 self.datas = []
             # 已後製
-            elif len(videos) == 6:
+            elif len(videos) == 4:
                 self.videos = [video for video in videos
                             if os.path.basename(video) in ('vision1_drawed.avi', 'vision2.avi', 'vision3.avi')]
                 if self.videos:
