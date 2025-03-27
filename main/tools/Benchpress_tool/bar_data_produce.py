@@ -3,12 +3,17 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('dir', type=str)
 parser.add_argument('--out', type=str)
+parser.add_argument('--sport', type=str)
 args = parser.parse_args()
 dir = args.dir
 out = args.out
+sport = args.sport
 # 讀取 yolo 檔案
 yolo_txt_path = os.path.join(dir, "yolo_coordinates_interpolated.txt")  # 你的 txt 檔案路徑
-output_json_path = os.path.join(out, 'Benchpress_data', "Bar_Position.json")  # 輸出的 JSON 檔案
+if sport == 'deadlift':
+    output_json_path = os.path.join(out, 'Deadlift_data', "Bar_Position.json")  # 輸出的 JSON 檔案
+elif sport == 'benchpress':
+    output_json_path = os.path.join(out, 'Benchpress_data', "Bar_Position.json")  # 輸出的 JSON 檔案
 
 # 初始化數據存儲
 frames = []

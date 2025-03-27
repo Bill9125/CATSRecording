@@ -280,8 +280,13 @@ class Recordingbackend():
         if sport == 'Deadlift':
             # 對槓端及骨架做內插
             os.system(f'python ./tools/Deadlift_tool/interpolate.py {self.folder}')
+            # bar
+            os.system(f'python ./tools/Benchpress_tool/bar_data_produce.py {self.folder} --out ./config --sport deadlift')
+            # angle
             os.system(f'python ./tools/Deadlift_tool/data_produce.py {self.folder} --out ./config')
+            # split data
             os.system(f'python ./tools/Deadlift_tool/data_split.py {self.folder}')
+            # modle predict
             os.system(f'python ./tools/Deadlift_tool/predict.py {self.folder} --out ./config')
             
         if sport == 'Benchpress':
@@ -291,7 +296,7 @@ class Recordingbackend():
             os.system(f'python ./tools/Benchpress_tool/interpolate_yolo_skeleton.py {self.folder}')
             # 內插完數據做config檔
             # shoulder
-            os.system(f'python ./tools/Benchpress_tool/shoulder_elbow_data_produce.py {self.folder} --out ./config')
+            os.system(f'python ./tools/Benchpress_tool/shoulder_elbow_data_produce.py {self.folder} --out ./config --sport benchpress')
             # armpit
             os.system(f'python ./tools/Benchpress_tool/armpit_data_produce.py {self.folder} --out ./config')
             # bar

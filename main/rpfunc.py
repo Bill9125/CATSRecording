@@ -231,7 +231,7 @@ class Replaybackend():
         self.firstclicked_D = True
         self.firstclicked_B = True
         self.firstclicked_S = True
-        self.data_path = {'Deadlift': ['Body_Length.json', 'Hip_Angle.json', 
+        self.data_path = {'Deadlift': ['Bar_Position.json', 'Hip_Angle.json', 
                                        'Knee_Angle.json', 'Knee_to_Hip.json', 'Score.json'],
                           'Benchpress' : ['Bar_Position.json', 'Armpit_Angle.json', 
                                           'Shoulder_Angle.json', 'Elbow_Angle.json']}
