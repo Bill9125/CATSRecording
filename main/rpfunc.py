@@ -312,6 +312,13 @@ class Replaybackend():
             Squat_btn.setStyleSheet("font-size:18px;background-color: #666666")
             Deadlift_btn.setStyleSheet("font-size:18px;background-color: #666666")
 
+        elif sport == 'Squat':
+            folderPath = 'C:/Users/92A27/Squat/recordings'
+            self.folders[sport] = folderPath
+            Benchpress_btn.setStyleSheet("font-size:18px;background-color: #888888")
+            Squat_btn.setStyleSheet("font-size:18px;background-color: #666666")
+            Deadlift_btn.setStyleSheet("font-size:18px;background-color: #666666")
+
         File_comboBox.clear()
         self.all_items = os.listdir(self.folders[sport])
         # 這裡combobox有變動
@@ -549,6 +556,22 @@ class Replaybackend():
                 sublayout.setAlignment(Vision_label, QtCore.Qt.AlignCenter)
                 Vision_labels.append(Vision_label)
             return Vision_labels, qpixmaps
+
+        if sport == 'Squat':
+            for _ in range(num):
+                qpixmap = QtGui.QPixmap()
+                qpixmaps.append(qpixmap)
+                Vision_label = QtWidgets.QLabel(parentlayout)
+                Vision_label.setFrameShape(QtWidgets.QFrame.Panel)
+                Vision_label.setMinimumSize(labelsize[0], labelsize[1])
+                Vision_label.setMaximumSize(labelsize[0], labelsize[1])
+                Vision_label.setPixmap(qpixmap)
+                Vision_label.setText('')
+                sublayout.addWidget(Vision_label)
+                sublayout.setAlignment(Vision_label, QtCore.Qt.AlignCenter)
+                Vision_labels.append(Vision_label)
+            return Vision_labels, qpixmaps
+        
         if sport == 'Benchpress':
             if type == 'rc':
                 for _ in range(num):

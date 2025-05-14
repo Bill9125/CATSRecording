@@ -301,6 +301,20 @@ class Recordingbackend():
             os.system(f'python ./tools/Benchpress_tool/armpit_data_produce.py {self.folder} --out ./config')
             # bar
             os.system(f'python ./tools/Benchpress_tool/bar_data_produce.py {self.folder} --out ./config')
+        
+        if sport == 'Squat':
+            pass
+            # # 對槓端及骨架做內插
+            # os.system(f'python ./tools/Deadlift_tool/interpolate.py {self.folder}')
+            # # bar
+            # os.system(f'python ./tools/Benchpress_tool/bar_data_produce.py {self.folder} --out ./config --sport deadlift')
+            # # angle
+            # os.system(f'python ./tools/Deadlift_tool/data_produce.py {self.folder} --out ./config')
+            # # split data
+            # os.system(f'python ./tools/Deadlift_tool/data_split.py {self.folder}')
+            # # modle predict
+            # os.system(f'python ./tools/Deadlift_tool/predict.py {self.folder} --out ./config')
+            
         # 後製軌跡影片
         os.system(f'python ./tools/trajectory.py {self.folder}')
         print('後製已完成')

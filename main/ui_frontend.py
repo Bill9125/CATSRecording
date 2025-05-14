@@ -116,7 +116,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.rc_Squat_btn.setFont(QtGui.QFont("Times New Roman", 26))
         self.ui.rc_Squat_btn.setText("Squat")
         self.ui.rc_Squat_btn.setObjectName("rc_Squat_btn")
-        self.ui.rc_Squat_btn.setEnabled(False)
+        self.ui.rc_Deadlift_btn.clicked.connect(self.rc_Deadlift_clicked)
         grid_layout.addWidget(self.ui.rc_Squat_btn, 3, 0, 1, 1)
 
         # 確保佈局刷新
@@ -266,6 +266,79 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.source_ctrl_btn.clicked.connect(lambda: self.rcbf.source_ctrl_btn_clicked('Benchpress', self.rc_Vision_labels))
         self.recording_ctrl_btn.clicked.connect(lambda: self.rcbf.recording_ctrl_btn_clicked('Benchpress', self.data_produce_btn, self.source_ctrl_btn, self.back_toolbtn))
 
+    def rc_Squat_layout_set(self):
+        # clear recording layout
+        grid_layout = self.ui.grid_Layout_recording
+        for i in reversed(range(grid_layout.count())):
+            widget = grid_layout.itemAt(i).widget()
+            if widget is not None:
+                widget.deleteLater()
+        
+        # set recording layout
+        self.ctrl_layout = QtWidgets.QHBoxLayout()
+        self.ctrl_layout.setContentsMargins(0, 0, 0, 0)
+        self.ctrl_layout.setSpacing(400)
+        self.ui.recording_layout.addLayout(self.ctrl_layout)
+
+        self.recording_ctrl_btn = QtWidgets.QToolButton(self.ui.Recording_tab)
+        self.recording_ctrl_btn.setIcon(self.icons[2])
+        self.recording_ctrl_btn.setIconSize(QtCore.QSize(128, 128))
+        self.ctrl_layout.addWidget(self.recording_ctrl_btn)
+
+        self.auto_recording_btn = QtWidgets.QPushButton(self.ui.Recording_tab)
+        self.auto_recording_btn.setFont(QtGui.QFont("Times New Roman", 64))
+        self.auto_recording_btn.setText("Auto Recording")
+        self.auto_recording_btn.setEnabled(False)
+        self.ctrl_layout.addWidget(self.auto_recording_btn)
+        
+        self.data_produce_btn = QtWidgets.QPushButton(self.ui.Recording_tab)
+        self.data_produce_btn.setFont(QtGui.QFont("Times New Roman", 64))
+        self.data_produce_btn.setText("Data Produce")
+        self.ctrl_layout.addWidget(self.data_produce_btn)
+        
+        self.source_ctrl_btn = QtWidgets.QPushButton(self.ui.Recording_tab)
+        self.source_ctrl_btn.setFont(QtGui.QFont("Times New Roman", 64))
+        self.source_ctrl_btn.setText("Source change")
+        self.ctrl_layout.addWidget(self.source_ctrl_btn)
+
+        self.back_toolbtn = QtWidgets.QToolButton(self.ui.Recording_tab)
+        self.back_toolbtn.setIcon(self.icons[4])
+        self.back_toolbtn.setIconSize(QtCore.QSize(128, 128))
+        self.back_toolbtn.clicked.connect(self.back_toolbtn_clicked)
+        self.ctrl_layout.addWidget(self.back_toolbtn)
+
+        self.Deadlift_vision_layout = QtWidgets.QHBoxLayout()
+        self.ui.recording_layout.addLayout(self.Deadlift_vision_layout)
+
+        self.subject_layout = QtWidgets.QGridLayout()
+        self.subject_layout.setContentsMargins(0, 0, 0, 0)
+        for x in range(8):
+            for y in range(2):
+                if y == 0:
+                    text = QtWidgets.QLineEdit()
+                    text.setFocus(True)
+                    text.setAlignment(QtCore.Qt.AlignCenter)
+                    text.setText(f'Name {x+1}')
+                    text.setStyleSheet("font-size:20px; color:yellow;")
+                    self.names.append(text)
+                    self.subject_layout.addWidget(text, y, x)    
+                if y == 1:
+                    btn = QtWidgets.QPushButton(self.ui.Recording_tab)
+                    btn.setFont(QtGui.QFont('Times New Roman', 32))
+                    btn.setText(f'Player {x+1}')
+                    btn.clicked.connect(lambda checked, i=x: self.rcbf.player_reset(self.names[i]))
+                    self.player_btn.append(btn)
+                    self.subject_layout.addWidget(btn, y, x)
+                    
+        self.ui.recording_layout.addLayout(self.subject_layout)
+
+        labelsize = [480, 640]
+        self.rc_Vision_labels, self.rc_qpixmaps = self.rpbf.creat_vision_labels_pixmaps([x * 1.2 for x in labelsize], self.ui.Recording_tab, self.Deadlift_vision_layout, 'Deadlift', 5)
+        self.data_produce_btn.clicked.connect(lambda: self.rcbf.data_produce_btn_clicked('Deadlift'))
+        self.source_ctrl_btn.clicked.connect(lambda: self.rcbf.source_ctrl_btn_clicked('Deadlift', self.rc_Vision_labels))
+        self.recording_ctrl_btn.clicked.connect(lambda: self.rcbf.recording_ctrl_btn_clicked('Deadlift', self.data_produce_btn, self.source_ctrl_btn, self.back_toolbtn))
+       
+
     def rp_layout_set(self, sport):
         self.layout_clear(self.ui.head_vis_layout)
         self.layout_clear(self.ui.bottom_vis_layout)
@@ -321,11 +394,34 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox, self.ui.Replay_tab, self.ui.play_layout,
                 self.head_Vis_label, self.bottom_Vis_labels, self.V_sliders, self.H_sliders, self.graph, table)
             
-        # elif sport == 'Squat':
-        #     self.head_Vis_label, self.head_Vis_qpixmap = self.rpbf.creat_vision_labels_pixmaps([480, 640], self.ui.Replay_tab, self.ui.head_vis_layout, sport)
-        #     self.bottom_Vis_labels, self.bottom_Vis_qpixmaps = self.rpbf.creat_vision_labels_pixmaps([307, 410], self.ui.Replay_tab, self.ui.bottom_vis_layout, sport)
-        #     self.data_Vis_labels, self.data_Vis_qpixmaps = self.rpbf.creat_vision_labels_pixmaps([300, 50], self.ui.Replay_tab, self.ui.data_ctrl_layout_V, sport)
+        elif sport == 'Squat':
+            label_size = [480, 640]
+            # 左半邊labels
+            self.head_Vis_label, _ = self.rpbf.creat_vision_labels_pixmaps([x * 1.4 for x in label_size], self.ui.Replay_tab, self.ui.head_vis_layout, sport, 1)
+            self.bottom_Vis_labels, _ = self.rpbf.creat_vision_labels_pixmaps([x * 1.1 for x in label_size], self.ui.Replay_tab, self.ui.bottom_vis_layout, sport, 2)
             
+            # 右半邊graphic
+            data_layout = QtWidgets.QFormLayout()
+            self.data_layouts.append(data_layout)
+            graphicview, graphicscene, canvas, axes, table = self.rpbf.creat_graphic(self.ui.Replay_tab, data_layout, (27.5,16.5), 4)
+            self.graph = {'graphicview' : graphicview, 'graphicscene' : graphicscene, 'canvas' : canvas, 'axes' : axes}
+            self.ui.data_ctrl_layout_V.addLayout(data_layout)
+                
+            self.ui.bottom_vis_layout.setSpacing(50)
+            self.ui.bottom_vis_layout.setContentsMargins(0, 0, 10, 10)
+        
+            self.rpbf.Squat_btn_pressed(
+                self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.icons, self.ui.Stop_btn, 
+                self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox, self.ui.Replay_tab, self.ui.play_layout,
+                self.head_Vis_label, self.bottom_Vis_labels, self.graph, table)
+
+
+
+
+
+
+
+
         self.ui.data_ctrl_layout_V.addLayout(self.ui.bottom_controls_layout)
             
             

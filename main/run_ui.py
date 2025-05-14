@@ -9,3 +9,4 @@ if __name__ == "__main__":
     win = Mainwindow()
     win.showMaximized()
     sys.exit(app.exec_())
+
