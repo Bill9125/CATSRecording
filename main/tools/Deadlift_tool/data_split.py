@@ -241,7 +241,7 @@ def split_bar_data(original_bar_path, output_folder, valleys, valleys1, yolo_fil
     print("所有槓鈴數據處理完成！")
 
 def plot_metrics_in_tkinter():
-    global root, canvas, valleys, valleys1
+    global valleys, valleys1
 
     # Tkinter UI 初始化
     root = tk.Tk()
