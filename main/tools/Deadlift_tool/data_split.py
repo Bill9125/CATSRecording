@@ -13,6 +13,7 @@ import pandas as pd
 import argparse
 import glob
 import re
+import json
 
 def read_skeleton_data(filename):
     data = {}
@@ -592,6 +593,19 @@ def process_normalization(path, input_folder, output_folder):
 
             except Exception as e:
                 print(f"Error processing {file_path}: {e}")
+    
+def save_valleys(path):
+    save_path = os.path.join(path, 'config', 'Deadlift_data', 'Split_info.json')
+    data = {}
+    for i, (start, end) in enumerate(zip(valleys, valleys1)):
+        split_info = {}
+        split_info['start'] = int(start)
+        split_info['end'] = int(end)
+        data[str(i)] = split_info
+    print('data:', data)
+
+    with open(save_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4)
 
 # 指定最上層資料夾
 parser = argparse.ArgumentParser()
@@ -612,6 +626,7 @@ frames, left_knee_angles = calculate_angles(skeleton_data)
 
 # 執行切割
 plot_metrics_in_tkinter()
+save_valleys('./')
 split_skeleton_data(skeleton_file_path, output_folder1, valleys, valleys1,bar_file_path)
 split_bar_data(bar_file_path, output_folder2, valleys, valleys1,bar_file_path)
 

@@ -515,7 +515,7 @@ class Replaybackend():
                 confs = confs + temp
             for i, panel in enumerate(self.conf_panels):
                 label = QtWidgets.QLabel(f"{str(confs[i])}%")
-                label.setStyleSheet("font-size:20px; color: #070807; border: none;")
+                label.setStyleSheet("font-size:15px; color: #070807; border: none;")
                 # Allow the label to resize automatically
                 label.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
                 font = QtGui.QFont("Arial", 24, QtGui.QFont.Bold)  # Set font to Arial, size 14, bold
