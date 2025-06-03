@@ -9,32 +9,30 @@
 
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-from qt_material import apply_stylesheet
+import pyautogui
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
+        screen_width, screen_height = pyautogui.size()
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(2171, 843)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(MainWindow.sizePolicy().hasHeightForWidth())
         MainWindow.setSizePolicy(sizePolicy)
-        MainWindow.setMinimumSize(QtCore.QSize(1292, 500))
+        MainWindow.setMinimumSize(QtCore.QSize(screen_width, screen_height))
 
+        space_10 = screen_width / 256
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
 
         self.main_layout = QtWidgets.QVBoxLayout(self.centralwidget)
-        self.main_layout.setContentsMargins(10, 10, 10, 10)
+        self.main_layout.setContentsMargins(space_10, space_10, space_10, space_10)
 
-        self.replay_tabWidget = QtWidgets.QTabWidget(self.centralwidget)
-        self.replay_tabWidget.setEnabled(True)
+        self.tabs = QtWidgets.QTabWidget(self.centralwidget)
         font = QtGui.QFont()
         font.setFamily("Times New Roman")
         font.setPointSize(16)
-        self.replay_tabWidget.setFont(font)
-        self.replay_tabWidget.setObjectName("replay_tabWidget")
 
         # Recording tab
         self.Recording_tab = QtWidgets.QWidget()
@@ -47,6 +45,8 @@ class Ui_MainWindow(object):
 
         self.manual_checkbox = QtWidgets.QCheckBox(self.Recording_tab)
         self.manual_checkbox.setObjectName("manual_checkbox")
+        self.manual_checkbox.setEnabled(False)
+        self.manual_checkbox.setChecked(True)
         self.grid_Layout_recording.addWidget(self.manual_checkbox, 0, 0, 1, 1)
 
         self.rc_Deadlift_btn = QtWidgets.QPushButton(self.Recording_tab)
@@ -66,7 +66,6 @@ class Ui_MainWindow(object):
         self.grid_Layout_recording.addWidget(self.rc_Squat_btn, 3, 0, 1, 1)
 
         self.recording_layout.addLayout(self.grid_Layout_recording)
-        self.replay_tabWidget.addTab(self.Recording_tab, "")
 
         # Replay tab
         font.setPointSize(18)
@@ -90,52 +89,73 @@ class Ui_MainWindow(object):
         self.rp_Squat_btn = QtWidgets.QPushButton(self.Replay_tab)
         self.rp_Squat_btn.setStyleSheet("font-size:18px")
         self.rp_Squat_btn.setObjectName("Squat_play_btn")
+        self.rp_Squat_btn.setEnabled(False)
         self.top_controls_layout.addWidget(self.rp_Squat_btn)
 
         self.File_comboBox = QtWidgets.QComboBox(self.Replay_tab)
         self.File_comboBox.setObjectName("File_comboBox")
+        self.File_comboBox.setEditable(False)
+        self.File_comboBox.setStyleSheet("font-size:20px; color:yellow;")
         self.top_controls_layout.addWidget(self.File_comboBox)
+        
+        self.search_LineEdit = QtWidgets.QLineEdit(self.Replay_tab)
+        self.search_LineEdit.setObjectName('search_LineEdit')
+        self.search_LineEdit.setText('請輸入想尋找的文件')
+        self.search_LineEdit.setStyleSheet("font-size:20px; color:yellow;")
+        self.top_controls_layout.addWidget(self.search_LineEdit)
+        
         self.top_controls_layout.setStretch(0, 1)
         self.top_controls_layout.setStretch(1, 1)
         self.top_controls_layout.setStretch(2, 1)
         self.top_controls_layout.setStretch(3, 20)
-        self.top_controls_layout.setContentsMargins(0, 0, 500, 0)
+        self.top_controls_layout.setStretch(4, 5)
         
-
+        self.top_controls_layout.setContentsMargins(0, 0, 500, 0)
         self.replay_layout.addLayout(self.top_controls_layout)
 
         self.play_groupBox = QtWidgets.QGroupBox(self.Replay_tab)
         self.play_groupBox.setObjectName("play_groupBox")
-        self.play_layout = QtWidgets.QHBoxLayout(self.play_groupBox)
-
+        self.play_layout = QtWidgets.QHBoxLayout()
+        self.vision_layout_V = QtWidgets.QVBoxLayout()
+        self.data_ctrl_layout_V = QtWidgets.QVBoxLayout()
+        self.head_vis_layout = QtWidgets.QGridLayout()
+        self.bottom_vis_layout = QtWidgets.QHBoxLayout()
+        self.vision_layout_V.addLayout(self.head_vis_layout)
+        self.vision_layout_V.addLayout(self.bottom_vis_layout)
+        self.play_layout.addLayout(self.vision_layout_V)
+        self.play_layout.addLayout(self.data_ctrl_layout_V)
+        self.play_groupBox.setLayout(self.play_layout)
         self.replay_layout.addWidget(self.play_groupBox)
-
+        
         self.bottom_controls_layout = QtWidgets.QHBoxLayout()
-
-        self.Play_btn = QtWidgets.QToolButton(self.Replay_tab)
+        self.Play_btn = QtWidgets.QToolButton()
         self.Play_btn.setEnabled(False)
         self.Play_btn.setObjectName("Play_btn")
         self.bottom_controls_layout.addWidget(self.Play_btn)
 
-        self.Stop_btn = QtWidgets.QToolButton(self.Replay_tab)
+        self.Stop_btn = QtWidgets.QToolButton()
         self.Stop_btn.setEnabled(False)
         self.Stop_btn.setObjectName("Stop_btn")
         self.bottom_controls_layout.addWidget(self.Stop_btn)
 
-        self.TimeCount_LineEdit = QtWidgets.QLineEdit(self.Replay_tab)
+        self.TimeCount_LineEdit = QtWidgets.QLineEdit()
         self.TimeCount_LineEdit.setEnabled(True)
         self.TimeCount_LineEdit.setAlignment(QtCore.Qt.AlignCenter)
+        self.TimeCount_LineEdit.setStyleSheet('color:yellow;')
         self.TimeCount_LineEdit.setReadOnly(True)
         self.TimeCount_LineEdit.setObjectName("TimeCount_LineEdit")
 
-        self.Frameslider = QtWidgets.QSlider(self.Replay_tab)
+        self.Frameslider = QtWidgets.QSlider()
+        self.Frameslider.setGeometry(QtCore.QRect(190, 100, 90, 16))
         self.Frameslider.setEnabled(False)
         self.Frameslider.setOrientation(QtCore.Qt.Horizontal)
         self.Frameslider.setObjectName("Frameslider")
 
-        self.fast_forward_combobox = QtWidgets.QComboBox(self.Replay_tab)
+        self.fast_forward_combobox = QtWidgets.QComboBox()
         self.fast_forward_combobox.setEnabled(False)
         self.fast_forward_combobox.setObjectName("fast_forward_combobox")
+        self.fast_forward_combobox.setEditable(False)
+        self.fast_forward_combobox.setStyleSheet("font-size:20px; color:yellow;")
 
         self.bottom_controls_layout.addWidget(self.fast_forward_combobox)
         self.bottom_controls_layout.addWidget(self.Frameslider)
@@ -146,11 +166,10 @@ class Ui_MainWindow(object):
         self.bottom_controls_layout.setStretch(3, 90)
         self.bottom_controls_layout.setStretch(4, 5)
         
-
-        self.replay_layout.addLayout(self.bottom_controls_layout)
-        self.replay_tabWidget.addTab(self.Replay_tab, "")
-
-        self.main_layout.addWidget(self.replay_tabWidget)
+        self.tabs.addTab(self.Recording_tab, "Recording")
+        self.tabs.addTab(self.Replay_tab, 'replay')
+        self.main_layout.addWidget(self.tabs)
+        
         MainWindow.setCentralWidget(self.centralwidget)
 
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
@@ -158,7 +177,6 @@ class Ui_MainWindow(object):
         MainWindow.setStatusBar(self.statusbar)
 
         self.retranslateUi(MainWindow)
-        self.replay_tabWidget.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
@@ -168,9 +186,7 @@ class Ui_MainWindow(object):
         self.rc_Squat_btn.setText(_translate("MainWindow", "Squat"))
         self.rc_Deadlift_btn.setText(_translate("MainWindow", "Deadlift"))
         self.manual_checkbox.setText(_translate("MainWindow", "manual recording"))
-        self.replay_tabWidget.setTabText(self.replay_tabWidget.indexOf(self.Recording_tab), _translate("MainWindow", "Recording"))
         self.TimeCount_LineEdit.setPlaceholderText(_translate("MainWindow", "00:00"))
         self.rp_Deadlift_btn.setText(_translate("MainWindow", "Deadlift"))
         self.rp_Benchpress_btn.setText(_translate("MainWindow", "Benchpress"))
         self.rp_Squat_btn.setText(_translate("MainWindow", "Squat"))
-        self.replay_tabWidget.setTabText(self.replay_tabWidget.indexOf(self.Replay_tab), _translate("MainWindow", "Replay"))

@@ -4,9 +4,8 @@ from qt_material import apply_stylesheet
 import sys
 
 if __name__ == "__main__":
-    import sys
     app = QtWidgets.QApplication(sys.argv)
     apply_stylesheet(app, theme='dark_amber.xml')
     win = Mainwindow()
-    win.show()
+    win.showMaximized()
     sys.exit(app.exec_())
