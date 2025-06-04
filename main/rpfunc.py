@@ -504,6 +504,11 @@ class Replaybackend():
         event.accept()
         
     def showprevision(self):
+        
+        if not hasattr(self, "data_graph") or self.data_graph.get("axes") is None:
+            print("⚠️ data_graph 尚未初始化，跳過繪圖流程")
+            return
+
         if self.videos:
             for i, video in enumerate(self.videos):
                 temp_cap = cv2.VideoCapture(video)
