@@ -234,7 +234,9 @@ class Replaybackend():
         self.data_path = {'Deadlift': ['Bar_Position.json', 'Hip_Angle.json', 
                                        'Knee_Angle.json', 'Knee_to_Hip.json', 'Score.json'],
                           'Benchpress' : ['Bar_Position.json', 'Armpit_Angle.json', 
-                                          'Shoulder_Angle.json', 'Elbow_Angle.json']}
+                                          'Shoulder_Angle.json', 'Elbow_Angle.json'],
+                           'Squat': ['Bar_Position.json', 'Hip_Angle.json', 
+                                       'Knee_Angle.json', 'Knee_to_Hip.json', 'Score.json']}
         self.folders = {}
         self.threads = []
         self.rp_Vision_labels = []
@@ -313,7 +315,7 @@ class Replaybackend():
             Deadlift_btn.setStyleSheet("font-size:18px;background-color: #666666")
 
         elif sport == 'Squat':
-            folderPath = 'C:/Users/92A27/Squat/recordings'
+            folderPath = 'C:/Users/92A27/barbell_squat/recordings'
             self.folders[sport] = folderPath
             Benchpress_btn.setStyleSheet("font-size:18px;background-color: #888888")
             Squat_btn.setStyleSheet("font-size:18px;background-color: #666666")
@@ -361,6 +363,31 @@ class Replaybackend():
                 
         ## 硬舉avi只需要 1, 2, 3 視角
         if self.currentsport == 'Deadlift':
+            # 未後製
+            if len(videos) == 5:
+                self.videos = [video for video in videos
+                            if os.path.basename(video) in ('vision1.avi', 'vision2.avi', 'vision3.avi')]
+                if self.videos:
+                    self.videos = [self.videos[1], self.videos[2], self.videos[0]]
+                self.datas = []
+            # 已後製
+            elif len(videos) == 6:
+                self.videos = [video for video in videos
+                            if os.path.basename(video) in ('vision1_drawed.avi', 'vision2.avi', 'vision3.avi')]
+                if self.videos:
+                    self.videos = [self.videos[1], self.videos[2], self.videos[0]]
+                # 抓取計算完的檔案
+                for i in range(len(self.data_path[self.currentsport])):
+                    with open(f'./config/{self.currentsport}_data/{self.data_path[self.currentsport][i]}',
+                                mode='r', encoding='utf-8') as file:
+                        data = json.load(file)
+                        self.datas.append(data)
+                # 將 data 分為角度資訊以及分數
+                self.info_data = self.datas[:4]
+                self.pred_data = self.datas[4]
+
+                ## squat
+        if self.currentsport == 'Squat':
             # 未後製
             if len(videos) == 5:
                 self.videos = [video for video in videos
