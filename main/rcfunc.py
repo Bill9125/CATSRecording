@@ -152,6 +152,14 @@ class Recordingbackend():
             bar_model.to(device)
             bone_model.to(device)
             return [bar_model, bone_model]
+        
+        elif sport == 'Squat':
+            bar_model = YOLO("./model/squat/yolo_bar_model/best.pt")
+            bone_model = YOLO("./model/squat/yolov8_model/yolov8n-pose.pt")
+            bar_model.to(device)
+            bone_model.to(device)
+            return [bar_model, bone_model]
+        
         elif sport =='Benchpress':
             bar_model = YOLO("./model/benchpress/yolo_bar_model/best.pt")
             body_model = YOLO("./model/benchpress/body_model/yolov8n-pose.pt")
@@ -208,19 +216,21 @@ class Recordingbackend():
                             self.folder, start_time, frame_count, fps, out, original_out, 
                             txt_file, self.models[i], frame_count_for_detect)
                 
-                elif sport == 'squat':
+                elif sport == 'Squat':
                     if i == 0:
-                        start_time, frame_count, fps, out = loop.deadlift_bar_loop(
-                            i, frame, label, self.save_sig, self.recording_sig,
-                            self.folder, start_time, frame_count, fps, out)
+                        start_time, frame_count, fps, out, frame_count_for_detect, self.save_sig_1, txt_file = loop.squat_bar_loop(
+                            i, frame, label, self.save_sig_1, self.recording_sig,
+                            self.folder, start_time, frame_count, fps, out, self.models[i],
+                            txt_file, frame_count_for_detect, barrier)
                     elif i == 1:
-                        start_time, frame_count, fps, out = loop.deadlift_bone_loop(
-                            i, frame, label, self.save_sig, self.recording_sig,
-                            self.folder, start_time, frame_count, fps, out)
+                        start_time, frame_count, fps, out, frame_count_for_detect, self.save_sig_2, txt_file = loop.squat_bone_loop(
+                            i, frame, label, self.save_sig_2, self.recording_sig,
+                            self.folder, start_time, frame_count, fps, out, self.models[i],
+                            txt_file, frame_count_for_detect, self.skeleton_connections, barrier)
                     else:
-                        start_time, frame_count, fps, out = loop.deadlift_general_loop(
-                            i, frame, label, self.save_sig, self.recording_sig,
-                            self.folder, start_time, frame_count, fps, out)
+                        start_time, frame_count, fps, out, self.save_sig_3 = loop.squat_general_loop(
+                            i, frame, label, self.save_sig_3, self.recording_sig,
+                            self.folder, start_time, frame_count, fps, out, barrier)
         cap.__del__()
 
     def messagebox(self, type, text):
