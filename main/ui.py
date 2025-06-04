@@ -89,7 +89,6 @@ class Ui_MainWindow(object):
         self.rp_Squat_btn = QtWidgets.QPushButton(self.Replay_tab)
         self.rp_Squat_btn.setStyleSheet("font-size:18px")
         self.rp_Squat_btn.setObjectName("Squat_play_btn")
-        self.rp_Squat_btn.setEnabled(False)
         self.top_controls_layout.addWidget(self.rp_Squat_btn)
 
         self.File_comboBox = QtWidgets.QComboBox(self.Replay_tab)
