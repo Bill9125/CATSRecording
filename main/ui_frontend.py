@@ -419,7 +419,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.rpbf.Squat_btn_pressed(
                 self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.icons, self.ui.Stop_btn, 
                 self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox, self.ui.Replay_tab, self.ui.play_layout,
-                self.head_Vis_label, self.bottom_Vis_labels, self.graph, table)
+                self.head_Vis_label, self.bottom_Vis_labels, self.graph)
 
 
 
