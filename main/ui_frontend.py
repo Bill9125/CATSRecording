@@ -13,7 +13,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.rpbf = Replaybackend()
         self.ui.setupUi(self)
         
-        self.ui.rc_Squat_btn.setEnabled(False)
+        #self.ui.rc_Squat_btn.setEnabled(True)
         self.icons = []
         self.names = []
         self.graghs = []
@@ -32,6 +32,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.tabs.currentChanged.connect(self.tab_changed)
         self.ui.rc_Deadlift_btn.clicked.connect(self.rc_Deadlift_clicked)
         self.ui.rc_Benchpress_btn.clicked.connect(self.rc_Benchpress_clicked)
+        self.ui.rc_Squat_btn.clicked.connect(self.rc_Squat_clicked)
         self.ui.rp_Deadlift_btn.clicked.connect(lambda :self.rp_layout_set('Deadlift'))
         self.ui.rp_Benchpress_btn.clicked.connect(lambda :self.rp_layout_set('Benchpress'))
         self.ui.rp_Squat_btn.clicked.connect(lambda :self.rp_layout_set('Squat'))
@@ -70,6 +71,11 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.names.clear()
         self.rc_Deadlift_layout_set()
         self.rcbf.init_rc_backend('Deadlift', self.rc_Vision_labels)
+
+    def rc_Squat_clicked(self):
+        self.names.clear()
+        self.rc_Squat_layout_set()
+        self.rcbf.init_rc_backend('Squat', self.rc_Vision_labels)
 
     def rc_Benchpress_clicked(self):
         self.names.clear()
@@ -116,7 +122,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.rc_Squat_btn.setFont(QtGui.QFont("Times New Roman", 26))
         self.ui.rc_Squat_btn.setText("Squat")
         self.ui.rc_Squat_btn.setObjectName("rc_Squat_btn")
-        self.ui.rc_Deadlift_btn.clicked.connect(self.rc_Deadlift_clicked)
+        self.ui.rc_Squat_btn.clicked.connect(self.rc_Squat_clicked)
         grid_layout.addWidget(self.ui.rc_Squat_btn, 3, 0, 1, 1)
 
         # 確保佈局刷新
