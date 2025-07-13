@@ -393,7 +393,7 @@ class Replaybackend():
                 self.videos = [video for video in videos
                             if os.path.basename(video) in ('vision1.avi', 'vision2.avi', 'vision3.avi')]
                 if self.videos:
-                    self.videos = [self.videos[1], self.videos[2], self.videos[0]]
+                    self.videos = [self.videos[0], self.videos[1], self.videos[2]]
                 self.datas = []
             # 已後製
             elif len(videos) == 6:
