@@ -162,7 +162,7 @@ class Recordingbackend():
         
         elif sport =='Benchpress':
             bar_model = YOLO("./model/benchpress/yolo_bar_model/best.pt")
-            body_model = YOLO("./model/benchpress/body_model/yolov8n-pose.pt")
+            body_model = YOLO("./model/benchpress/body_model/top_11m_best.pt")
             head_model = YOLO("./model/benchpress/head_model/yolo11m.pt")
             bar_model.to(device)
             body_model.to(device)
@@ -300,17 +300,26 @@ class Recordingbackend():
             os.system(f'python ./tools/Deadlift_tool/predict.py {self.folder} --out ./config')
             
         if sport == 'Benchpress':
-             # 對槓端及骨架做內插
-            os.system(f'python ./tools/Benchpress_tool/interpolate_function.py {self.folder}')
-            # 臥推要多做一個骨架內插
-            os.system(f'python ./tools/Benchpress_tool/interpolate_yolo_skeleton.py {self.folder}')
-            # 內插完數據做config檔
-            # shoulder
-            os.system(f'python ./tools/Benchpress_tool/shoulder_elbow_data_produce.py {self.folder} --out ./config --sport benchpress')
-            # armpit
-            os.system(f'python ./tools/Benchpress_tool/armpit_data_produce.py {self.folder} --out ./config')
-            # bar
-            os.system(f'python ./tools/Benchpress_tool/bar_data_produce.py {self.folder} --out ./config')
+            # 
+            os.system(f'python ./tools/Benchpress_tool/step0_hampel_bar.py {self.folder}')
+            # 
+            os.system(f'python ./tools/Benchpress_tool/step0_hampel_yolo_ske_rear.py {self.folder}')
+            #
+            os.system(f'python ./tools/Benchpress_tool/step0_hampel_yolo_ske_top.py {self.folder} ')
+            # 
+            os.system(f'python ./tools/Benchpress_tool/step1_interpolate_bar.py {self.folder}')
+            # 
+            os.system(f'python ./tools/Benchpress_tool/step2_interpolate_yolo_ske.py {self.folder}')
+            #
+            os.system(f'python ./tools/Benchpress_tool/step3_autocutting_0801.py {self.folder}')
+            # 
+            os.system(f'python ./tools/Benchpress_tool/step5_calculate_angle_new_feature_test.py {self.folder}')
+            # 
+            os.system(f'python ./tools/Benchpress_tool/step6_cut.py {self.folder} ')
+            # 
+            os.system(f'python ./tools/Benchpress_tool/step7_length_100.py {self.folder}')
+            # 
+            os.system(f'python ./tools/Benchpress_tool/step8_normalize.py {self.folder}')
         
         if sport == 'Squat':
             pass

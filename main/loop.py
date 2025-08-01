@@ -461,6 +461,7 @@ def benchpress_bar_loop(i, frame, label, save_sig, recording_sig, folder,
             txt_file = None  # ✅ 確保 `txt_file` 被正確關閉
             print(f"Closed txt_file for camera {i + 1}")
 
+    barrier.wait()
     cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     h, w, ch = frame.shape
@@ -470,7 +471,7 @@ def benchpress_bar_loop(i, frame, label, save_sig, recording_sig, folder,
     return start_time, frame_count, fps, out, frame_count_for_detect, original_out, save_sig, txt_file
     
 def benchpress_body_loop(i, frame, label, save_sig, recording_sig, folder,
-                           start_time, frame_count, fps, out, original_out, excluded_indices, txt_file, pose, frame_count_for_detect, connections):
+                           start_time, frame_count, fps, out, original_out, excluded_indices, txt_file, pose, frame_count_for_detect, connections, barrier):
     frame_count += 1
     elapsed_time = time.time() - start_time
     if elapsed_time >= 1:
@@ -488,7 +489,7 @@ def benchpress_body_loop(i, frame, label, save_sig, recording_sig, folder,
             print(f"Initialized VideoWriter for origin camera {i + 1}")
         original_out.write(frame)
         if txt_file is None:
-            txt_file_path = os.path.join(folder, 'mediapipe_landmarks.txt')
+            txt_file_path = os.path.join(folder, 'yolo_skeleton_top_11m.txt')
             txt_file = open(txt_file_path, "w")  # ✅ 錄影開始時開啟檔案
             frame_count_for_detect = 0  # ✅ 只在錄影開始時歸零
             print(f"Started writing data to {txt_file_path}")
@@ -522,8 +523,8 @@ def benchpress_body_loop(i, frame, label, save_sig, recording_sig, folder,
         if recording_sig and txt_file is not None:
             txt_file.write(f"{frame_count_for_detect},no detection\n")
 
-    frame = cv2.rotate(frame, cv2.ROTATE_180)
-    
+    #frame = cv2.rotate(frame, cv2.ROTATE_180)
+
     # 錄影開始
     if recording_sig:
         if out is None:  # 初始化 VideoWriter
@@ -549,6 +550,7 @@ def benchpress_body_loop(i, frame, label, save_sig, recording_sig, folder,
             txt_file = None  # ✅ 確保 `txt_file` 被正確關閉
             print(f"Closed txt_file for camera {i + 1}")
     
+    barrier.wait()
     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
     h, w, ch = frame.shape
@@ -559,7 +561,7 @@ def benchpress_body_loop(i, frame, label, save_sig, recording_sig, folder,
     
 def benchpress_head_loop(i, frame, label, save_sig, recording_sig, folder,
                            start_time, frame_count, fps, out, original_out, txt_file, 
-                           model, frame_count_for_detect):
+                           model, frame_count_for_detect, barrier):
     connections = [(0, 1), (0, 2), (2, 4), (1, 3), (3, 5)]
     frame_count += 1
     elapsed_time = time.time() - start_time
@@ -644,6 +646,7 @@ def benchpress_head_loop(i, frame, label, save_sig, recording_sig, folder,
             txt_file = None  # ✅ 確保 `txt_file` 被正確關閉
             print(f"Closed txt_file for camera {i + 1}")
     
+    barrier.wait()
     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
     h, w, ch = frame.shape
