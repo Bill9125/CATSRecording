@@ -298,7 +298,8 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ctrl_layout.addWidget(self.auto_recording_btn)
         
         self.data_produce_btn = QtWidgets.QPushButton(self.ui.Recording_tab)
-        self.data_produce_btn.setFont(QtGui.QFont("Times New Roman", 64))
+        self.data_produce_btn.setFont(QtGui.QFont("Times New Roman", 100))
+        self.data_produce_btn.setFixedWidth(300)  # 設定固定寬度為 300
         self.data_produce_btn.setText("Data Produce")
         self.ctrl_layout.addWidget(self.data_produce_btn)
         
@@ -316,27 +317,27 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.Deadlift_vision_layout = QtWidgets.QHBoxLayout()
         self.ui.recording_layout.addLayout(self.Deadlift_vision_layout)
 
-        self.subject_layout = QtWidgets.QGridLayout()
-        self.subject_layout.setContentsMargins(0, 0, 0, 0)
-        for x in range(8):
-            for y in range(2):
-                if y == 0:
-                    text = QtWidgets.QLineEdit()
-                    text.setFocus(True)
-                    text.setAlignment(QtCore.Qt.AlignCenter)
-                    text.setText(f'Name {x+1}')
-                    text.setStyleSheet("font-size:20px; color:yellow;")
-                    self.names.append(text)
-                    self.subject_layout.addWidget(text, y, x)    
-                if y == 1:
-                    btn = QtWidgets.QPushButton(self.ui.Recording_tab)
-                    btn.setFont(QtGui.QFont('Times New Roman', 32))
-                    btn.setText(f'Player {x+1}')
-                    btn.clicked.connect(lambda checked, i=x: self.rcbf.player_reset(self.names[i]))
-                    self.player_btn.append(btn)
-                    self.subject_layout.addWidget(btn, y, x)
+        # self.subject_layout = QtWidgets.QGridLayout()
+        # self.subject_layout.setContentsMargins(0, 0, 0, 0)
+        # for x in range(8):
+        #     for y in range(2):
+        #         if y == 0:
+        #             text = QtWidgets.QLineEdit()
+        #             text.setFocus(True)
+        #             text.setAlignment(QtCore.Qt.AlignCenter)
+        #             text.setText(f'Name {x+1}')
+        #             text.setStyleSheet("font-size:20px; color:yellow;")
+        #             self.names.append(text)
+        #             self.subject_layout.addWidget(text, y, x)    
+        #         if y == 1:
+        #             btn = QtWidgets.QPushButton(self.ui.Recording_tab)
+        #             btn.setFont(QtGui.QFont('Times New Roman', 32))
+        #             btn.setText(f'Player {x+1}')
+        #             btn.clicked.connect(lambda checked, i=x: self.rcbf.player_reset(self.names[i]))
+        #             self.player_btn.append(btn)
+        #             self.subject_layout.addWidget(btn, y, x)
                     
-        self.ui.recording_layout.addLayout(self.subject_layout)
+        # self.ui.recording_layout.addLayout(self.subject_layout)
 
         labelsize = [480, 640]
         self.rc_Vision_labels, self.rc_qpixmaps = self.rpbf.creat_vision_labels_pixmaps([x * 1.2 for x in labelsize], self.ui.Recording_tab, self.Deadlift_vision_layout, 'Squat', 6)
