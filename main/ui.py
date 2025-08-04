@@ -30,6 +30,24 @@ class Ui_MainWindow(object):
         self.main_layout.setContentsMargins(space_10, space_10, space_10, space_10)
 
         self.tabs = QtWidgets.QTabWidget(self.centralwidget)
+        self.tabs.setStyleSheet("""
+            QTabBar::tab {
+                font-size: 30px;
+                font-family: 'Times New Roman';
+                color: yellow;
+                padding: 10px 20px;
+                min-height: 60px;
+                min-width: 200px;
+            }
+            QTabBar::tab:selected {
+                border-bottom: 4px solid yellow;
+            }
+        """)
+        self.tabs.setTabBarAutoHide(False)
+        self.tabs.tabBar().setExpanding(False)
+
+
+
         font = QtGui.QFont()
         font.setFamily("Times New Roman")
         font.setPointSize(16)
@@ -49,21 +67,51 @@ class Ui_MainWindow(object):
         self.manual_checkbox.setChecked(True)
         self.grid_Layout_recording.addWidget(self.manual_checkbox, 0, 0, 1, 1)
 
+        # ▶️ Deadlift button 
         self.rc_Deadlift_btn = QtWidgets.QPushButton(self.Recording_tab)
-        font.setPointSize(26)
-        self.rc_Deadlift_btn.setFont(font)
         self.rc_Deadlift_btn.setObjectName("Deadlift_btn_3")
+        self.rc_Deadlift_btn.setText("Deadlift")
+        self.rc_Deadlift_btn.setStyleSheet("""
+            QPushButton {
+                font-size: 48px;
+                color: yellow;
+                border: 2px solid yellow;
+                font-family: 'Times New Roman';
+            }
+        """)
+        self.rc_Deadlift_btn.setFixedSize(800, 120)
         self.grid_Layout_recording.addWidget(self.rc_Deadlift_btn, 1, 0, 1, 1)
 
+        # ▶️ Benchpress button
         self.rc_Benchpress_btn = QtWidgets.QPushButton(self.Recording_tab)
-        self.rc_Benchpress_btn.setFont(font)
         self.rc_Benchpress_btn.setObjectName("Benchpress_btn_3")
+        self.rc_Benchpress_btn.setText("Benchpress")
+        self.rc_Benchpress_btn.setStyleSheet("""
+            QPushButton {
+                font-size: 48px;
+                color: yellow;
+                border: 2px solid yellow;
+                font-family: 'Times New Roman';
+            }
+        """)
+        self.rc_Benchpress_btn.setFixedSize(800, 120)
         self.grid_Layout_recording.addWidget(self.rc_Benchpress_btn, 2, 0, 1, 1)
 
+        # ▶️ Squat button
         self.rc_Squat_btn = QtWidgets.QPushButton(self.Recording_tab)
-        self.rc_Squat_btn.setFont(font)
         self.rc_Squat_btn.setObjectName("Squat_btn_3")
+        self.rc_Squat_btn.setText("Squat")
+        self.rc_Squat_btn.setStyleSheet("""
+            QPushButton {
+                font-size: 48px;
+                color: yellow;
+                border: 2px solid yellow;
+                font-family: 'Times New Roman';
+            }
+        """)
+        self.rc_Squat_btn.setFixedSize(800, 120)
         self.grid_Layout_recording.addWidget(self.rc_Squat_btn, 3, 0, 1, 1)
+
 
         self.recording_layout.addLayout(self.grid_Layout_recording)
 
