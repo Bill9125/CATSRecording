@@ -344,7 +344,7 @@ class Replaybackend():
         if self.currentsport == 'Benchpress':
             if len(videos) == 6:
                 self.videos = [video for video in videos 
-                            if os.path.basename(video) in ('original_vision1.avi', 'vision2.avi', 'original_vision3.avi')
+                            if os.path.basename(video) in ('vision1.avi', 'vision2.avi', 'vision3.avi')
                             ]
                 if self.videos:
                     self.videos[1], self.videos[2] = self.videos[2], self.videos[1]
