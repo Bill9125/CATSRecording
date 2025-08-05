@@ -157,7 +157,7 @@
 #     USE_LATEST = True  # ❗️切換手動指定資料夾還是自動判定最新的
 
 #     if USE_LATEST:
-#         recordings_dir = r"C:/Users/USER/92A27/benchpress/recordings"
+#         recordings_dir = r"C:/Users/92A27/benchpress/recordings"
 #         all_folders = [os.path.join(recordings_dir, d) for d in os.listdir(recordings_dir) if os.path.isdir(os.path.join(recordings_dir, d))]
 #         base_path = os.path.join(max(all_folders, key=os.path.getmtime), '')
 #     else:
@@ -325,7 +325,7 @@ if __name__ == "__main__":
     USE_LATEST = True
 
     if USE_LATEST:
-        recordings_dir = r"C:/Users/USER/92A27/benchpress/recordings"
+        recordings_dir = r"C:/Users/92A27/benchpress/recordings"
         all_folders = [os.path.join(recordings_dir, d) for d in os.listdir(recordings_dir) if os.path.isdir(os.path.join(recordings_dir, d))]
         latest_folder = max(all_folders, key=os.path.getmtime)
         base_path = latest_folder  # 就是 .../recording_XXXX

@@ -759,17 +759,17 @@ def export_plot(df, plot_file, segments, base_path, valley_indices, peaks, absol
     else:
         print(f"DEBUG: Failed to save original plot at {plot_file}")
 
-    # 建立新資料夾並儲存另一份圖
-    pic_path = "E:/totpic/"
-    os.makedirs(pic_path, exist_ok=True)
-    normalized_path = os.path.normpath(base_path)
-    path_parts = normalized_path.split(os.sep)
-    folder_name = f"{path_parts[-2]}_{path_parts[-1]}" if len(path_parts) >= 2 else path_parts[-1]
-    new_file_name = f"{folder_name}.png"
-    new_plot_file = os.path.join(pic_path, new_file_name)
+    # # 建立新資料夾並儲存另一份圖
+    # pic_path = "E:/totpic/"
+    # os.makedirs(pic_path, exist_ok=True)
+    # normalized_path = os.path.normpath(base_path)
+    # path_parts = normalized_path.split(os.sep)
+    # folder_name = f"{path_parts[-2]}_{path_parts[-1]}" if len(path_parts) >= 2 else path_parts[-1]
+    # new_file_name = f"{folder_name}.png"
+    # new_plot_file = os.path.join(pic_path, new_file_name)
 
-    plt.savefig(new_plot_file)  # ✅ 儲存另一份
-    print(f"DEBUG: Copy plot saved successfully at {new_plot_file}")
+    # plt.savefig(new_plot_file)  # ✅ 儲存另一份
+    # print(f"DEBUG: Copy plot saved successfully at {new_plot_file}")
 
     plt.close()  # 最後再關閉畫布
 
@@ -1305,7 +1305,7 @@ if __name__ == "__main__":
     USE_LATEST = True  # ❗️切換手動指定資料夾還是自動判定最新的
 
     if USE_LATEST:
-        recordings_dir = r"C:/Users/USER/92A27/benchpress/recordings"
+        recordings_dir = r"C:/Users/92A27/benchpress/recordings"
         all_folders = [os.path.join(recordings_dir, d) for d in os.listdir(recordings_dir) if os.path.isdir(os.path.join(recordings_dir, d))]
         base_path = os.path.join(max(all_folders, key=os.path.getmtime), '')
     else:

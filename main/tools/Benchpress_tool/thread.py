@@ -7,13 +7,12 @@ def run_scripts():
         "step0_hampel_yolo_ske_rear.py",
         "step0_hampel_yolo_ske_top.py",
         "step1_interpolate_bar.py",
-        "step2_interpolate_yolo_ske",
-        "step3_autocutting_0710.py",
+        "step2_interpolate_yolo_ske.py",
+        "step3_autocutting_0801.py",
         "step5_calculate_angle_new_feature_test.py",
-        # "step6_cut.py",
+        "step6_cut.py",
         "step7_length_100.py",
-        "step8_normalize.py",        
-        "script10.py"
+        "step8_normalize.py"
     ]
     for script in scripts:
         print(f"🚀 執行 {script} 中...")

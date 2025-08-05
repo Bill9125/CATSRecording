@@ -57,7 +57,7 @@ if __name__ == "__main__":
     USE_LATEST = True
 
     if USE_LATEST:
-        recordings_dir = r"C:/Users/USER/92A27/benchpress/recordings"
+        recordings_dir = r"C:/Users/92A27/benchpress/recordings"
         all_folders = [os.path.join(recordings_dir, d) for d in os.listdir(recordings_dir) if os.path.isdir(os.path.join(recordings_dir, d))]
         latest_folder = max(all_folders, key=os.path.getmtime)
         base_path = os.path.join(latest_folder, "feature")  # 切割資料夾路徑
