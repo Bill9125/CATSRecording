@@ -398,18 +398,18 @@ class Replaybackend():
             # 已後製
             elif len(videos) == 6:
                 self.videos = [video for video in videos
-                            if os.path.basename(video) in ('vision1_drawed.avi', 'vision2.avi', 'vision3.avi')]
+                            if os.path.basename(video) in ('vision2.avi','vision3.avi', 'vision4.avi')]
                 if self.videos:
                     self.videos = [self.videos[1], self.videos[2], self.videos[0]]
-                # 抓取計算完的檔案
-                for i in range(len(self.data_path[self.currentsport])):
-                    with open(f'./config/{self.currentsport}_data/{self.data_path[self.currentsport][i]}',
-                                mode='r', encoding='utf-8') as file:
-                        data = json.load(file)
-                        self.datas.append(data)
-                # 將 data 分為角度資訊以及分數
-                self.info_data = self.datas[:4]
-                self.pred_data = self.datas[4]
+                # # 抓取計算完的檔案
+                # for i in range(len(self.data_path[self.currentsport])):
+                #     with open(f'./config/{self.currentsport}_data/{self.data_path[self.currentsport][i]}',
+                #                 mode='r', encoding='utf-8') as file:
+                #         data = json.load(file)
+                #         self.datas.append(data)
+                # # 將 data 分為角度資訊以及分數
+                # self.info_data = self.datas[:4]
+                # self.pred_data = self.datas[4]
         
         for _ in range(len(self.videos)):
             pixmap = QtGui.QPixmap()
