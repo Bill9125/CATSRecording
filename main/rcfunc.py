@@ -205,11 +205,11 @@ class Recordingbackend():
                             self.folder, start_time, frame_count, fps, out, original_out, self.models[i],
                             txt_file, frame_count_for_detect, barrier)
                     elif i == 1:
-                        excluded_indices = set(range(0, 11)) | set(range(25, 33)) | set(range(15, 23)) 
+                        # 用 YOLO body_model（self.models[1]）而非 MediaPipe
                         start_time, frame_count, fps, out, frame_count_for_detect, original_out, self.save_sig_2, txt_file = loop.benchpress_body_loop(
                             i, frame, label, self.save_sig_2, self.recording_sig,
                             self.folder, start_time, frame_count, fps, out, original_out,
-                            excluded_indices, txt_file, self.pose, frame_count_for_detect, self.POSE_CONNECTIONS_CUSTOM, barrier)
+                            self.models[1], txt_file, frame_count_for_detect, None, barrier)  # 傳 YOLO，去掉 self.pose / connections  # 改為傳遞 YOLO 模型
                     else:
                         start_time, frame_count, fps, out, frame_count_for_detect, original_out, self.save_sig_3, txt_file = loop.benchpress_head_loop(
                             i, frame, label, self.save_sig_3, self.recording_sig,

@@ -469,95 +469,90 @@ def benchpress_bar_loop(i, frame, label, save_sig, recording_sig, folder,
     scale_qpixmap = qpixmap.scaled(label.width(), label.height(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
     label.setPixmap(scale_qpixmap)
     return start_time, frame_count, fps, out, frame_count_for_detect, original_out, save_sig, txt_file
-    
-def benchpress_body_loop(i, frame, label, save_sig, recording_sig, folder,
-                           start_time, frame_count, fps, out, original_out, excluded_indices, txt_file, pose, frame_count_for_detect, connections, barrier):
-    frame_count += 1
-    elapsed_time = time.time() - start_time
-    if elapsed_time >= 1:
-        fps = frame_count / elapsed_time
-        frame_count = 0
-        start_time = time.time()
-        
-    # 儲存原始影像幀
-    if recording_sig:
-        if original_out is None:
-            file = os.path.join(folder, f'original_vision{i + 1}.avi')
-            fourcc = cv2.VideoWriter_fourcc(*'XVID')
-            frame_size = (frame.shape[1], frame.shape[0])  # 幀大小 (width, height)
-            original_out = cv2.VideoWriter(file, fourcc, 29, frame_size)
-            print(f"Initialized VideoWriter for origin camera {i + 1}")
-        original_out.write(frame)
-        if txt_file is None:
-            txt_file_path = os.path.join(folder, 'yolo_skeleton_top_11m.txt')
-            txt_file = open(txt_file_path, "w")  # ✅ 錄影開始時開啟檔案
-            frame_count_for_detect = 0  # ✅ 只在錄影開始時歸零
-            print(f"Started writing data to {txt_file_path}")
-        
-    # frame 處理
-    # MediaPipe Pose Detection
-    results = pose.process(frame)
-    frame_count_for_detect += 1  # Increment frame count for each frame
+       
+def benchpress_body_loop(i, frame, label, save_sig, recording_sig, folder,               # 與 head 相同簽名  # 同簽名
+                         start_time, frame_count, fps, out, original_out,                # 與 head 相同簽名  # 同簽名
+                         txt_file, model, frame_count_for_detect, barrier):              # ★ 改成接 YOLO model  # 吃YOLO
+    frame_count += 1  # 幀計數+1
+    elapsed_time = time.time() - start_time  # 距上次計時秒數
+    if elapsed_time >= 1:  # 每秒更新 FPS
+        fps = frame_count / elapsed_time  # 計算 FPS
+        frame_count = 0  # 歸零
+        start_time = time.time()  # 重設起點
 
-    if results.pose_landmarks:
-        for idx, landmark in enumerate(results.pose_landmarks.landmark):
-            if idx not in excluded_indices:
-                if recording_sig and txt_file is not None:
-                    x, y, z = landmark.x, landmark.y, landmark.z
-                    txt_file.write(f"{frame_count_for_detect},{idx},{x},{y},{z}\n")
-                # 只畫出不在排除範圍內的 landmarks
-                x = int(landmark.x * frame.shape[1])
-                y = int(landmark.y * frame.shape[0])
-                cv2.circle(frame, (x, y), 5, (0, 255, 255), -1)  # Example: Draw a blue circle for landmarks
-        for connection in connections:
-            start_idx, end_idx = connection
-            if start_idx not in excluded_indices and end_idx not in excluded_indices:
-                start_landmark = results.pose_landmarks.landmark[start_idx]
-                end_landmark = results.pose_landmarks.landmark[end_idx]
-                x1, y1 = int(start_landmark.x * frame.shape[1]), int(start_landmark.y * frame.shape[0])
-                x2, y2 = int(end_landmark.x * frame.shape[1]), int(end_landmark.y * frame.shape[0])
-                cv2.line(frame, (x1, y1), (x2, y2), (255, 255, 255), 2)
+    # 儲存原始影像
+    if recording_sig:  # 錄影中才寫檔
+        if original_out is None:  # 建立原始影片 writer
+            file = os.path.join(folder, f'original_vision{i + 1}.avi')  # 路徑
+            fourcc = cv2.VideoWriter_fourcc(*'XVID')  # 編碼
+            frame_size = (frame.shape[1], frame.shape[0])  # (w,h)
+            original_out = cv2.VideoWriter(file, fourcc, 29, frame_size)  # 建立 writer
+            print(f"Initialized VideoWriter for origin camera {i + 1}")  # 訊息
+        original_out.write(frame)  # 寫原始幀
 
-    if not results.pose_landmarks:
-        # Write "no detection" if no landmarks are detected
-        if recording_sig and txt_file is not None:
-            txt_file.write(f"{frame_count_for_detect},no detection\n")
+        if txt_file is None:  # 首次開啟 txt
+            txt_file_path = os.path.join(folder, 'yolo_skeleton_top_11m.txt')  # 檔名
+            txt_file = open(txt_file_path, "w")  # 覆寫開啟
+            frame_count_for_detect = 0  # 偵測幀數歸零
+            print(f"Started writing data to {txt_file_path}")  # 訊息
 
-    #frame = cv2.rotate(frame, cv2.ROTATE_180)
+    # ---- YOLO 關鍵點推論（同 head 作法）----
+    results = model.predict(source=frame, conf=0.5, verbose=False)  # YOLO 推論
+    frame_count_for_detect += 1  # 幀+1
 
-    # 錄影開始
-    if recording_sig:
-        if out is None:  # 初始化 VideoWriter
-            file = os.path.join(folder, f'vision{i + 1}.avi')
-            fourcc = cv2.VideoWriter_fourcc(*'XVID')
-            frame_size = (frame.shape[1], frame.shape[0])  # 幀大小 (width, height)
-            out = cv2.VideoWriter(file, fourcc, 29, frame_size)
-            print(f"Initialized VideoWriter for camera {i + 1}")
-        out.write(frame)
-    
-    # 錄影結束
-    if not recording_sig:
-        frame_count_for_detect = 0
-        if save_sig and out is not None:
-            out.release()
-            original_out.release()
-            print(f"Released VideoWriter for camera {i + 1}")
-            save_sig = False
-        out = None
-        original_out = None
-        if txt_file is not None:
-            txt_file.close()
-            txt_file = None  # ✅ 確保 `txt_file` 被正確關閉
-            print(f"Closed txt_file for camera {i + 1}")
-    
-    barrier.wait()
-    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
-    h, w, ch = frame.shape
-    qpixmap = QtGui.QPixmap.fromImage(QtGui.QImage(frame.data, w, h, ch*w, QtGui.QImage.Format_RGB888))
-    scale_qpixmap = qpixmap.scaled(label.width(), label.height(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
-    label.setPixmap(scale_qpixmap)
-    return start_time, frame_count, fps, out, frame_count_for_detect, original_out, save_sig, txt_file
+    wrote_any = False  # 是否有寫入關鍵點
+    if results and results[0].keypoints:  # 有 keypoints
+        for kp_det in results[0].keypoints:  # 逐個偵測對象
+            xy_list = kp_det.xy.tolist()  # (K,2) → list
+            if not xy_list or not xy_list[0]:  # 無資料
+                continue  # 跳過
+
+            for idx, (x, y) in enumerate(xy_list[0]):  # 逐關節
+                cv2.circle(frame, (int(x), int(y)), 5, (0, 255, 255), -1)  # 畫點
+                if recording_sig and txt_file is not None:  # 寫txt
+                    txt_file.write(f"{frame_count_for_detect},{idx},{x},{y}\n")  # 幀,索引,x,y
+                    wrote_any = True  # 有寫入
+
+    if recording_sig and txt_file is not None and not wrote_any:  # 本幀無任何點
+        txt_file.write(f"{frame_count_for_detect},no detection\n")  # 記錄無偵測
+
+    # 疊畫面輸出
+    if recording_sig:  # 錄影中
+        if out is None:  # 建立疊畫影片 writer
+            file = os.path.join(folder, f'vision{i + 1}.avi')  # 檔名
+            fourcc = cv2.VideoWriter_fourcc(*'XVID')  # 編碼
+            frame_size = (frame.shape[1], frame.shape[0])  # (w,h)
+            out = cv2.VideoWriter(file, fourcc, 29, frame_size)  # 建立 writer
+            print(f"Initialized VideoWriter for camera {i + 1}")  # 訊息
+        out.write(frame)  # 寫幀
+
+    # 停止錄影：關閉資源
+    if not recording_sig:  # 停止狀態
+        frame_count_for_detect = 0  # 歸零
+        if save_sig and out is not None:  # 釋放 writer
+            out.release()  # 關閉疊畫影片
+            original_out.release()  # 關閉原始影片
+            print(f"Released VideoWriter for camera {i + 1}")  # 訊息
+            save_sig = False  # 清旗標
+        out = None  # 置空
+        original_out = None  # 置空
+        if txt_file is not None:  # 關閉txt
+            txt_file.close()  # 關閉
+            txt_file = None  # 置空
+            print(f"Closed txt_file for camera {i + 1}")  # 訊息
+
+    barrier.wait()  # 與其他視角同步
+    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # BGR→RGB
+    cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1,
+                (0, 255, 0), 2, cv2.LINE_AA)  # 疊 FPS
+    h, w, ch = frame.shape  # 尺寸
+    qpixmap = QtGui.QPixmap.fromImage(  # 轉QImage
+        QtGui.QImage(frame.data, w, h, ch*w, QtGui.QImage.Format_RGB888))  # QImage
+    scale_qpixmap = qpixmap.scaled(label.width(), label.height(),
+                                   QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)  # 等比縮放
+    label.setPixmap(scale_qpixmap)  # 顯示於 UI
+    return start_time, frame_count, fps, out, frame_count_for_detect, original_out, save_sig, txt_file  # 回傳
+
     
 def benchpress_head_loop(i, frame, label, save_sig, recording_sig, folder,
                            start_time, frame_count, fps, out, original_out, txt_file, 
