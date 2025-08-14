@@ -62,30 +62,6 @@ def parse_frame_data(input_file):  # 解析每一幀的資料並計算關節角�
         "Left Shoulder Angle", "Right Shoulder Angle", "avg_elbow_angle"
     ])
 
-# 仍會有假雙谷問題070901改
-# def filter_close_valleys(angle, valley_indices, peak_indices, min_peak_diff=60):
-#     """
-#     合併中間波峰不明顯的相鄰波谷，只保留較深的那一個。
-#     """
-#     filtered_valleys = []
-#     i = 0
-#     while i < len(valley_indices):
-#         current_valley = valley_indices[i]
-#         if i + 1 < len(valley_indices):
-#             next_valley = valley_indices[i + 1]
-#             middle_peaks = [p for p in peak_indices if current_valley < p < next_valley]
-#             if middle_peaks:
-#                 middle_peak = max(middle_peaks, key=lambda x: angle[x])
-#                 peak_val = angle[middle_peak]
-#                 deeper_valley = current_valley if angle[current_valley] < angle[next_valley] else next_valley
-#                 # 若中間波峰與較深谷差值太小 → 合併
-#                 if (peak_val - angle[deeper_valley]) < min_peak_diff:
-#                     filtered_valleys.append(deeper_valley)
-#                     i += 2
-#                     continue
-#         filtered_valleys.append(current_valley)
-#         i += 1
-#     return filtered_valleys
 
 def filter_close_valleys(angle, valley_indices, peak_indices, min_peak_diff=60):
     """
@@ -119,27 +95,6 @@ def filter_close_valleys(angle, valley_indices, peak_indices, min_peak_diff=60):
         i += 1
     return filtered_valleys
 
-
-## abs會導致波峰也出現波谷點
-# def find_clear_difference_side(angle, idx, min_peak_diff, max_search=70):
-#     val = angle[idx]
-#     left_idx = idx - 1
-#     while left_idx >= max(0, idx - max_search):
-#         if abs(angle[left_idx] - val) >= min_peak_diff:
-#             break
-#         left_idx -= 1
-#     else:
-#         return False  # 沒找到左側符合條件
-
-#     right_idx = idx + 1
-#     while right_idx < min(len(angle), idx + max_search):
-#         if abs(angle[right_idx] - val) >= min_peak_diff:
-#             break
-#         right_idx += 1
-#     else:
-#         return False  # 沒找到右側符合條件
-
-#     return True  # 左右都找到
 
 def find_clear_difference_side(angle, idx, min_peak_diff, max_search=70):
     val = angle[idx]  # 當前波谷值
@@ -205,29 +160,8 @@ def is_clear_valley(angle, idx, window=25, min_prominence=0.05, future_window=18
     if not condition_no_later_drop:
         print(f"[{idx}] ❌ 未來有下降: val={val:.2f}, future={future[:5]}...")
 
-
-    # # ✅ 條件4：波谷與左右鄰近點最大差距需達指定值
-    # check_window = 60 #0525001改30  #250708改60
-    # start_check = max(0, idx - check_window)
-    # end_check = min(len(angle), idx + check_window)
-    # neighbor_values = np.concatenate([angle[start_check:idx], angle[idx+1:end_check]])
-    # max_neighbor_diff = np.max(np.abs(neighbor_values - val))
-    # condition_peak_diff = max_neighbor_diff >= min_peak_diff
-    # if not condition_peak_diff:
-    #     print(f"[{idx}] ❌ peak_diff 不夠: max_neighbor_diff={max_neighbor_diff:.2f}, min_required={min_peak_diff}")
     condition_peak_diff = find_clear_difference_side(angle, idx, min_peak_diff)
 
-
-
-    # # ✅ 改寫條件5：波谷左右兩側都需有與波谷差距達 min_peak_diff 的點
-    # left_diff = np.abs(angle[start_check:idx] - val)
-    # right_diff = np.abs(angle[idx+1:end_check] - val)
-    # condition_left_check = (
-    #     np.any(left_diff >= min_peak_diff) and
-    #     np.any(right_diff >= min_peak_diff)
-    # )
-    # if not condition_left_check:
-    #     print(f"[{idx}] ❌ 左右側都沒有任何點與谷底差值超過 {min_peak_diff}")
 
     # ✅ 條件6：波谷前段平均斜率需為下降
     condition_pre_slope = True
@@ -357,16 +291,6 @@ def analyze_valleys_peaks(df, min_peak_diff=60):  # ✅ threshold_ratio 已移�
                 first_valid_idx = idx
             valley_indices.append(int(idx))
     print(f"✅ 第一階段 valley_indices（含 bar_position 過濾）: {valley_indices}")
-
-    # #second version
-    # valley_indices = []
-    # first_valid_idx = None
-    # for idx in valley_indices_raw:
-    #     if angle[idx] < bar_position:  # ✅ 加入 bar_position 條件
-    #         if first_valid_idx is None:
-    #             first_valid_idx = idx
-    #         valley_indices.append(int(idx))
-    # print(f"✅ 第一階段 valley_indices（含 bar_position 過濾）: {valley_indices}")
 
     # --- 原始波峰 ---
     peak_indices_raw, _ = find_peaks(angle, distance=25, prominence=0.1, width=2)
@@ -529,48 +453,6 @@ def find_peaks_between_valleys(data, valley_indices, bar, min_height_diff=8, ver
 
     return median_peaks, absolute_peaks_list
 
-
-
-# def find_peaks_between_valleys(y, valley_indices, kappa, kappa_thresh):
-#     peaks = []
-
-#     def debug_candidates(absolute_peaks, tag):
-#         print(f"🔍 {tag}: 找到 {len(absolute_peaks)} 個符合 kappa<{kappa_thresh} 的 peak")
-#         for p in absolute_peaks:
-#             print(f"  - index={p}, y={y[p]:.2f}, kappa={kappa[p]:.4f}")
-
-#     # 前段
-#     v_start = valley_indices[0]
-#     if v_start > 1:
-#         segment = y[0:v_start]
-#         relative_peaks, _ = find_peaks(segment)
-#         absolute_peaks = [i for i in relative_peaks if kappa[i] < kappa_thresh]
-#         debug_candidates(absolute_peaks, "前段")
-#         if absolute_peaks:
-#             peaks.append(max(absolute_peaks, key=lambda x: y[x]))
-
-#     # 中段
-#     for i in range(len(valley_indices) - 1):
-#         v_start = valley_indices[i]
-#         v_end = valley_indices[i + 1]
-#         relative_peaks, _ = find_peaks(y[v_start:v_end])
-#         absolute_peaks = [v_start + i for i in relative_peaks if kappa[v_start + i] < kappa_thresh]
-#         debug_candidates(absolute_peaks, f"第{i+1}段")
-#         if absolute_peaks:
-#             peaks.append(max(absolute_peaks, key=lambda x: y[x]))
-
-#     # 尾段
-#     v_end = valley_indices[-1]
-#     if v_end < len(y) - 2:
-#         relative_peaks, _ = find_peaks(y[v_end:])
-#         absolute_peaks = [v_end + i for i in relative_peaks if kappa[v_end + i] < kappa_thresh]
-#         debug_candidates(absolute_peaks, "尾段")
-#         if absolute_peaks:
-#             peaks.append(max(absolute_peaks, key=lambda x: y[x]))
-
-#     return peaks
-
-
 #0707
 def find_motion_segments(df):
     """
@@ -600,27 +482,6 @@ def find_motion_segments(df):
     end_list = left_corners.copy()    # 終點：左鈍角
 
     print(f"✅ 曲率轉折點分析完畢: start_list={start_list}, end_list={end_list}")
-
-    # # === 補首段 start（首 valley 之前）===
-    # first_valley = valley_indices[0]
-    # if first_valley > 0:
-    #     kappa_segment = kappa[:first_valley]
-    #     min_kappa_idx = np.argmin(kappa_segment)
-    #     start_list.insert(0, min_kappa_idx)  # 只補 start
-    #     print(f"✅ 首段補點成功：kappa={kappa[min_kappa_idx]:.4f} at index={min_kappa_idx}")
-    # else:
-    #     print("⚠️ 無法補首段：first_valley = 0")
-
-    # # === 補尾段 end（最後 valley 之後）===
-    # last_valley = valley_indices[-1]
-    # if last_valley < len(kappa) - 1:
-    #     kappa_segment = kappa[last_valley + 1:]
-    #     min_kappa_relative_idx = np.argmin(kappa_segment)
-    #     min_kappa_idx = last_valley + 1 + min_kappa_relative_idx
-    #     end_list.append(min_kappa_idx)  # 只補 end
-    #     print(f"✅ 尾段補點成功：kappa={kappa[min_kappa_idx]:.4f} at index={min_kappa_idx}")
-    # else:
-    #     print("⚠️ 無法補尾段：last_valley 接近結尾")
 
     # === 組合段落 ===
     if not (len(start_list) == len(valley_indices) == len(end_list)):
@@ -728,22 +589,6 @@ def export_plot(df, plot_file, segments, base_path, valley_indices, peaks, absol
             ax1.scatter(peak, y_val + offset, color="darkgreen", s=50, marker='v', zorder=5, label="Peak" if first_peak else None)
             first_peak = False
 
-    # color_list = ['green', 'orange', 'blue', 'red', 'purple', 'brown', 'cyan', 'magenta']
-    # n = 1
-    # color_idx = 0
-    # while True:
-    #     cut4_file = os.path.join(base_path, f"cut4_{n}.txt")
-    #     if not os.path.exists(cut4_file):
-    #         break
-    #     with open(cut4_file, 'r') as f:
-    #         line = f.readline().strip()
-    #         if line:
-    #             start, end = map(int, line.split('-'))
-    #             current_color = color_list[color_idx % len(color_list)]
-    #             plt.axvspan(start, end, facecolor=current_color, alpha=0.15, label='Cut Range' if n == 1 else None)
-    #             color_idx += 1
-    #     n += 1
-
     # ➤ 最後才加圖例
     handles1, labels1 = ax1.get_legend_handles_labels()
     handles2, labels2 = ax2.get_legend_handles_labels() if ax2 else ([], [])
@@ -758,18 +603,6 @@ def export_plot(df, plot_file, segments, base_path, valley_indices, peaks, absol
         print(f"DEBUG: Original plot saved successfully at {plot_file}")
     else:
         print(f"DEBUG: Failed to save original plot at {plot_file}")
-
-    # # 建立新資料夾並儲存另一份圖
-    # pic_path = "E:/totpic/"
-    # os.makedirs(pic_path, exist_ok=True)
-    # normalized_path = os.path.normpath(base_path)
-    # path_parts = normalized_path.split(os.sep)
-    # folder_name = f"{path_parts[-2]}_{path_parts[-1]}" if len(path_parts) >= 2 else path_parts[-1]
-    # new_file_name = f"{folder_name}.png"
-    # new_plot_file = os.path.join(pic_path, new_file_name)
-
-    # plt.savefig(new_plot_file)  # ✅ 儲存另一份
-    # print(f"DEBUG: Copy plot saved successfully at {new_plot_file}")
 
     plt.close()  # 最後再關閉畫布
 
@@ -1191,111 +1024,6 @@ def update_or_append_column(df, column_name, new_data):
 def fill_edges(series):
     # 中間插值 + 開頭與結尾向外延伸填補
     return series.interpolate(method="linear").bfill().ffill()  # 插值後向後補，再向前補
-#--------------------------------------------
-
-# if __name__ == "__main__":
-#     results = []  # 放在 __main__ 區塊內最上方
-#     summary_output_path = "E:\diff_rate_summary.xlsx"
-    
-
-
-
-#     #定義excel寫入欄位
-
-#     #控制要跑一組還是全部
-#     resolver = StartColResolver()
-#     #target_categories = ["右邊低"]  # ✅ 只跑這一個類別
-#     target_categories = list(resolver.category_to_startcol.keys())  # ✅ 全部類別都跑
-#     category_row_tracker = {cat: 1 for cat in target_categories}  # 從 row=1 開始寫入
-
-#     # ➤ 遍歷所有分類與編號
-#     for category in target_categories:
-#         # 處理編號 1 到 99 的資料夾
-#         for n in range(4,5):  
-#             #base_path = f"E:/DATASET/{category}/{n}/"
-#             base_path = f"E:/DATASET/{category}/{n}/"
-            
-#             input_file = f"{base_path}yolo_skeleton_interpolated_hampel.txt"   #yolo_skeleton_interpolated_hampel.txt  vision3_new_skeleton_interpolated.txt
-#             input_file_bar = f"{base_path}yolo_coordinates_interpolated_hampel.txt"
-#             output_plot = f"{base_path}elbow_shoulder_angles_plot.png"
-#             output_excel = f"{base_path}peak_analysis.xlsx"
-#             output_txt = f"{base_path}elbow_shoulder_angles_cut.txt"
-#             video_file = os.path.join(base_path, "original_vision3.avi")
-#             merged_video = os.path.join(base_path, "merged_segments_with_labels.avi")
-
-
-
-#             # 檢查主要輸入檔案是否存在
-#             if not os.path.exists(input_file):
-#                 print(f"❌ 找不到骨架檔案: {input_file}")
-#                 continue  # 跳過不存在的檔案
-
-
-
-#             # 呼叫分析函式
-#             result = analyze_elbow_motion(
-#                 input_file=input_file,
-#                 output_plot=output_plot,
-#                 output_excel=output_excel,
-#                 output_txt=output_txt,
-#                 base_path=base_path,
-#                 input_file_bar=input_file_bar
-#             )
-
-#             # 如果分析成功回傳資料，就記錄進列表
-
-#             #準備folder name
-#             parent_folder = os.path.basename(os.path.dirname(os.path.dirname(base_path)))  # 取得 '右邊低'
-#             folder_name = f"{parent_folder} {n}"  # 結果會是 '右邊低 1'、'右邊低 2' 等
-
-#             if result:
-#                 result_row = {
-#                     "資料夾": folder_name,
-#                     "start_std": result["start_std"],  # 從 result 字典取值
-#                     "avg_start_error": result["avg_start_error"],  # 從 result 字典取值
-#                     "end_std": result["end_std"],
-#                     "avg_end_error": result["avg_end_error"],
-#                     "pairs": result["pairs"]
-#                 }
-#                 results.append(result_row)
-#             # ✅ 正確的 append 寫法
-
-
-#             # 呼叫影片組合函式
-#             if os.path.exists(video_file):  # 確保影片存在再處理
-#                 create_merged_video_with_labels(
-#                     video_path=video_file,
-#                     segments_file=output_txt,
-#                     output_file=merged_video
-#                 )
-
-#             print(f"✅ 已完成處理: {base_path}")
-
-
-#             if results:
-#                 df_result = pd.DataFrame(results)
-#                 startcol = resolver.category_to_startcol[category]
-#                 startrow = category_row_tracker[category]  # 依目前寫入行
-
-#                 if os.path.exists(summary_output_path):
-#                     with pd.ExcelWriter(summary_output_path, engine='openpyxl', mode='a', if_sheet_exists='overlay') as writer:
-#                         df_result.to_excel(writer, sheet_name='Sheet1', startcol=startcol, startrow=startrow, index=False, header=False)
-#                 else:
-#                     with pd.ExcelWriter(summary_output_path, engine='openpyxl', mode='w') as writer:
-#                         df_result.to_excel(writer, sheet_name='Sheet1', startcol=startcol, startrow=startrow, index=False)
-
-#                 # 更新該分類已使用行數
-#                 category_row_tracker[category] += len(df_result)
-
-#                 results = []  # 清空，進入下一分類
-
-    
-
-#     print(f"📊 統計表已輸出至：{summary_output_path}")
-
-
-
-
 
 
 
