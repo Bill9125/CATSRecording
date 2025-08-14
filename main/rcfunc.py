@@ -163,7 +163,7 @@ class Recordingbackend():
         elif sport =='Benchpress':
             bar_model = YOLO("./model/benchpress/yolo_bar_model/best.pt")
             body_model = YOLO("./model/benchpress/body_model/top_11m_best.pt")
-            head_model = YOLO("./model/benchpress/head_model/yolo11m.pt")
+            head_model = YOLO("./model/benchpress/head_model/yolo11n.pt")
             bar_model.to(device)
             body_model.to(device)
             head_model.to(device)
@@ -209,7 +209,8 @@ class Recordingbackend():
                         start_time, frame_count, fps, out, frame_count_for_detect, original_out, self.save_sig_2, txt_file = loop.benchpress_body_loop(
                             i, frame, label, self.save_sig_2, self.recording_sig,
                             self.folder, start_time, frame_count, fps, out, original_out,
-                            self.models[1], txt_file, frame_count_for_detect, None, barrier)  # 傳 YOLO，去掉 self.pose / connections  # 改為傳遞 YOLO 模型
+                            txt_file, self.models[1], frame_count_for_detect, barrier)
+                        # 傳 YOLO，去掉 self.pose / connections  # 改為傳遞 YOLO 模型
                     else:
                         start_time, frame_count, fps, out, frame_count_for_detect, original_out, self.save_sig_3, txt_file = loop.benchpress_head_loop(
                             i, frame, label, self.save_sig_3, self.recording_sig,
