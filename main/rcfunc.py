@@ -209,7 +209,7 @@ class Recordingbackend():
                         start_time, frame_count, fps, out, frame_count_for_detect, original_out, self.save_sig_2, txt_file = loop.benchpress_body_loop(
                             i, frame, label, self.save_sig_2, self.recording_sig,
                             self.folder, start_time, frame_count, fps, out, original_out,
-                            txt_file, self.models[i], frame_count_for_detect, barrier)
+                            txt_file, self.models[i], None, barrier)
                         # 傳 YOLO，去掉 self.pose / connections  # 改為傳遞 YOLO 模型
                     else:
                         start_time, frame_count, fps, out, frame_count_for_detect, original_out, self.save_sig_3, txt_file = loop.benchpress_head_loop(
