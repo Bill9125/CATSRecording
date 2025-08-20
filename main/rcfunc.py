@@ -85,6 +85,16 @@ class Recordingbackend():
         
         self.stop_event = threading.Event()
         
+        self.shared_state = {                         # 跨執行緒共享旗標                   # 初始化共享旗標
+            "recording_sig": False,                   # 由 UI 控制是否允許錄影              # 初始 False
+            "body_detected": False,                   # 由 body loop 更新是否有人體           # 初始 False
+            "bar_y_changed": False,                   # 由 bar loop 更新槓是否有位移          # 初始 False
+            "prev_bar_y": None                        # 由 bar loop 記憶上一幀 y             # 初始 None
+        }                                             #                                     # —
+        self.shared_lock = threading.Lock()           # 保護 shared_state 的互斥鎖            # 鎖
+        self.BAR_MOVE_THRESH = 3.0                    # 槓 y 位移閾值（像素）                 # 可依影像尺寸調整
+
+        
     def source_ctrl_btn_clicked(self, sport, labels):
         n = self.struct[sport]  # 按鈕數量
         window = self.subui(n, sport)
@@ -198,30 +208,28 @@ class Recordingbackend():
                             i, frame, label, self.save_sig_3, self.recording_sig,
                             self.folder, start_time, frame_count, fps, out, barrier)
                 
-                elif sport == 'Benchpress':
-                    if i == 0:
+                elif sport == 'Benchpress':                                                                               # 臥推模式
+                    if i == 0:                                                                                            # 相機0（槓視角）：更新 bar_y_changed + Gate 錄影
                         start_time, frame_count, fps, out, frame_count_for_detect, original_out, self.save_sig_1, txt_file = loop.benchpress_bar_loop(
-                            i, frame, label, self.save_sig_1, self.recording_sig,
-                            self.folder, start_time, frame_count, fps, out, original_out, self.models[i],
-                            txt_file, frame_count_for_detect, barrier)
-                    elif i == 1:
-                        # 用 YOLO body_model（self.models[1]）而非 MediaPipe
+                            i, frame, label, self.save_sig_1, self.recording_sig,                                         # 與原介面一致：save_sig / recording_sig
+                            self.folder, start_time, frame_count, fps, out, original_out, self.models[i],                 # 輸出夾 / writer / 模型
+                            txt_file, frame_count_for_detect, barrier,                                                    # txt / 幀計數 / 柵欄
+                            self.shared_state, self.shared_lock, self.BAR_MOVE_THRESH)                                    # ★ 新增：共享狀態 / 鎖 / 位移閾值
+
+                    elif i == 1:                                                                                          # 相機1（人體視角）：更新 body_detected + Gate 錄影
                         start_time, frame_count, fps, out, frame_count_for_detect, self.save_sig_2, txt_file = loop.benchpress_body_loop(
-                            i, frame, label, self.save_sig_2, self.recording_sig,
-                            self.folder, start_time, frame_count, fps, out,
-                            self.models[1], txt_file, frame_count_for_detect, None, barrier)  # None 會用預設的骨架連線
+                            i, frame, label, self.save_sig_2, self.recording_sig,                                         # 與原介面一致：save_sig / recording_sig
+                            self.folder, start_time, frame_count, fps, out,                                               # writer 與計時
+                            self.models[1], txt_file, frame_count_for_detect, None, barrier,                              # YOLO body 模型 / txt / 幀計數 / 連線None→預設 / 柵欄
+                            self.shared_state, self.shared_lock)                                                          # ★ 新增：共享狀態 / 鎖
 
-                        # 傳 YOLO，去掉 self.pose / connections  # 改為傳遞 YOLO 模型
-                    else:
-                        # start_time, frame_count, fps, out, frame_count_for_detect, original_out, self.save_sig_3, txt_file = loop.benchpress_head_loop(
-                        #     i, frame, label, self.save_sig_3, self.recording_sig,
-                        #     self.folder, start_time, frame_count, fps, out, original_out, 
-                        #     txt_file, self.models[i], frame_count_for_detect, barrier)
-
+                    else:                                                                                                 # 相機2（頭部視角）：只跟 Gate 錄影
                         start_time, frame_count, fps, out, original_out, self.save_sig_3, frame_count_for_detect = loop.benchpress_head_loop(
-                            i, frame, label, self.save_sig_3, self.recording_sig,
-                            self.folder, start_time, frame_count, fps, out, original_out, frame_count_for_detect, barrier)
-                
+                            i, frame, label, self.save_sig_3, self.recording_sig,                                         # 與原介面一致：save_sig / recording_sig
+                            self.folder, start_time, frame_count, fps, out, original_out, frame_count_for_detect, barrier,# writer / 幀計數 / 柵欄
+                            self.shared_state, self.shared_lock)    
+                    
+                    
                 elif sport == 'Squat':
                     if i == 0:
                         start_time, frame_count, fps, out, frame_count_for_detect, self.save_sig_1, txt_file = loop.squat_bar_loop(
@@ -282,14 +290,24 @@ class Recordingbackend():
         self.out_3 = None
         
         self.recording_sig = True
+        with self.shared_lock:                                                        # 進入臨界區
+            self.shared_state["recording_sig"] = True                                 # UI 開啟錄影 Gate
+            self.shared_state["body_detected"] = False                                # 重置：開錄時重新蒐集
+            self.shared_state["bar_y_changed"] = False                                # 重置：等待槓位移觸發
+            self.shared_state["prev_bar_y"] = None                                    # 重置：上一幀 y 清空
+
         print("Recording started")
             
-    def stop_recording(self):
-        if self.recording_sig:
-            self.recording_sig = False
-            self.save_sig_1 = True
-            self.save_sig_2 = True
-            self.save_sig_3 = True    
+    def stop_recording(self):                                                                # 停止錄影                    # 函式：停止錄影
+        if self.recording_sig:                                                                # 若目前在錄影                 # 判斷是否錄影中
+            with self.shared_lock:                                                            # 進入臨界區                   # 加鎖保護
+                self.shared_state["recording_sig"] = False                                    # 關閉 UI Gate                # 關閉錄影門檻
+                # 其他旗標保留最近狀態即可（可選清空）                                           # 可選清空
+            self.recording_sig = False                                                        # 關閉舊布林（沿用）           # 關閉舊旗標
+            self.save_sig_1 = True                                                            # 允許 loop 收尾（可保留）     # 觸發保存收尾
+            self.save_sig_2 = True                                                            # 同上                         # 觸發保存收尾
+            self.save_sig_3 = True                                                            # 同上                         # 觸發保存收尾
+
         
     def data_produce_btn_clicked(self, sport):
         # self.folder = 'C:/Users/92A27/MOCAP/recordings/recording_20250324_145044_BVT'
