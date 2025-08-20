@@ -393,100 +393,111 @@ def squat_general_loop(i, frame, label, save_sig, recording_sig, folder,
     label.setPixmap(scale_qpixmap)
     return start_time, frame_count, fps, out, save_sig
 
-def benchpress_bar_loop(i, frame, label, save_sig, recording_sig, folder,                 # Bar 視角：偵測槓 y 位移、更新 bar_y_changed  # 介面沿用
-                        start_time, frame_count, fps, out, original_out, model, txt_file, # 視訊/模型/文字輸出 handler                     # 介面沿用
-                        frame_count_for_detect, barrier,                                  # 偵測幀計數、同步柵欄                          # 介面沿用
-                        shared_state, shared_lock, BAR_MOVE_THRESH):                      # ★ 共享狀態/鎖/位移閾值                        # 新增
-    frame_count += 1                                                                      # 幀數+1
-    elapsed_time = time.time() - start_time                                               # 距離上次計時
-    if elapsed_time >= 1:                                                                 # 每秒更新一次
-        fps = frame_count / elapsed_time                                                  # 計算FPS
-        frame_count = 0                                                                   # 幀數歸零
-        start_time = time.time()                                                          # 重設起點
+def benchpress_bar_loop(i, frame, label, save_sig, recording_sig, folder,                 # Bar 視角：偵測槓 y 位移、更新 bar_y_changed     # 介面沿用
+                        start_time, frame_count, fps, out, original_out, model, txt_file, # writer / 原始writer / 模型 / txt               # 介面沿用
+                        frame_count_for_detect, barrier,                                  # 偵測幀計數 / 柵欄                              # 介面沿用
+                        shared_state, shared_lock, BAR_MOVE_THRESH):                      # 共享狀態 / 鎖 / 位移閾值                        # 介面沿用
+    # ---- FPS ----
+    frame_count += 1                                                                       # 幀+1
+    elapsed_time = time.time() - start_time                                                # 經過秒數
+    if elapsed_time >= 1:                                                                  # 每秒更新
+        fps = frame_count / elapsed_time                                                   # 算FPS
+        frame_count = 0                                                                    # 幀歸零
+        start_time = time.time()                                                           # 起點重設
 
-    # --- 早退：UI 未按下錄影時，不跑 YOLO、僅顯示，並確保資源關閉 ---                               # 省算力
-    with shared_lock:                                                                     # 臨界區讀 gate
-        gate_ui = shared_state.get("recording_sig", False)                                # 讀 UI 旗標
-    if not gate_ui:                                                                       # 未按下錄影
-        # 關閉已開啟的 writer/txt（若有）                                                     # 收尾
-        if out is not None: out.release(); out = None                                     # 關閉疊圖 writer
-        if original_out is not None: original_out.release(); original_out = None          # 關閉原始 writer
-        if txt_file is not None: txt_file.close(); txt_file = None                        # 關閉 txt
-        save_sig = False                                                                  # 清除保存旗標
-        frame_count_for_detect = 0                                                        # 歸零偵測幀
-        cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2, cv2.LINE_AA)  # 疊FPS
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)                                # BGR→RGB
-        h, w, ch = frame.shape                                                            # 尺寸
-        qpixmap = QtGui.QPixmap.fromImage(QtGui.QImage(frame_rgb.data, w, h, ch*w, QtGui.QImage.Format_RGB888))  # QPixmap
-        scale_qpixmap = qpixmap.scaled(label.width(), label.height(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)  # 縮放
-        label.setPixmap(scale_qpixmap)                                                    # 顯示
-        barrier.wait()                                                                    # 同步
-        return start_time, frame_count, fps, out, frame_count_for_detect, original_out, save_sig, txt_file  # 回傳
+    # ---- 讀/設分段狀態（每台相機各自維護）----
+    cam_rec_key = f"rec_cam{i}"                                                            # 該相機是否正在錄影 的 key
+    cam_seg_key = f"seg_cam{i}"                                                            # 該相機目前段號 的 key
+    with shared_lock:                                                                       # 臨界區
+        is_rec = shared_state.get(cam_rec_key, False)                                      # 預設不在錄
+        seg_no = shared_state.get(cam_seg_key, 0)                                          # 預設段號0（尚未開檔）
 
-    # --- UI 要求錄影：這裡才跑 YOLO 算當幀槓的 y 中心 ---                                           # 省資源
-    results = model.predict(source=frame, imgsz=320, conf=0.5, verbose=False)             # YOLO 推論
-    boxes = results[0].boxes if len(results) > 0 else None                                # 取第一張結果
-    current_bar_y = None                                                                  # 當幀槓 y
-    if boxes is not None and boxes.xywh is not None and len(boxes.xywh) > 0:              # 有框結果
-        x_center, y_center, width, height = boxes.xywh[0]                                 # 取第一框（可依類別過濾）
-        current_bar_y = float(y_center)                                                   # 設當幀 y
-    for r in results:                                                                      # 疊圖
-        frame = r.plot()                                                                  # 繪製結果
-
-    # --- 更新 shared_state：bar_y_changed 與 prev_bar_y，並組 should_record ---                   # 單一臨界區
-    with shared_lock:                                                                     # 進入鎖
-        prev_y = shared_state.get("prev_bar_y", None)                                     # 取上一幀 y
-        if prev_y is not None and current_bar_y is not None:                              # 兩幀都有值
-            shared_state["bar_y_changed"] = abs(current_bar_y - prev_y) >= BAR_MOVE_THRESH# 是否超過閾值
-        else:
-            shared_state["bar_y_changed"] = False                                         # 無法比較→False
-        if current_bar_y is not None:                                                     # 有當幀值
-            shared_state["prev_bar_y"] = current_bar_y                                    # 更新上一幀
-
-        gate_ui = shared_state.get("recording_sig", False)                                # 重新取 UI 旗標
-        gate_body = shared_state.get("body_detected", False)                              # 取人體旗標
-        gate_bar  = shared_state.get("bar_y_changed", False)                              # 取槓旗標
-        should_record = gate_ui and gate_body and gate_bar                                # 三旗標 Gate
-
-    # --- Gate 通過：建立/寫入 writer 與 txt；Gate 不通過：安全關閉 ---                               # 核心
-    if should_record:                                                                      # 應錄影
-        if original_out is None:                                                           # 原始 writer
-            file = os.path.join(folder, f'original_vision{i + 1}.mp4')                    # 路徑
-            fourcc = cv2.VideoWriter_fourcc(*'mp4v')                                       # 編碼
-            frame_size = (frame.shape[1], frame.shape[0])                                  # 尺寸
-            original_out = cv2.VideoWriter(file, fourcc, 29, frame_size)                   # 建立
-            print(f"Initialized VideoWriter for origin camera {i + 1}")                    # 訊息
-        original_out.write(frame)                                                          # 寫入原始畫面
-
-        if out is None:                                                                    # 疊圖 writer
-            file = os.path.join(folder, f'vision{i + 1}.mp4')                              # 路徑
-            fourcc = cv2.VideoWriter_fourcc(*'mp4v')                                       # 編碼
-            frame_size = (frame.shape[1], frame.shape[0])                                  # 尺寸
-            out = cv2.VideoWriter(file, fourcc, 29, frame_size)                            # 建立
-            print(f"Initialized VideoWriter for camera {i + 1}")                           # 訊息
-        out.write(frame)                                                                   # 寫入疊圖
-
-        if txt_file is None:                                                               # txt 尚未開啟
-            txt_file_path = os.path.join(folder, 'yolo_coordinates.txt')                   # 槓框輸出檔
-            txt_file = open(txt_file_path, "w")                                            # 開檔覆寫
-            frame_count_for_detect = 0                                                     # 偵測幀歸零
-            print(f"Started writing data to {txt_file_path}")                               # 訊息
-
-        # 寫入當幀偵測結果                                                                       # 記錄
-        if boxes is not None and boxes.xywh is not None and len(boxes.xywh) > 0:           # 有框
-            x_center, y_center, width, height = boxes.xywh[0]                              # 取第一框
-            frame_count_for_detect += 1                                                    # 幀+1
-            txt_file.write(f"{frame_count_for_detect},{x_center},{y_center},{width},{height}\n")  # 寫檔
-        else:
-            frame_count_for_detect += 1                                                    # 幀+1
-            txt_file.write(f"{frame_count_for_detect},no detection\n")                     # 無偵測
-    else:                                                                                  # 不應錄影
-        frame_count_for_detect = 0                                                         # 偵測幀歸零
+    # ---- 若 UI 未開啟，直接收乾淨（不跑YOLO）----
+    with shared_lock:
+        gate_ui = shared_state.get("recording_sig", False)                                 # 讀 UI Gate
+    if not gate_ui:                                                                        # UI 未按錄影
         if out is not None: out.release(); out = None                                      # 關閉疊圖 writer
         if original_out is not None: original_out.release(); original_out = None           # 關閉原始 writer
         if txt_file is not None: txt_file.close(); txt_file = None                         # 關閉 txt
         save_sig = False                                                                   # 清保存旗標
+        frame_count_for_detect = 0                                                         # 幀歸零
+        with shared_lock:
+            shared_state[cam_rec_key] = False                                              # 標記：目前不在錄
+        # 照片顯示
+        cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2, cv2.LINE_AA)  # 疊FPS
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)                                 # BGR→RGB
+        h, w, ch = frame.shape                                                             # 尺寸
+        qpixmap = QtGui.QPixmap.fromImage(QtGui.QImage(frame_rgb.data, w, h, ch*w, QtGui.QImage.Format_RGB888))  # QPixmap
+        scale_qpixmap = qpixmap.scaled(label.width(), label.height(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)  # 縮放
+        label.setPixmap(scale_qpixmap)                                                     # 顯示
+        barrier.wait()                                                                     # 同步
+        return start_time, frame_count, fps, out, frame_count_for_detect, original_out, save_sig, txt_file  # 回傳
 
+    # ---- UI=ON：跑 YOLO 算當幀槓的 y ----
+    results = model.predict(source=frame, imgsz=320, conf=0.5, verbose=False)              # YOLO 推論
+    boxes = results[0].boxes if len(results) > 0 else None                                 # 取第一張結果
+    current_bar_y = None                                                                    # 當幀 y
+    if boxes is not None and boxes.xywh is not None and len(boxes.xywh) > 0:               # 有框
+        x_center, y_center, width, height = boxes.xywh[0]                                  # 取第一框
+        current_bar_y = float(y_center)                                                    # 當幀 y
+    for r in results:                                                                       # 疊圖
+        frame = r.plot()                                                                   # 繪製結果
+
+    # ---- 更新 bar_y_changed 與 prev_bar_y，並算 Gate ----
+    with shared_lock:                                                                       # 臨界區
+        prev_y = shared_state.get("prev_bar_y", None)                                      # 取上一幀 y
+        if prev_y is not None and current_bar_y is not None:                               # 可比較
+            shared_state["bar_y_changed"] = abs(current_bar_y - prev_y) >= BAR_MOVE_THRESH # 判斷是否超閾
+        else:
+            shared_state["bar_y_changed"] = False                                          # 否則=False
+        if current_bar_y is not None:                                                      # 有當幀 y
+            shared_state["prev_bar_y"] = current_bar_y                                     # 更新 prev
+        gate_ui  = shared_state.get("recording_sig", False)                                # 讀 UI
+        gate_body= shared_state.get("body_detected", False)                                # 讀人體
+        gate_bar = shared_state.get("bar_y_changed", False)                                # 讀槓
+        should_record = gate_ui and gate_body and gate_bar                                 # 三 Gate
+
+    # ---- 分段邏輯：轉場偵測 ----
+    if should_record and not is_rec:                                                       # False→True：開新段
+        seg_no += 1                                                                        # 段號+1
+        with shared_lock:
+            shared_state[cam_seg_key] = seg_no                                             # 回寫段號
+            shared_state[cam_rec_key] = True                                               # 標記：開始錄
+        frame_count_for_detect = 0                                                         # 新段幀計數歸零
+        # 建立 writer 與 txt（以段號結尾）
+        file_o = os.path.join(folder, f'original_vision{i + 1}_seg{seg_no:03d}.mp4')      # 原始檔名（分段）
+        file_v = os.path.join(folder, f'vision{i + 1}_seg{seg_no:03d}.mp4')               # 疊圖檔名（分段）
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')                                           # 編碼
+        frame_size = (frame.shape[1], frame.shape[0])                                      # 尺寸
+        original_out = cv2.VideoWriter(file_o, fourcc, 29, frame_size)                     # 建原始 writer
+        out = cv2.VideoWriter(file_v, fourcc, 29, frame_size)                              # 建疊圖 writer
+        txt_file_path = os.path.join(folder, f'yolo_coordinates_seg{seg_no:03d}.txt')      # txt 檔名（分段）
+        txt_file = open(txt_file_path, "w")                                                # 開 txt
+        print(f"[BAR] Start SEG {seg_no:03d} on cam{i+1}")                                 # 訊息
+
+    if should_record:                                                                      # 真正在錄：持續寫
+        if original_out is not None: original_out.write(frame)                             # 寫原始
+        if out is not None: out.write(frame)                                               # 寫疊圖
+        if txt_file is not None:                                                           # 寫 yolo座標
+            if boxes is not None and boxes.xywh is not None and len(boxes.xywh) > 0:      # 有框
+                x_center, y_center, width, height = boxes.xywh[0]                          # 第一框
+                frame_count_for_detect += 1                                                # 幀+1
+                txt_file.write(f"{frame_count_for_detect},{x_center},{y_center},{width},{height}\n")  # 寫入
+            else:
+                frame_count_for_detect += 1                                                # 幀+1
+                txt_file.write(f"{frame_count_for_detect},no detection\n")                 # 無偵測
+    else:
+        if is_rec:                                                                         # True→False：段落結束
+            if txt_file is not None: txt_file.close(); txt_file = None                     # 關 txt
+            if out is not None: out.release(); out = None                                  # 關疊圖
+            if original_out is not None: original_out.release(); original_out = None       # 關原始
+            save_sig = False                                                               # 清保存旗標
+            with shared_lock:
+                shared_state[cam_rec_key] = False                                          # 標記：不在錄
+            print(f"[BAR] End SEG {seg_no:03d} on cam{i+1}")                               # 訊息
+        frame_count_for_detect = 0                                                         # 幀歸零
+
+    # ---- 顯示與同步 ----
     cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2, cv2.LINE_AA)  # 疊FPS
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)                                     # BGR→RGB
     h, w, ch = frame.shape                                                                 # 尺寸
@@ -496,28 +507,38 @@ def benchpress_bar_loop(i, frame, label, save_sig, recording_sig, folder,       
     barrier.wait()                                                                         # 同步
     return start_time, frame_count, fps, out, frame_count_for_detect, original_out, save_sig, txt_file  # 回傳
 
-def benchpress_body_loop(i, frame, label, save_sig, recording_sig, folder,                # Body 視角：偵測人體、更新 body_detected         # 介面沿用
-                         start_time, frame_count, fps, out, model, txt_file,             # 視訊/模型/文字輸出 handler                     # 介面沿用
-                         frame_count_for_detect, skeleton_connections, barrier,          # 偵測幀計數/骨架連線/同步柵欄                  # 介面沿用
-                         shared_state, shared_lock):                                     # ★ 共享狀態/鎖                                  # 新增
+def benchpress_body_loop(i, frame, label, save_sig, recording_sig, folder,                # Body 視角：偵測人體並分段                       # 介面沿用
+                         start_time, frame_count, fps, out, model, txt_file,             # writer / 模型 / txt                               # 介面沿用
+                         frame_count_for_detect, skeleton_connections, barrier,          # 偵測幀計數 / 連線 / 柵欄                          # 介面沿用
+                         shared_state, shared_lock):                                     # 共享狀態 / 鎖                                      # 介面沿用
+    # ---- FPS ----
     frame_count += 1                                                                     # 幀+1
     elapsed_time = time.time() - start_time                                              # 經過秒數
     if elapsed_time >= 1:                                                                # 每秒更新
-        fps = frame_count / elapsed_time                                                 # 計算FPS
-        frame_count = 0                                                                  # 歸零
-        start_time = time.time()                                                         # 重設
+        fps = frame_count / elapsed_time                                                 # 算FPS
+        frame_count = 0                                                                  # 幀歸零
+        start_time = time.time()                                                         # 起點重設
 
     if not skeleton_connections:                                                         # 預設骨架連線
         skeleton_connections = [(0,1),(0,2),(0,4),(1,3),(1,5),(2,3),(4,6),(5,7)]         # 連線
 
-    # --- 早退：UI 未按下錄影時，不跑 YOLO、不更新人體旗標 ---                                      # 省算力
-    with shared_lock:                                                                    # 臨界區讀 gate
-        gate_ui = shared_state.get("recording_sig", False)                               # 讀 UI 旗標
-    if not gate_ui:                                                                      # 未按下錄影
-        if out is not None: out.release(); out = None                                    # 關閉 writer
-        if txt_file is not None: txt_file.close(); txt_file = None                       # 關閉 txt
-        save_sig = False                                                                 # 清保存旗標
+    # ---- 讀/設分段狀態 ----
+    cam_rec_key = f"rec_cam{i}"                                                          # 該相機是否正在錄
+    cam_seg_key = f"seg_cam{i}"                                                          # 該相機段號
+    with shared_lock:
+        is_rec = shared_state.get(cam_rec_key, False)                                    # 既有錄影狀態
+        seg_no = shared_state.get(cam_seg_key, 0)                                        # 既有段號
+        gate_ui = shared_state.get("recording_sig", False)                               # 讀 UI Gate
+
+    # ---- UI 未開 → 收乾淨 ----
+    if not gate_ui:
+        if out is not None: out.release(); out = None                                    # 關 writer
+        if txt_file is not None: txt_file.close(); txt_file = None                       # 關 txt
+        save_sig = False                                                                 # 清保存
         frame_count_for_detect = 0                                                       # 幀歸零
+        with shared_lock:
+            shared_state[cam_rec_key] = False                                            # 標記不在錄
+        # 顯示
         cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2, cv2.LINE_AA)  # 疊FPS
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)                               # BGR→RGB
         h, w, ch = frame.shape                                                           # 尺寸
@@ -527,73 +548,78 @@ def benchpress_body_loop(i, frame, label, save_sig, recording_sig, folder,      
         barrier.wait()                                                                   # 同步
         return start_time, frame_count, fps, out, frame_count_for_detect, save_sig, txt_file  # 回傳
 
-    # --- UI 要求錄影：跑 YOLO keypoints 偵測人體 ---                                               # 省資源
+    # ---- YOLO 關鍵點偵測 ----
     try:
-        results = list(model(source=frame, stream=True, verbose=False))                  # YOLO 關鍵點
+        results = list(model(source=frame, stream=True, verbose=False))                  # YOLO keypoints
     except Exception as e:
         results = []                                                                      # 失敗視為無
         print(f"[benchpress_body_loop] model call error: {e}")                            # 診斷
 
     frame_count_for_detect += 1                                                          # 偵測幀+1
-    body_detected_now = False                                                            # 本幀人體旗標
+    body_detected_now = False                                                            # 本幀是否有人
     frame_rows = []                                                                       # txt 行列
     if results and getattr(results[0], "keypoints", None) is not None:                   # 有 keypoints
         r0 = results[0]                                                                   # 第一結果
-        kpts = r0.keypoints                                                               # Keypoints 物件
-        first_xy = None                                                                   # 初始化
+        kpts = r0.keypoints                                                               # Keypoints
+        first_xy = None                                                                   # 預設
         if hasattr(kpts, "xy"):                                                           # 取 xy
             xy = kpts.xy                                                                  # (num,K,2)
             if hasattr(xy, "detach"): xy = xy.detach().cpu().numpy()                     # tensor→numpy
             first_xy = xy[0] if len(xy) > 0 else None                                     # 第一人
-        if first_xy is not None:                                                          # 有人
-            body_detected_now = True                                                      # 設 True
-            kp_coords = []                                                                # 畫圖用座標
+        if first_xy is not None:
+            body_detected_now = True                                                      # 有人
+            kp_coords = []                                                                # 畫圖用
             K = first_xy.shape[0]                                                         # 點數
-            for idx in range(K):                                                          # 逐點
-                x_kp, y_kp = int(first_xy[idx,0]), int(first_xy[idx,1])                  # 取座標
-                if x_kp==0 and y_kp==0:                                                   # 無效點
-                    kp_coords.append(None)                                                # 記 None
+            for idx in range(K):
+                x_kp, y_kp = int(first_xy[idx,0]), int(first_xy[idx,1])                  # 座標
+                if x_kp==0 and y_kp==0:
+                    kp_coords.append(None)                                                # 無效
                 else:
-                    kp_coords.append((x_kp,y_kp))                                         # 記座標
+                    kp_coords.append((x_kp,y_kp))                                         # 有效
                     cv2.circle(frame, (x_kp,y_kp), 5, (0,255,0), cv2.FILLED)             # 畫點
-                frame_rows.append(f"{frame_count_for_detect},{idx},{x_kp},{y_kp}")       # 準備 txt
+                frame_rows.append(f"{frame_count_for_detect},{idx},{x_kp},{y_kp}")       # 記錄
             for a,b in skeleton_connections:                                              # 畫線
-                if a<len(kp_coords) and b<len(kp_coords) and kp_coords[a] and kp_coords[b]:  # 索引/有效檢查
-                    cv2.line(frame, kp_coords[a], kp_coords[b], (0,255,255), 2)          # 畫線
-    else:
-        body_detected_now = False                                                         # 無結果→False
+                if a<len(kp_coords) and b<len(kp_coords) and kp_coords[a] and kp_coords[b]:
+                    cv2.line(frame, kp_coords[a], kp_coords[b], (0,255,255), 2)
 
-    # --- 寫回人體旗標並組 should_record ---                                                       # 臨界區
-    with shared_lock:                                                                     # 進入鎖
+    # ---- 寫回人體旗標並計算 Gate ----
+    with shared_lock:
         shared_state["body_detected"] = body_detected_now                                 # 更新人體旗標
-        gate_ui  = shared_state.get("recording_sig", False)                               # 取 UI
-        gate_bar = shared_state.get("bar_y_changed", False)                               # 取槓
-        should_record = gate_ui and shared_state["body_detected"] and gate_bar            # 三旗標 Gate
+        gate_bar = shared_state.get("bar_y_changed", False)                               # 讀槓
+        should_record = gate_ui and shared_state["body_detected"] and gate_bar            # 三 Gate
 
-    # --- Gate 控制寫檔/關檔 ---                                                                      # 核心
-    if should_record:                                                                     # 應錄影
-        if out is None:                                                                   # writer
-            file = os.path.join(folder, f'vision{i + 1}.mp4')                             # 路徑
-            fourcc = cv2.VideoWriter_fourcc(*'mp4v')                                      # 編碼
-            frame_size = (frame.shape[1], frame.shape[0])                                 # 尺寸
-            out = cv2.VideoWriter(file, fourcc, 29, frame_size)                           # 建立
-            print(f"Initialized VideoWriter for camera {i + 1}")                          # 訊息
-        out.write(frame)                                                                  # 寫入畫面
+    # ---- 分段邏輯 ----
+    if should_record and not is_rec:                                                      # False→True：開新段
+        seg_no += 1                                                                       # 段+1
+        with shared_lock:
+            shared_state[cam_seg_key] = seg_no                                            # 回寫段號
+            shared_state[cam_rec_key] = True                                              # 標記在錄
+        # 建 writer/txt（段號後綴）
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')                                          # 編碼
+        frame_size = (frame.shape[1], frame.shape[0])                                     # 尺寸
+        file_v = os.path.join(folder, f'vision{i + 1}_seg{seg_no:03d}.mp4')              # 檔名
+        out = cv2.VideoWriter(file_v, fourcc, 29, frame_size)                             # 建 writer
+        txt_path = os.path.join(folder, f'yolo_body_keypoints_seg{seg_no:03d}.txt')       # txt 檔名
+        txt_file = open(txt_path, "w")                                                    # 開 txt
+        print(f"[BODY] Start SEG {seg_no:03d} on cam{i+1}")                               # 訊息
 
-        if txt_file is None:                                                              # txt 開檔
-            txt_path = os.path.join(folder, 'yolo_body_keypoints.txt')                    # 檔名
-            txt_file = open(txt_path, "w")                                                # 開啟
-            print(f"Started writing data to {txt_path}")                                   # 訊息
+    if should_record:                                                                     # 寫入
+        if out is not None: out.write(frame)                                              # 寫畫面
+        if txt_file is not None:
+            if body_detected_now and frame_rows:
+                txt_file.write("\n".join(frame_rows) + "\n")                              # 寫點列
+            else:
+                txt_file.write(f"{frame_count_for_detect},no detection\n")                # 無偵測
+    else:
+        if is_rec:                                                                        # True→False：結束一段
+            if txt_file is not None: txt_file.close(); txt_file = None                    # 關 txt
+            if out is not None: out.release(); out = None                                 # 關 writer
+            save_sig = False                                                              # 清保存
+            with shared_lock:
+                shared_state[cam_rec_key] = False                                         # 標記不在錄
+            print(f"[BODY] End SEG {seg_no:03d} on cam{i+1}")                             # 訊息
 
-        if body_detected_now and frame_rows and txt_file is not None:                     # 有人且有資料
-            txt_file.write("\n".join(frame_rows) + "\n")                                  # 批次寫入
-        elif txt_file is not None:                                                        # 無人
-            txt_file.write(f"{frame_count_for_detect},no detection\n")                    # 記無偵測
-    else:                                                                                 # 不應錄影
-        if txt_file is not None: txt_file.close(); txt_file = None                        # 關閉 txt
-        if out is not None: out.release(); out = None                                     # 關閉 writer
-        save_sig = False                                                                  # 清保存旗標
-
+    # ---- 顯示與同步 ----
     cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2, cv2.LINE_AA)  # 疊FPS
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)                                    # BGR→RGB
     h, w, ch = frame.shape                                                                # 尺寸
@@ -603,51 +629,62 @@ def benchpress_body_loop(i, frame, label, save_sig, recording_sig, folder,      
     barrier.wait()                                                                        # 同步
     return start_time, frame_count, fps, out, frame_count_for_detect, save_sig, txt_file  # 回傳
 
-def benchpress_head_loop(i, frame, label, save_sig, recording_sig, folder,                # Head 視角：僅跟 Gate 錄影，不更新旗標           # 介面沿用
+def benchpress_head_loop(i, frame, label, save_sig, recording_sig, folder,                # Head 視角：跟 Gate 錄影並分段                    # 介面沿用
                          start_time, frame_count, fps, out, original_out, frame_count_for_detect, barrier,
-                         shared_state, shared_lock):                                      # ★ 共享狀態/鎖                                  # 新增
+                         shared_state, shared_lock):                                      # 共享狀態 / 鎖                                      # 介面沿用
+    # ---- FPS ----
     frame_count += 1                                                                      # 幀+1
     elapsed_time = time.time() - start_time                                               # 經過秒數
     if elapsed_time >= 1:                                                                 # 每秒更新
-        fps = frame_count / elapsed_time                                                  # 計算FPS
-        frame_count = 0                                                                   # 歸零
-        start_time = time.time()                                                          # 重設
+        fps = frame_count / elapsed_time                                                  # 算FPS
+        frame_count = 0                                                                   # 幀歸零
+        start_time = time.time()                                                          # 起點重設
 
-    frame = cv2.rotate(frame, cv2.ROTATE_180)                                             # 旋轉頭部畫面
+    frame = cv2.rotate(frame, cv2.ROTATE_180)                                             # 視角調整
 
-    # --- 讀 Gate（should_record） ---                                                           # 三旗標 Gate
-    with shared_lock:                                                                     # 臨界區
-        gate_ui  = shared_state.get("recording_sig", False)                               # UI 旗標
-        gate_body= shared_state.get("body_detected", False)                               # 人體旗標
-        gate_bar = shared_state.get("bar_y_changed", False)                               # 槓旗標
-        should_record = gate_ui and gate_body and gate_bar                                # 三旗標
+    # ---- 讀 Gate ----
+    with shared_lock:
+        gate_ui  = shared_state.get("recording_sig", False)                               # 讀 UI
+        gate_body= shared_state.get("body_detected", False)                               # 讀人體
+        gate_bar = shared_state.get("bar_y_changed", False)                               # 讀槓
+        should_record = gate_ui and gate_body and gate_bar                                # 三 Gate
 
-    # --- Gate 控制 writer 建立/寫入 ---                                                             # 核心
-    if should_record:                                                                     # 應錄影
-        if original_out is None:                                                          # 原始 writer
-            file = os.path.join(folder, f'original_vision{i + 1}.mp4')                    # 路徑
-            fourcc = cv2.VideoWriter_fourcc(*'mp4v')                                       # 編碼
-            frame_size = (frame.shape[1], frame.shape[0])                                  # 尺寸
-            original_out = cv2.VideoWriter(file, fourcc, 29, frame_size)                   # 建立
-            print(f"Initialized VideoWriter for origin camera {i + 1}")                    # 訊息
-        original_out.write(frame)                                                          # 寫入原始
+    # ---- 讀/設分段狀態 ----
+    cam_rec_key = f"rec_cam{i}"                                                           # 該相機是否正在錄
+    cam_seg_key = f"seg_cam{i}"                                                           # 段號
+    with shared_lock:
+        is_rec = shared_state.get(cam_rec_key, False)                                     # 既有錄影狀態
+        seg_no = shared_state.get(cam_seg_key, 0)                                         # 既有段號
 
-        if out is None:                                                                    # 疊圖 writer
-            file = os.path.join(folder, f'vision{i + 1}.mp4')                              # 路徑
-            fourcc = cv2.VideoWriter_fourcc(*'mp4v')                                       # 編碼
-            frame_size = (frame.shape[1], frame.shape[0])                                  # 尺寸
-            out = cv2.VideoWriter(file, fourcc, 29, frame_size)                            # 建立
-            print(f"Initialized VideoWriter for camera {i + 1}")                           # 訊息
-        out.write(frame)                                                                   # 寫入疊圖
-    else:                                                                                 # 不應錄影
-        frame_count_for_detect = 0                                                        # 幀歸零（可視需求保留）
-        if out is not None: out.release(); out = None                                     # 關閉疊圖 writer
-        if original_out is not None: original_out.release(); original_out = None          # 關閉原始 writer
-        save_sig = False                                                                  # 清保存旗標
+    # ---- 分段邏輯 ----
+    if should_record and not is_rec:                                                      # False→True：開新段
+        seg_no += 1                                                                       # 段+1
+        with shared_lock:
+            shared_state[cam_seg_key] = seg_no                                            # 回寫段號
+            shared_state[cam_rec_key] = True                                              # 標記在錄
+        # 建 writer（段號後綴）
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')                                          # 編碼
+        frame_size = (frame.shape[1], frame.shape[0])                                     # 尺寸
+        file_o = os.path.join(folder, f'original_vision{i + 1}_seg{seg_no:03d}.mp4')     # 原始分段
+        file_v = os.path.join(folder, f'vision{i + 1}_seg{seg_no:03d}.mp4')              # 疊圖分段
+        original_out = cv2.VideoWriter(file_o, fourcc, 29, frame_size)                    # 建原始 writer
+        out = cv2.VideoWriter(file_v, fourcc, 29, frame_size)                             # 建疊圖 writer
+        print(f"[HEAD] Start SEG {seg_no:03d} on cam{i+1}")                               # 訊息
 
-    barrier.wait()                                                                        # 同步
+    if should_record:                                                                     # 寫入
+        if original_out is not None: original_out.write(frame)                            # 原始
+        if out is not None: out.write(frame)                                              # 疊圖
+    else:
+        if is_rec:                                                                        # True→False：結束一段
+            if out is not None: out.release(); out = None                                 # 關疊圖
+            if original_out is not None: original_out.release(); original_out = None      # 關原始
+            save_sig = False                                                              # 清保存
+            with shared_lock:
+                shared_state[cam_rec_key] = False                                         # 標記不在錄
+            print(f"[HEAD] End SEG {seg_no:03d} on cam{i+1}")                             # 訊息
+        frame_count_for_detect = 0                                                        # 幀歸零（可選）
 
-    # --- 顯示畫面（即使不錄影也顯示） ---                                                          # UI 顯示
+    # ---- 顯示 ----
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)                                    # BGR→RGB
     cv2.putText(frame_rgb, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2, cv2.LINE_AA)  # 疊FPS
     h, w, ch = frame_rgb.shape                                                            # 尺寸
@@ -655,4 +692,5 @@ def benchpress_head_loop(i, frame, label, save_sig, recording_sig, folder,      
     scale_qpixmap = qpixmap.scaled(label.width(), label.height(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)   # 縮放
     label.setPixmap(scale_qpixmap)                                                        # 顯示
 
+    barrier.wait()                                                                        # 同步
     return start_time, frame_count, fps, out, original_out, save_sig, frame_count_for_detect  # 回傳
