@@ -547,8 +547,8 @@ def benchpress_body_loop(i, frame, label, save_sig, recording_sig, folder,      
                 (0, 255, 0), 2, cv2.LINE_AA)                                              # 字型樣式
     if recording_sig:                                                                      # 僅錄影時輸出
         if out is None:                                                                    # 延遲建立 writer（此時 frame 尺寸已定）
-            file = os.path.join(folder, f'vision{i + 1}.avi')                              # 影片路徑
-            fourcc = cv2.VideoWriter_fourcc(*'XVID')                                       # 編碼
+            file = os.path.join(folder, f'vision{i + 1}.mp4')                              # 影片路徑
+            fourcc = cv2.VideoWriter_fourcc(*'mp4v')                                       # 編碼
             frame_size = (frame.shape[1], frame.shape[0])                                  # (w,h)
             out = cv2.VideoWriter(file, fourcc, 29, frame_size)                            # 建立 writer
             print(f"Initialized VideoWriter for camera {i + 1}")                           # 訊息
@@ -592,8 +592,8 @@ def benchpress_body_loop(i, frame, label, save_sig, recording_sig, folder,      
 #     # 儲存原始影像幀
 #     if recording_sig:
 #         if original_out is None:
-#             file = os.path.join(folder, f'original_vision{i + 1}.avi')
-#             fourcc = cv2.VideoWriter_fourcc(*'XVID')
+#             file = os.path.join(folder, f'original_vision{i + 1}.mp4')
+#             fourcc = cv2.VideoWriter_fourcc(*'mp4v')
 #             frame_size = (frame.shape[1], frame.shape[0])  # 幀大小 (width, height)
 #             original_out = cv2.VideoWriter(file, fourcc, 29, frame_size)
 #             print(f"Initialized VideoWriter for origin camera {i + 1}")
@@ -639,8 +639,8 @@ def benchpress_body_loop(i, frame, label, save_sig, recording_sig, folder,      
 #     # 錄影開始
 #     if recording_sig:
 #         if out is None:  # 初始化 VideoWriter
-#             file = os.path.join(folder, f'vision{i + 1}.avi')
-#             fourcc = cv2.VideoWriter_fourcc(*'XVID')
+#             file = os.path.join(folder, f'vision{i + 1}.mp4')
+#             fourcc = cv2.VideoWriter_fourcc(*'mp4v')
 #             frame_size = (frame.shape[1], frame.shape[0])  # 幀大小 (width, height)
 #             out = cv2.VideoWriter(file, fourcc, 29, frame_size)
 #             print(f"Initialized VideoWriter for camera {i + 1}")
@@ -688,8 +688,8 @@ def benchpress_head_loop(i, frame, label, save_sig, recording_sig, folder,
     # 儲存原始影像幀
     if recording_sig:
         if original_out is None:
-            file = os.path.join(folder, f'original_vision{i + 1}.avi')
-            fourcc = cv2.VideoWriter_fourcc(*'XVID')
+            file = os.path.join(folder, f'original_vision{i + 1}.mp4')
+            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
             frame_size = (frame.shape[1], frame.shape[0])
             original_out = cv2.VideoWriter(file, fourcc, 29, frame_size)
             print(f"Initialized VideoWriter for origin camera {i + 1}")
@@ -698,8 +698,8 @@ def benchpress_head_loop(i, frame, label, save_sig, recording_sig, folder,
     # 錄影開始
     if recording_sig:
         if out is None:
-            file = os.path.join(folder, f'vision{i + 1}.avi')
-            fourcc = cv2.VideoWriter_fourcc(*'XVID')
+            file = os.path.join(folder, f'vision{i + 1}.mp4')
+            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
             frame_size = (frame.shape[1], frame.shape[0])
             out = cv2.VideoWriter(file, fourcc, 29, frame_size)
             print(f"Initialized VideoWriter for camera {i + 1}")
