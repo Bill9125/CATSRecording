@@ -393,7 +393,7 @@ def squat_general_loop(i, frame, label, save_sig, recording_sig, folder,
     label.setPixmap(scale_qpixmap)
     return start_time, frame_count, fps, out, save_sig
 
-def benchpress_bar_loop(i, frame, label, save_sig, recording_sig, folder,                 # Bar 視角：偵測槓 y 位移、更新 bar_y_changed     # 介面沿用
+def benchpress_bar_loop(i, frame, label, save_sig, folder,                 # Bar 視角：偵測槓 y 位移、更新 bar_y_changed     # 介面沿用
                         start_time, frame_count, fps, out, original_out, model, txt_file, # writer / 原始writer / 模型 / txt               # 介面沿用
                         frame_count_for_detect, barrier,                                  # 偵測幀計數 / 柵欄                              # 介面沿用
                         shared_state, shared_lock, BAR_MOVE_THRESH):                      # 共享狀態 / 鎖 / 位移閾值                        # 介面沿用
@@ -509,7 +509,7 @@ def benchpress_bar_loop(i, frame, label, save_sig, recording_sig, folder,       
 
 BODY_BUF_FRAMES = 20  # 連續命中/連續未命中的緩衝幀數                      # 緩衝門檻
 
-def benchpress_body_loop(i, frame, label, save_sig, recording_sig, folder,                # Body 視角：偵測人體並分段（含20幀緩衝）           # 與原簽名相同
+def benchpress_body_loop(i, frame, label, save_sig, folder,                # Body 視角：偵測人體並分段（含20幀緩衝）           # 與原簽名相同
                          start_time, frame_count, fps, out, model, txt_file,             # writer / 模型 / txt                                 # 與原簽名相同
                          frame_count_for_detect, skeleton_connections, barrier,          # 偵測幀計數 / 連線 / 柵欄                            # 與原簽名相同
                          shared_state, shared_lock):                                     # 共享狀態 / 鎖                                        # 與原簽名相同
@@ -646,7 +646,7 @@ def benchpress_body_loop(i, frame, label, save_sig, recording_sig, folder,      
     return start_time, frame_count, fps, out, frame_count_for_detect, save_sig, txt_file  # 回傳                                                # 回傳
 
 
-def benchpress_head_loop(i, frame, label, save_sig, recording_sig, folder,                # Head 視角：跟 Gate 錄影並分段                    # 介面沿用
+def benchpress_head_loop(i, frame, label, save_sig, folder,                # Head 視角：跟 Gate 錄影並分段                    # 介面沿用
                          start_time, frame_count, fps, out, original_out, frame_count_for_detect, barrier,
                          shared_state, shared_lock):                                      # 共享狀態 / 鎖                                      # 介面沿用
     # ---- FPS ----
