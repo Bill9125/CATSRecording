@@ -211,21 +211,21 @@ class Recordingbackend():
                 elif sport == 'Benchpress':                                                                               # 臥推模式
                     if i == 0:                                                                                            # 相機0（槓視角）：更新 bar_y_changed + Gate 錄影
                         start_time, frame_count, fps, out, frame_count_for_detect, original_out, self.save_sig_1, txt_file = loop.benchpress_bar_loop(
-                            i, frame, label, self.save_sig_1, self.recording_sig,                                         # 與原介面一致：save_sig / recording_sig
+                            i, frame, label, self.save_sig_1,                                                            # 與原介面一致：save_sig 
                             self.folder, start_time, frame_count, fps, out, original_out, self.models[i],                 # 輸出夾 / writer / 模型
                             txt_file, frame_count_for_detect, barrier,                                                    # txt / 幀計數 / 柵欄
                             self.shared_state, self.shared_lock, self.BAR_MOVE_THRESH)                                    # ★ 新增：共享狀態 / 鎖 / 位移閾值
 
                     elif i == 1:                                                                                          # 相機1（人體視角）：更新 body_detected + Gate 錄影
                         start_time, frame_count, fps, out, frame_count_for_detect, self.save_sig_2, txt_file = loop.benchpress_body_loop(
-                            i, frame, label, self.save_sig_2, self.recording_sig,                                         # 與原介面一致：save_sig / recording_sig
+                            i, frame, label, self.save_sig_2,                                                             # 與原介面一致：save_sig 
                             self.folder, start_time, frame_count, fps, out,                                               # writer 與計時
                             self.models[1], txt_file, frame_count_for_detect, None, barrier,                              # YOLO body 模型 / txt / 幀計數 / 連線None→預設 / 柵欄
                             self.shared_state, self.shared_lock)                                                          # ★ 新增：共享狀態 / 鎖
 
                     else:                                                                                                 # 相機2（頭部視角）：只跟 Gate 錄影
                         start_time, frame_count, fps, out, original_out, self.save_sig_3, frame_count_for_detect = loop.benchpress_head_loop(
-                            i, frame, label, self.save_sig_3, self.recording_sig,                                         # 與原介面一致：save_sig / recording_sig
+                            i, frame, label, self.save_sig_3,                                                             # 與原介面一致：save_sig 
                             self.folder, start_time, frame_count, fps, out, original_out, frame_count_for_detect, barrier,# writer / 幀計數 / 柵欄
                             self.shared_state, self.shared_lock)    
                     
