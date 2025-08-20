@@ -206,16 +206,21 @@ class Recordingbackend():
                             txt_file, frame_count_for_detect, barrier)
                     elif i == 1:
                         # 用 YOLO body_model（self.models[1]）而非 MediaPipe
-                        start_time, frame_count, fps, out, frame_count_for_detect, original_out, self.save_sig_2, txt_file = loop.benchpress_body_loop(
+                        start_time, frame_count, fps, out, frame_count_for_detect, self.save_sig_2, txt_file = loop.benchpress_body_loop(
                             i, frame, label, self.save_sig_2, self.recording_sig,
-                            self.folder, start_time, frame_count, fps, out, original_out,
-                            txt_file, self.models[i], None, barrier)
+                            self.folder, start_time, frame_count, fps, out,
+                            self.models[1], txt_file, frame_count_for_detect, None, barrier)  # None 會用預設的骨架連線
+
                         # 傳 YOLO，去掉 self.pose / connections  # 改為傳遞 YOLO 模型
                     else:
-                        start_time, frame_count, fps, out, frame_count_for_detect, original_out, self.save_sig_3, txt_file = loop.benchpress_head_loop(
+                        # start_time, frame_count, fps, out, frame_count_for_detect, original_out, self.save_sig_3, txt_file = loop.benchpress_head_loop(
+                        #     i, frame, label, self.save_sig_3, self.recording_sig,
+                        #     self.folder, start_time, frame_count, fps, out, original_out, 
+                        #     txt_file, self.models[i], frame_count_for_detect, barrier)
+
+                        start_time, frame_count, fps, out, original_out, self.save_sig_3, frame_count_for_detect = loop.benchpress_head_loop(
                             i, frame, label, self.save_sig_3, self.recording_sig,
-                            self.folder, start_time, frame_count, fps, out, original_out, 
-                            txt_file, self.models[i], frame_count_for_detect, barrier)
+                            self.folder, start_time, frame_count, fps, out, original_out, frame_count_for_detect, barrier)
                 
                 elif sport == 'Squat':
                     if i == 0:

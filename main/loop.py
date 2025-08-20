@@ -469,10 +469,11 @@ def benchpress_bar_loop(i, frame, label, save_sig, recording_sig, folder,
     scale_qpixmap = qpixmap.scaled(label.width(), label.height(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
     label.setPixmap(scale_qpixmap)
     return start_time, frame_count, fps, out, frame_count_for_detect, original_out, save_sig, txt_file
-       
+
+
 def benchpress_body_loop(i, frame, label, save_sig, recording_sig, folder,                 # 與 deadlift_bone_loop 同序
                          start_time, frame_count, fps, out, model, txt_file,              # 參數序一致
-                         frame_count_for_detect, skeleton_connections, barrier):      # skeleton_connections 改為可選，預設內建你給的連線
+                         frame_count_for_detect, skeleton_connections, barrier):     # skeleton_connections 改為可選，預設內建你給的連線
     frame_count += 1                                                                       # 幀計數 +1
     elapsed_time = time.time() - start_time                                                # 距離上次計時秒數
     if elapsed_time >= 1:                                                                  # 每秒更新一次 FPS
@@ -546,8 +547,8 @@ def benchpress_body_loop(i, frame, label, save_sig, recording_sig, folder,      
                 (0, 255, 0), 2, cv2.LINE_AA)                                              # 字型樣式
     if recording_sig:                                                                      # 僅錄影時輸出
         if out is None:                                                                    # 延遲建立 writer（此時 frame 尺寸已定）
-            file = os.path.join(folder, f'vision{i + 1}.mp4')                              # 影片路徑
-            fourcc = cv2.VideoWriter_fourcc(*'mp4v')                                       # 編碼
+            file = os.path.join(folder, f'vision{i + 1}.avi')                              # 影片路徑
+            fourcc = cv2.VideoWriter_fourcc(*'XVID')                                       # 編碼
             frame_size = (frame.shape[1], frame.shape[0])                                  # (w,h)
             out = cv2.VideoWriter(file, fourcc, 29, frame_size)                            # 建立 writer
             print(f"Initialized VideoWriter for camera {i + 1}")                           # 訊息
@@ -575,14 +576,106 @@ def benchpress_body_loop(i, frame, label, save_sig, recording_sig, folder,      
         save_sig = False                                                                   # 清除保存旗標
 
     return start_time, frame_count, fps, out, frame_count_for_detect, save_sig, txt_file   # 回傳序一致
-
-
-
     
+# def benchpress_head_loop(i, frame, label, save_sig, recording_sig, folder,
+#                            start_time, frame_count, fps, out, original_out, txt_file, 
+#                            model, frame_count_for_detect, barrier):
+#     connections = [(0, 1), (0, 2), (2, 4), (1, 3), (3, 5)]
+#     frame_count += 1
+#     elapsed_time = time.time() - start_time
+#     if elapsed_time >= 1:
+#         fps = frame_count / elapsed_time
+#         frame_count = 0
+#         start_time = time.time()
+        
+#     frame = cv2.rotate(frame, cv2.ROTATE_180)
+#     # 儲存原始影像幀
+#     if recording_sig:
+#         if original_out is None:
+#             file = os.path.join(folder, f'original_vision{i + 1}.avi')
+#             fourcc = cv2.VideoWriter_fourcc(*'XVID')
+#             frame_size = (frame.shape[1], frame.shape[0])  # 幀大小 (width, height)
+#             original_out = cv2.VideoWriter(file, fourcc, 29, frame_size)
+#             print(f"Initialized VideoWriter for origin camera {i + 1}")
+#         original_out.write(frame)
+
+#         if txt_file is None:
+#             txt_file_path = os.path.join(folder, 'yolo_skeleton.txt')
+#             txt_file = open(txt_file_path, "w")  # ✅ 錄影開始時開啟檔案
+#             frame_count_for_detect = 0  # ✅ 只在錄影開始時歸零
+#             print(f"Started writing data to {txt_file_path}")
+        
+#     # frame 處理
+#     results = model.predict(source=frame, conf=0.5, verbose = False)
+#     frame_count_for_detect += 1  # Increment frame count for each frame
+
+#     frame_data = []
+#     if results[0].keypoints:
+#         for result in results[0].keypoints:
+#             keypoints = result.xy.tolist()
+
+#             if not keypoints or not keypoints[0]:
+#                 if recording_sig and txt_file is not None:
+#                     txt_file.write(f"{frame_count_for_detect},no detection\n")
+#                 pass
+            
+#             keypoint_list = []
+#             for keypoint in keypoints[0]:  
+#                 if len(keypoint) == 2:  
+#                     x, y = keypoint
+#                     keypoint_list.append((x, y))
+#                     cv2.circle(frame, (int(x), int(y)), 5, (0, 255, 0), -1)
+
+#             for (start_idx, end_idx) in connections:
+#                 if start_idx < len(keypoint_list) and end_idx < len(keypoint_list):
+#                     start_point = keypoint_list[start_idx]
+#                     end_point = keypoint_list[end_idx]
+                    
+#                     if start_point != (0, 0) and end_point != (0, 0):
+#                         cv2.line(frame, (int(start_point[0]), int(start_point[1])),
+#                                 (int(end_point[0]), int(end_point[1])), (255, 0, 0), 2)
+#             frame_data.append(keypoint_list)
+            
+#     # 錄影開始
+#     if recording_sig:
+#         if out is None:  # 初始化 VideoWriter
+#             file = os.path.join(folder, f'vision{i + 1}.avi')
+#             fourcc = cv2.VideoWriter_fourcc(*'XVID')
+#             frame_size = (frame.shape[1], frame.shape[0])  # 幀大小 (width, height)
+#             out = cv2.VideoWriter(file, fourcc, 29, frame_size)
+#             print(f"Initialized VideoWriter for camera {i + 1}")
+#         out.write(frame)
+        
+#         if txt_file is not None:
+#             txt_file.write(f"Frame {frame_count_for_detect}: {frame_data}\n")
+    
+#     if not recording_sig:
+#         frame_count_for_detect = 0
+#         # 錄影結束
+#         if save_sig and out is not None:
+#             out.release()
+#             original_out.release()
+#             print(f"Released VideoWriter for camera {i + 1}")
+#             save_sig = False
+#         out = None
+#         original_out = None
+#         if txt_file is not None:
+#             txt_file.close()
+#             txt_file = None  # ✅ 確保 `txt_file` 被正確關閉
+#             print(f"Closed txt_file for camera {i + 1}")
+    
+#     #barrier.wait()
+#     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+#     cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
+#     h, w, ch = frame.shape
+#     qpixmap = QtGui.QPixmap.fromImage(QtGui.QImage(frame.data, w, h, ch*w, QtGui.QImage.Format_RGB888))
+#     scale_qpixmap = qpixmap.scaled(label.width(), label.height(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
+#     label.setPixmap(scale_qpixmap)
+#     return start_time, frame_count, fps, out, frame_count_for_detect, original_out, save_sig, txt_file
+
 def benchpress_head_loop(i, frame, label, save_sig, recording_sig, folder,
-                           start_time, frame_count, fps, out, original_out, txt_file, 
-                           model, frame_count_for_detect, barrier):
-    connections = [(0, 1), (0, 2), (2, 4), (1, 3), (3, 5)]
+                         start_time, frame_count, fps, out, original_out, frame_count_for_detect, barrier):
+    
     frame_count += 1
     elapsed_time = time.time() - start_time
     if elapsed_time >= 1:
@@ -591,66 +684,28 @@ def benchpress_head_loop(i, frame, label, save_sig, recording_sig, folder,
         start_time = time.time()
         
     frame = cv2.rotate(frame, cv2.ROTATE_180)
+
     # 儲存原始影像幀
     if recording_sig:
         if original_out is None:
-            file = os.path.join(folder, f'original_vision{i + 1}.mp4')
-            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-            frame_size = (frame.shape[1], frame.shape[0])  # 幀大小 (width, height)
+            file = os.path.join(folder, f'original_vision{i + 1}.avi')
+            fourcc = cv2.VideoWriter_fourcc(*'XVID')
+            frame_size = (frame.shape[1], frame.shape[0])
             original_out = cv2.VideoWriter(file, fourcc, 29, frame_size)
             print(f"Initialized VideoWriter for origin camera {i + 1}")
         original_out.write(frame)
 
-        if txt_file is None:
-            txt_file_path = os.path.join(folder, 'yolo_skeleton.txt')
-            txt_file = open(txt_file_path, "w")  # ✅ 錄影開始時開啟檔案
-            frame_count_for_detect = 0  # ✅ 只在錄影開始時歸零
-            print(f"Started writing data to {txt_file_path}")
-        
-    # frame 處理
-    results = model.predict(source=frame, conf=0.5, verbose = False)
-    frame_count_for_detect += 1  # Increment frame count for each frame
-
-    frame_data = []
-    if results[0].keypoints:
-        for result in results[0].keypoints:
-            keypoints = result.xy.tolist()
-
-            if not keypoints or not keypoints[0]:
-                if recording_sig and txt_file is not None:
-                    txt_file.write(f"{frame_count_for_detect},no detection\n")
-                pass
-            
-            keypoint_list = []
-            for keypoint in keypoints[0]:  
-                if len(keypoint) == 2:  
-                    x, y = keypoint
-                    keypoint_list.append((x, y))
-                    cv2.circle(frame, (int(x), int(y)), 5, (0, 255, 0), -1)
-
-            for (start_idx, end_idx) in connections:
-                if start_idx < len(keypoint_list) and end_idx < len(keypoint_list):
-                    start_point = keypoint_list[start_idx]
-                    end_point = keypoint_list[end_idx]
-                    
-                    if start_point != (0, 0) and end_point != (0, 0):
-                        cv2.line(frame, (int(start_point[0]), int(start_point[1])),
-                                (int(end_point[0]), int(end_point[1])), (255, 0, 0), 2)
-            frame_data.append(keypoint_list)
-            
     # 錄影開始
     if recording_sig:
-        if out is None:  # 初始化 VideoWriter
-            file = os.path.join(folder, f'vision{i + 1}.mp4')
-            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-            frame_size = (frame.shape[1], frame.shape[0])  # 幀大小 (width, height)
+        if out is None:
+            file = os.path.join(folder, f'vision{i + 1}.avi')
+            fourcc = cv2.VideoWriter_fourcc(*'XVID')
+            frame_size = (frame.shape[1], frame.shape[0])
             out = cv2.VideoWriter(file, fourcc, 29, frame_size)
             print(f"Initialized VideoWriter for camera {i + 1}")
         out.write(frame)
-        
-        if txt_file is not None:
-            txt_file.write(f"Frame {frame_count_for_detect}: {frame_data}\n")
     
+    barrier.wait()   
     if not recording_sig:
         frame_count_for_detect = 0
         # 錄影結束
@@ -661,16 +716,17 @@ def benchpress_head_loop(i, frame, label, save_sig, recording_sig, folder,
             save_sig = False
         out = None
         original_out = None
-        if txt_file is not None:
-            txt_file.close()
-            txt_file = None  # ✅ 確保 `txt_file` 被正確關閉
-            print(f"Closed txt_file for camera {i + 1}")
-    
-    barrier.wait()
+
+    # 顯示畫面
     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
+    cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX,
+                1, (0, 255, 0), 2, cv2.LINE_AA)
     h, w, ch = frame.shape
-    qpixmap = QtGui.QPixmap.fromImage(QtGui.QImage(frame.data, w, h, ch*w, QtGui.QImage.Format_RGB888))
-    scale_qpixmap = qpixmap.scaled(label.width(), label.height(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
+    qpixmap = QtGui.QPixmap.fromImage(QtGui.QImage(
+        frame.data, w, h, ch * w, QtGui.QImage.Format_RGB888))
+    scale_qpixmap = qpixmap.scaled(label.width(), label.height(),
+                                   QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
     label.setPixmap(scale_qpixmap)
-    return start_time, frame_count, fps, out, frame_count_for_detect, original_out, save_sig, txt_file
+
+    return start_time, frame_count, fps, out, original_out, save_sig, frame_count_for_detect
+
