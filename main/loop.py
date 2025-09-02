@@ -196,204 +196,266 @@ def deadlift_general_loop(i, frame, label, save_sig, recording_sig, folder,
     scale_qpixmap = qpixmap.scaled(label.width(), label.height(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
     label.setPixmap(scale_qpixmap)
     return start_time, frame_count, fps, out, save_sig
+# ====== Squat ======
+# ====== 全域設定與共用物件 ======
+import os, time, cv2, threading                                                          # 基本模組
+from PyQt5 import QtGui, QtCore                                                          # Qt 顯示
 
-def squat_bar_loop(i, frame, label, save_sig, recording_sig, folder,
-                      start_time, frame_count, fps, out, model, txt_file, frame_count_for_detect, barrier):
-    # fps 計算
-    frame_count += 1
-    elapsed_time = time.time() - start_time
-    if elapsed_time >= 1:
-        fps = frame_count / elapsed_time
-        frame_count = 0
-        start_time = time.time()
-    
-    frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
-    # 錄影開始
+# 推論序列化鎖（cam1/cam2 用）：避免兩路同時搶 GPU 導致抖動/崩潰                        # 全域鎖
+inference_lock = threading.Lock()                                                        # 全域推論鎖
+
+# 統一 YOLO 參數                                                                         # 統一參數
+YOLO_IMGSZ = 288                                                                         # 輸入影像邊長
+YOLO_CONF  = 0.65                                                                        # 置信度閾值
+YOLO_MAXDET= 1                                                                           # 只取一人/一物體
+
+# 錄影設定（全部改 MJPG）                                                                 # MJPG 設定
+FOURCC_MJPG = cv2.VideoWriter_fourcc(*'MJPG')                                            # MJPG fourcc
+REC_FPS     = 29                                                                         # 錄影 FPS
+
+
+def squat_bar_loop(i, frame, label, save_sig, recording_sig, folder,                     # 槓視角（cam1）
+                   start_time, frame_count, fps, out, original_out,                      # 疊圖 writer／原始 writer
+                   model, txt_file, frame_count_for_detect, barrier):                    # 模型／txt／幀計數／柵欄
+    # ---- FPS 計算 ----                                                                   # FPS
+    frame_count += 1                                                                     # 幀數+1
+    elapsed_time = time.time() - start_time                                              # 距上次秒數
+    if elapsed_time >= 1:                                                                # 每秒刷新
+        fps = frame_count / elapsed_time                                                 # 計算 FPS
+        frame_count = 0                                                                  # 幀數歸零
+        start_time = time.time()                                                         # 重置起點
+
+    # ---- 影像前處理（旋轉） ----                                                          # 旋轉
+    frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)                                   # 順時針 90°
+
+    # ---- 初始化 VideoWriter（在開始錄影時） ----                                             # 初始化 writer
     if recording_sig:
-        if out is None:  # 初始化 VideoWriter
-            file = os.path.join(folder, f'vision{i + 1}.mp4')
-            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-            frame_size = (frame.shape[1], frame.shape[0])  # 幀大小 (width, height)
-            out = cv2.VideoWriter(file, fourcc, 29, frame_size)
-            print(f"Initialized VideoWriter for camera {i + 1}")
-        out.write(frame)
-
-        if txt_file is None:
-            txt_file_path = os.path.join(folder, 'yolo_coordinates.txt')
-            txt_file = open(txt_file_path, "w")  # ✅ 錄影開始時開啟檔案
-            frame_count_for_detect = 0  # ✅ 只在錄影開始時歸零
-            print(f"Started writing data to {txt_file_path}")
-
-    # frame 處理
-    results = model(source=frame, imgsz=320, conf=0.5, verbose=False)
-    boxes = results[0].boxes
-    detected = False
-    for result in results:
-        frame = result.plot()
+        if original_out is None:                                                         # 原始影像 writer
+            ori_path = os.path.join(folder, f'original_vision{i+1}.avi')                 # 檔名：original_vision*.avi
+            h, w = frame.shape[:2]                                                       # 高寬
+            original_out = cv2.VideoWriter(ori_path, FOURCC_MJPG, REC_FPS, (w, h))       # 建立 writer
+        if out is None:                                                                  # 疊圖影像 writer
+            vis_path = os.path.join(folder, f'vision{i+1}.avi')                          # 檔名：vision*.avi
+            h, w = frame.shape[:2]                                                       # 高寬
+            out = cv2.VideoWriter(vis_path, FOURCC_MJPG, REC_FPS, (w, h))                # 建立 writer
+        if txt_file is None:                                                             # 槓座標 txt（沿用你的格式）
+            txt_path = os.path.join(folder, 'yolo_coordinates.txt')                      # txt 檔案路徑
+            txt_file = open(txt_path, "w")                                               # 開啟檔案
+            frame_count_for_detect = 0                                                   # 幀計數歸零（定義為：每幀+1）
     
-    # write result
-    if recording_sig or txt_file is not None:
-        for box in boxes.xywh:
-            detected = True
-            x_center, y_center, width, height = box
-            frame_count_for_detect += 1
-            txt_file.write(f"{frame_count_for_detect},{x_center},{y_center},{width},{height}\n")
-            
-        if not detected:
-            frame_count_for_detect += 1
-            txt_file.write(f"{frame_count_for_detect},no detection\n")
+    # ---- 生成原始幀副本（給原始檔用） ----                                                   # 原始副本
+    original_frame = frame.copy()                                                        # 複製一份未疊圖影像
 
-    barrier.wait()
-    if not recording_sig:
-        frame_count_for_detect = 0
-        # 錄影結束
-        if save_sig and out is not None:
-            out.release()
-            print(f"Released VideoWriter for camera {i + 1}")
-            save_sig = False
-        out = None
-        if txt_file is not None:
-            txt_file.close()
-            txt_file = None  # ✅ 確保 `txt_file` 被正確關閉
-            print(f"Closed txt_file for camera {i + 1}")
+    # ---- YOLO 推論（只鎖推論本身；不鎖其他工作） ----                                          # 推論序列化
+    results = None                                                                       # 預設無結果
+    if recording_sig:                                                                    # 只在錄影時推論（可視需求改成永遠推）
+        with inference_lock:                                                             # 進入推論臨界區（cam1/cam2 輪流）
+            results = model(frame, imgsz=YOLO_IMGSZ, conf=YOLO_CONF,                     # 單幀推論
+                             max_det=YOLO_MAXDET, verbose=False)                         # 不用 stream=True
 
-    cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
-    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    h, w, ch = frame.shape
-    qpixmap = QtGui.QPixmap.fromImage(QtGui.QImage(frame_rgb.data, w, h, ch*w, QtGui.QImage.Format_RGB888))
-    scale_qpixmap = qpixmap.scaled(label.width(), label.height(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
-    label.setPixmap(scale_qpixmap)
-    return start_time, frame_count, fps, out, frame_count_for_detect, save_sig, txt_file
-
-def squat_bone_loop(i, frame, label, save_sig, recording_sig, folder,
-                       start_time, frame_count, fps, out, model, txt_file, frame_count_for_detect, skeleton_connections, barrier):
-    frame_count += 1
-    elapsed_time = time.time() - start_time
-    if elapsed_time >= 1:
-        fps = frame_count / elapsed_time
-        frame_count = 0
-        start_time = time.time()
-    
-    frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
-
-    # ✅ 錄影開始
-    if recording_sig:
-        if out is None:
-            file = os.path.join(folder, f'vision{i + 1}.mp4')
-            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-            frame_size = (frame.shape[1], frame.shape[0])
-            out = cv2.VideoWriter(file, fourcc, 29, frame_size)
-            print(f"Initialized VideoWriter for camera {i + 1}")
-        out.write(frame)
-
-        if txt_file is None:
-            txt_file_path = os.path.join(folder, 'mediapipe_landmarks.txt')
-            txt_file = open(txt_file_path, "w")
-            frame_count_for_detect = 0
-            print(f"Started writing data to {txt_file_path}")
-
-    # ✅ YOLO 偵測骨架
-    results = list(model(source=frame, stream=True, verbose=False))
-    frame_count_for_detect += 1
-
-    if results and results[0].keypoints:  # ✅ 確保有偵測到人
-        r2 = results[0]  # ✅ 只取第一個偵測結果
-        keypoints = r2.keypoints
-        kpts = keypoints[0]  # ✅ 只取第一個人的骨架點
-        keypoints_xy = kpts.xy  # shape: (1, 17, 2) -> 17 個關鍵點
-
-        # ✅ 過濾無效骨架點 (0,0)
-        kp_coords = []
-        frame_data = []  # 存放該幀的骨架點
-        for idx, kp in enumerate(keypoints_xy[0]):
-            x_kp, y_kp = int(kp[0].item()), int(kp[1].item())
-
-            # ✅ 若骨架點為 (0,0)，則標記為 None（不畫）
-            if x_kp == 0 and y_kp == 0:
-                kp_coords.append(None)
+    # ---- 疊圖（bar 用內建 plot） + 寫 txt（每幀只加一次計數） ----                               # 疊圖與記錄
+    if recording_sig and results is not None and len(results) > 0:                       # 有結果才處理
+        r0 = results[0]                                                                  # 取第一筆
+        frame = r0.plot()                                                                # 疊框到 frame（只畫一次）
+        boxes_ok = hasattr(r0, "boxes") and r0.boxes is not None and r0.boxes.xywh is not None  # 檢查 boxes
+        # 幀序號 +1（不論是否有 box；每幀只加一次）                                              
+        frame_count_for_detect += 1                                                      # 幀計數+1（統一定義）
+        if txt_file is not None:                                                         # 有檔案才寫
+            if boxes_ok and r0.boxes.xywh.shape[0] > 0:                                  # 有偵測到
+                for xywh in r0.boxes.xywh.cpu().numpy():                                 # 逐 box（通常 max_det=1）
+                    x_c, y_c, w_b, h_b = xywh                                            # 取 xywh
+                    txt_file.write(f"{frame_count_for_detect},{x_c},{y_c},{w_b},{h_b}\n")# 寫一行
             else:
-                kp_coords.append((x_kp, y_kp))
-                cv2.circle(frame, (x_kp, y_kp), 5, (0, 255, 0), cv2.FILLED)
-            
-            frame_data.append(f"{frame_count_for_detect},{idx},{x_kp},{y_kp}")
-
-        # ✅ 繪製骨架連線，若其中一個點為 None，則不畫線
-        for start_idx, end_idx in skeleton_connections:
-            if start_idx < len(kp_coords) and end_idx < len(kp_coords):
-                if kp_coords[start_idx] is None or kp_coords[end_idx] is None:
-                    continue
-                cv2.line(frame, kp_coords[start_idx], kp_coords[end_idx], (0, 255, 255), 2)
-
-        # ✅ **將骨架點資訊寫入 `txt_file`**
-        if txt_file is not None:
-            txt_file.write("\n".join(frame_data) + "\n")
-
+                txt_file.write(f"{frame_count_for_detect},no detection\n")               # 寫無偵測
     else:
-        # ❌ **沒有偵測到人，寫入 "no detection"**
-        if txt_file is not None:
-            txt_file.write(f"{frame_count_for_detect},no detection\n")
+        # 沒推論或沒錄影時，不動 frame_count_for_detect（保持只在錄影期間計數）                      # 非錄影不計
+        pass                                                                             # 保持現狀
 
-    # ✅ **錄影完全結束後才關閉 `txt_file`**
-    barrier.wait()
-    if not recording_sig:
-        if txt_file is not None:
-            txt_file.close()
-            txt_file = None
-            print(f"Closed txt_file for camera {i + 1}")
-
-        if out is not None:
-            out.release()
-            out = None
-            print(f"Released VideoWriter for camera {i + 1}")
-        save_sig = False
-
-    # ✅ 繪製 FPS
-    cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
-    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    h, w, ch = frame.shape
-    qpixmap = QtGui.QPixmap.fromImage(QtGui.QImage(frame_rgb.data, w, h, ch*w, QtGui.QImage.Format_RGB888))
-    scale_qpixmap = qpixmap.scaled(label.width(), label.height(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
-    label.setPixmap(scale_qpixmap)
-    return start_time, frame_count, fps, out, frame_count_for_detect, save_sig, txt_file
-
-
-def squat_general_loop(i, frame, label, save_sig, recording_sig, folder,
-                          start_time, frame_count, fps, out, barrier):
-    frame_count += 1
-    elapsed_time = time.time() - start_time
-    if elapsed_time >= 1:
-        fps = frame_count / elapsed_time
-        frame_count = 0
-        start_time = time.time()
-        
-    frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
-    # 錄影開始
+    # ---- 寫入影片（原始 + 疊圖） ----                                                          # 寫檔
     if recording_sig:
-        if out is None:  # 初始化 VideoWriter
-            file = os.path.join(folder, f'vision{i + 1}.mp4')
-            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-            frame_size = (frame.shape[1], frame.shape[0])  # 幀大小 (width, height)
-            out = cv2.VideoWriter(file, fourcc, 29, frame_size)
-            print(f"Initialized VideoWriter for camera {i + 1}")
-        out.write(frame)
+        if original_out is not None:                                                     # 原始 writer 存在
+            original_out.write(original_frame)                                           # 寫原始幀
+        if out is not None:                                                              # 疊圖 writer 存在
+            out.write(frame)                                                             # 寫疊圖幀
+
+    # ---- 同步（為安全仍每幀 wait；如要真每 2 幀同調，需加共用幀計數） ----                           # 柵欄
+    barrier.wait()                                                                       # 每幀同步（避免死鎖）
+
+    # ---- 錄影結束處理 ----                                                                    # 收尾
+    if not recording_sig:                                                                # 未錄影狀態
+        frame_count_for_detect = 0                                                       # 幀計數歸零
+        if save_sig and out is not None:                                                 # 若要保存且 writer 存在
+            out.release()                                                                # 關閉疊圖 writer
+            out = None                                                                   # 置空
+        if save_sig and original_out is not None:                                        # 原始 writer
+            original_out.release()                                                       # 關閉原始 writer
+            original_out = None                                                          # 置空
+        save_sig = False                                                                 # 清保存旗標
+        if txt_file is not None:                                                         # 關閉 txt
+            txt_file.close()                                                             # 關
+            txt_file = None                                                              # 置空
+
+    # ---- 顯示到 Qt ----                                                                       # 顯示
+    cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX,            # 畫 FPS
+                1, (0, 255, 0), 2, cv2.LINE_AA)                                          # 樣式
+    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)                                   # BGR→RGB
+    h, w, ch = frame.shape                                                               # 取尺寸
+    qimg = QtGui.QImage(frame_rgb.data, w, h, ch*w, QtGui.QImage.Format_RGB888)          # 做 QImage
+    scale_qpix = QtGui.QPixmap.fromImage(qimg).scaled(                                   # 縮放
+        label.width(), label.height(), QtCore.Qt.KeepAspectRatio,                        # 等比
+        QtCore.Qt.SmoothTransformation)                                                  # 平滑
+    label.setPixmap(scale_qpix)                                                          # 顯示
+    return start_time, frame_count, fps, out, original_out, frame_count_for_detect, save_sig, txt_file  # 回傳
+
+def squat_bone_loop(i, frame, label, save_sig, recording_sig, folder,                     # 骨架視角（cam2）
+                    start_time, frame_count, fps, out, original_out,                      # 疊圖／原始 writer
+                    model, txt_file, frame_count_for_detect,                              # 模型／txt／幀計數
+                    skeleton_connections, barrier):                                       # 骨架連線／柵欄
+    # ---- FPS 計算 ----                                                                   # FPS
+    frame_count += 1                                                                     # 幀+1
+    elapsed_time = time.time() - start_time                                              # 距上次秒數
+    if elapsed_time >= 1:                                                                # 每秒刷新
+        fps = frame_count / elapsed_time                                                 # FPS
+        frame_count = 0                                                                  # 歸零
+        start_time = time.time()                                                         # 重置
+
+    # ---- 旋轉 ----                                                                         # 旋轉
+    frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)                                   # 順時針 90°
+    original_frame = frame.copy()                                                        # 保留原始幀
+
+    # ---- 初始化錄影與 txt ----                                                               # 初始化 writer/txt
+    if recording_sig:
+        if original_out is None:                                                         # 原始 writer
+            ori_path = os.path.join(folder, f'original_vision{i+1}.avi')                 # 路徑
+            h, w = frame.shape[:2]                                                       # 高寬
+            original_out = cv2.VideoWriter(ori_path, FOURCC_MJPG, REC_FPS, (w, h))       # 建立
+        if out is None:                                                                  # 疊圖 writer
+            vis_path = os.path.join(folder, f'vision{i+1}.avi')                          # 路徑
+            h, w = frame.shape[:2]                                                       # 高寬
+            out = cv2.VideoWriter(vis_path, FOURCC_MJPG, REC_FPS, (w, h))                # 建立
+        if txt_file is None:                                                             # 骨架 txt
+            txt_path = os.path.join(folder, 'mediapipe_landmarks.txt')                   # 檔名沿用
+            txt_file = open(txt_path, "w")                                               # 開檔
+            frame_count_for_detect = 0                                                   # 幀計數歸零（每幀+1）
+
+    # ---- YOLO 推論（骨架；不使用 plot，改自行畫點與連線） ----                                     # 推論（序列化）
+    keypoints_xy = None                                                                  # 預設無點
+    if recording_sig:                                                                    # 錄影時才推
+        with inference_lock:                                                             # 進入推論臨界區
+            results = model(frame, imgsz=YOLO_IMGSZ, conf=YOLO_CONF,                     # 單幀推論
+                             max_det=YOLO_MAXDET, verbose=False)                         # 無 stream=True
+        if results is not None and len(results) > 0:                                     # 有結果
+            r0 = results[0]                                                              # 取第一筆
+            has_kp = hasattr(r0, "keypoints") and r0.keypoints is not None               # 有 keypoints
+            if has_kp and getattr(r0.keypoints, "xy", None) is not None:                 # 檢查 xy
+                xy = r0.keypoints.xy                                                     # (1, K, 2)
+                if xy is not None and len(xy) > 0:                                       # 非空
+                    keypoints_xy = xy[0].cpu().numpy()                                   # 取第一人 (K,2)
     
-    # 錄影結束    
-    barrier.wait()
-    if not recording_sig:
-        if out is not None:
-            out.release()
-            print(f"Released VideoWriter for camera {i + 1}")
-        out = None
-    
-    cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
-    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    h, w, ch = frame.shape
-    qpixmap = QtGui.QPixmap.fromImage(QtGui.QImage(frame_rgb.data, w, h, ch*w, QtGui.QImage.Format_RGB888))
-    scale_qpixmap = qpixmap.scaled(label.width(), label.height(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
-    label.setPixmap(scale_qpixmap)
-    return start_time, frame_count, fps, out, save_sig
+    # ---- 幀計數（每幀只加一次） + txt 寫入 ----                                                  # txt 記錄
+    if recording_sig and txt_file is not None:                                           # 需要寫檔
+        frame_count_for_detect += 1                                                      # 幀+1（統一定義）
+        if keypoints_xy is not None:                                                     # 有骨架
+            # 逐點寫入：frame, idx, x, y（若某點無效，寫 no detection 該點可改寫 null 規格）            # 逐點
+            for idx in range(keypoints_xy.shape[0]):                                     # 遍歷關節
+                x_kp, y_kp = float(keypoints_xy[idx, 0]), float(keypoints_xy[idx, 1])    # 轉 float
+                txt_file.write(f"{frame_count_for_detect},{idx},{x_kp},{y_kp}\n")        # 寫一列
+        else:
+            txt_file.write(f"{frame_count_for_detect},no detection\n")                   # 無偵測
+
+    # ---- 疊圖（自己畫點與連線；不再呼叫 plot()） ----                                               # 繪製骨架
+    if keypoints_xy is not None:                                                         # 有骨架
+        # 畫關節點                                                                          # 畫點
+        for (x, y) in keypoints_xy:                                                      # 逐點
+            cv2.circle(frame, (int(x), int(y)), 5, (0, 255, 0), cv2.FILLED)              # 綠點
+        # 畫連線                                                                            # 畫線
+        for s_idx, e_idx in skeleton_connections:                                        # 逐邊
+            if s_idx < keypoints_xy.shape[0] and e_idx < keypoints_xy.shape[0]:          # 邊界檢查
+                x1, y1 = keypoints_xy[s_idx]                                             # 起點
+                x2, y2 = keypoints_xy[e_idx]                                             # 終點
+                cv2.line(frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 255), 2)# 黃線
+
+    # ---- 寫入影片（原始 + 疊圖） ----                                                          # 寫檔
+    if recording_sig:
+        if original_out is not None:                                                     # 原始 writer
+            original_out.write(original_frame)                                           # 寫原始幀
+        if out is not None:                                                              # 疊圖 writer
+            out.write(frame)                                                             # 寫疊圖幀
+
+    # ---- 同步（安全：仍每幀 wait；要 2 幀同調需全域幀計數，之後可再加） ----                             # 柵欄
+    barrier.wait()                                                                       # 每幀同步
+
+    # ---- 錄影結束處理 ----                                                                    # 收尾
+    if not recording_sig:                                                                # 未錄影
+        frame_count_for_detect = 0                                                       # 幀歸零
+        if save_sig and out is not None:                                                 # 關疊圖
+            out.release()                                                                # 釋放
+            out = None                                                                   # 置空
+        if save_sig and original_out is not None:                                        # 關原始
+            original_out.release()                                                       # 釋放
+            original_out = None                                                          # 置空
+        save_sig = False                                                                 # 清旗標
+        if txt_file is not None:                                                         # 關 txt
+            txt_file.close()                                                             # 釋放
+            txt_file = None                                                              # 置空
+
+    # ---- 顯示到 Qt ----                                                                       # 顯示
+    cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX,            # 畫 FPS
+                1, (0, 255, 0), 2, cv2.LINE_AA)                                          # 樣式
+    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)                                   # 顏色轉換
+    h, w, ch = frame.shape                                                               # 尺寸
+    qimg = QtGui.QImage(frame_rgb.data, w, h, ch*w, QtGui.QImage.Format_RGB888)          # QImage
+    scale_qpix = QtGui.QPixmap.fromImage(qimg).scaled(                                   # 縮放
+        label.width(), label.height(), QtCore.Qt.KeepAspectRatio,                        # 等比
+        QtCore.Qt.SmoothTransformation)                                                  # 平滑
+    label.setPixmap(scale_qpix)                                                          # 顯示
+    return start_time, frame_count, fps, out, original_out, frame_count_for_detect, save_sig, txt_file  # 回傳
+
+def squat_general_loop(i, frame, label, save_sig, recording_sig, folder,                  # 一般視角（cam3~6）
+                       start_time, frame_count, fps, out, barrier):                       # writer／柵欄
+    # ---- FPS 計算 ----                                                                   # FPS
+    frame_count += 1                                                                     # 幀+1
+    elapsed_time = time.time() - start_time                                              # 距上次秒數
+    if elapsed_time >= 1:                                                                # 每秒刷新
+        fps = frame_count / elapsed_time                                                 # FPS
+        frame_count = 0                                                                  # 歸零
+        start_time = time.time()                                                         # 重置
+
+    # ---- 旋轉 ----                                                                         # 旋轉
+    frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)                                   # 順時針 90°
+
+    # ---- 錄影（MJPG） ----                                                                  # 錄影
+    if recording_sig:                                                                    # 若在錄影
+        if out is None:                                                                  # 初始化 writer
+            path = os.path.join(folder, f'vision{i+1}.avi')                              # 檔名
+            h, w = frame.shape[:2]                                                       # 高寬
+            out = cv2.VideoWriter(path, FOURCC_MJPG, REC_FPS, (w, h))                    # 建立 writer
+        out.write(frame)                                                                 # 寫一幀
+
+    # ---- 同步（安全：仍每幀 wait） ----                                                          # 柵欄
+    barrier.wait()                                                                       # 每幀同步
+
+    # ---- 錄影結束處理 ----                                                                    # 收尾
+    if not recording_sig:                                                                # 未錄影
+        if out is not None:                                                              # 若 writer 存在
+            out.release()                                                                # 關閉
+            out = None                                                                   # 置空
+        save_sig = False                                                                 # 清旗標
+
+    # ---- 顯示到 Qt ----                                                                       # 顯示
+    cv2.putText(frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX,            # 畫 FPS
+                1, (0, 255, 0), 2, cv2.LINE_AA)                                          # 樣式
+    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)                                   # 顏色轉換
+    h, w, ch = frame.shape                                                               # 尺寸
+    qimg = QtGui.QImage(frame_rgb.data, w, h, ch*w, QtGui.QImage.Format_RGB888)          # QImage
+    scale_qpix = QtGui.QPixmap.fromImage(qimg).scaled(                                   # 縮放
+        label.width(), label.height(), QtCore.Qt.KeepAspectRatio,                        # 等比
+        QtCore.Qt.SmoothTransformation)                                                  # 平滑
+    label.setPixmap(scale_qpix)                                                          # 顯示
+    return start_time, frame_count, fps, out, save_sig                                   # 回傳
 
 
+# benchpress
 # ====== 緩衝常數（可依需求調整）======
 BODY_BUF_FRAMES = 20                     # 人體偵測命中/未命中緩衝幀數                         # 遲滯
 BAR_HOLD_FRAMES = 20                     # 槓位移命中後維持 True 的幀數                       # 槓Gate保持
@@ -664,11 +726,11 @@ def benchpress_body_loop(i, frame, label, save_sig, folder,                     
     hit_cnt = _shared_get(shared_state, shared_lock, hit_key, 0)                              # 命中幀
     miss_cnt = _shared_get(shared_state, shared_lock, miss_key, 0)                            # 未中幀
 
-    # UI 未啟動 → 統一收尾                                                             # 早退模板
-    early, (out, original_out, txt_file), (save_sig, frame_count_for_detect) = \              # ★ 這裡也要包含 original_out
+    # UI 未啟動 → 統一收尾                                                                     # 早退模板
+    early, (out, original_out, txt_file), (save_sig, frame_count_for_detect) = \              
         _idle_if_ui_off(gate_ui, label, frame, fps, barrier,
                         shared_state, shared_lock, cam_rec_key,
-                        (out, original_out, txt_file), (save_sig, frame_count_for_detect))
+                        (out, original_out, txt_file), (save_sig, frame_count_for_detect))   # ★ 這裡也要包含 original_out
     if early:                                                                                # 若早退
         return start_time, frame_count, fps, out, original_out, frame_count_for_detect, save_sig, txt_file  # ★ 回傳也帶 original_out
 

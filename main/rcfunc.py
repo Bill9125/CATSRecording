@@ -232,19 +232,31 @@ class Recordingbackend():
                     
                 elif sport == 'Squat':
                     if i == 0:
-                        start_time, frame_count, fps, out, frame_count_for_detect, self.save_sig_1, txt_file = loop.squat_bar_loop(
+                        # cam1：bar（新增 original_out；回傳也要多接 original_out）
+                        start_time, frame_count, fps, out, original_out, frame_count_for_detect, self.save_sig_1, txt_file = loop.squat_bar_loop(
                             i, frame, label, self.save_sig_1, self.recording_sig,
-                            self.folder, start_time, frame_count, fps, out, self.models[i],
-                            txt_file, frame_count_for_detect, barrier)
+                            self.folder, start_time, frame_count, fps,
+                            out, original_out,                      # ★ 傳入疊圖 writer 與原始 writer
+                            self.models[i], txt_file, frame_count_for_detect, barrier
+                        )
+
                     elif i == 1:
-                        start_time, frame_count, fps, out, frame_count_for_detect, self.save_sig_2, txt_file = loop.squat_bone_loop(
+                        # cam2：bone（同樣新增 original_out；回傳也要多接 original_out）
+                        start_time, frame_count, fps, out, original_out, frame_count_for_detect, self.save_sig_2, txt_file = loop.squat_bone_loop(
                             i, frame, label, self.save_sig_2, self.recording_sig,
-                            self.folder, start_time, frame_count, fps, out, self.models[i],
-                            txt_file, frame_count_for_detect, self.skeleton_connections, barrier)
+                            self.folder, start_time, frame_count, fps,
+                            out, original_out,                      # ★ 傳入疊圖 writer 與原始 writer
+                            self.models[i], txt_file, frame_count_for_detect,
+                            self.skeleton_connections, barrier
+                        )
+
                     else:
+                        # cam3~cam6：general（介面不變）
                         start_time, frame_count, fps, out, self.save_sig_3 = loop.squat_general_loop(
                             i, frame, label, self.save_sig_3, self.recording_sig,
-                            self.folder, start_time, frame_count, fps, out, barrier)
+                            self.folder, start_time, frame_count, fps, out, barrier
+                        )
+
         cap.__del__()
 
     def messagebox(self, type, text):
