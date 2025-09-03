@@ -337,20 +337,20 @@ class Replaybackend():
     def File_combobox_TextChanged(self, file_comboBox, play_btn, icons, Frameslider):
         videofolder = file_comboBox.currentText()
         folder = self.folders[self.currentsport]
-        videos = glob.glob(f'{folder}/{videofolder}/*.mp4')
+        videos = glob.glob(f'{folder}/{videofolder}/*.avi')
         self.datas = []
         
         # 臥推有六部avi影片，要抽取三部    
         if self.currentsport == 'Benchpress':
             if len(videos) == 6:
                 self.videos = [video for video in videos 
-                            if os.path.basename(video) in ('vision1.mp4', 'vision2.mp4', 'vision3.mp4')
+                            if os.path.basename(video) in ('vision1.avi', 'vision2.avi', 'vision3.avi')
                             ]
                 if self.videos:
                     self.videos[1], self.videos[2] = self.videos[2], self.videos[1]
             if len(videos) == 7:
                 self.videos = [video for video in videos 
-                            if os.path.basename(video) in ('vision1_drawed.mp4', 'vision2.mp4', 'original_vision3.mp4')
+                            if os.path.basename(video) in ('vision1_drawed.avi', 'vision2.avi', 'original_vision3.avi')
                             ]
                 if self.videos:
                     self.videos[1], self.videos[2] = self.videos[2], self.videos[1]
@@ -363,17 +363,17 @@ class Replaybackend():
                 
         ## 硬舉avi只需要 1, 2, 3 視角
         if self.currentsport == 'Deadlift':
-            # 未後製
+            # 未後製.
             if len(videos) == 5:
                 self.videos = [video for video in videos
-                            if os.path.basename(video) in ('vision1.mp4', 'vision2.mp4', 'vision3.mp4')]
+                            if os.path.basename(video) in ('vision1.avi', 'vision2.avi', 'vision3.avi')]
                 if self.videos:
                     self.videos = [self.videos[1], self.videos[2], self.videos[0]]
                 self.datas = []
             # 已後製
             elif len(videos) == 6:
                 self.videos = [video for video in videos
-                            if os.path.basename(video) in ('vision1_drawed.mp4', 'vision2.mp4', 'vision3.mp4')]
+                            if os.path.basename(video) in ('vision1_drawed.avi', 'vision2.avi', 'vision3.avi')]
                 if self.videos:
                     self.videos = [self.videos[1], self.videos[2], self.videos[0]]
                 # 抓取計算完的檔案
@@ -386,21 +386,21 @@ class Replaybackend():
                 self.info_data = self.datas[:4]
                 self.pred_data = self.datas[4]
 
-                ## squat
+                # squat
         if self.currentsport == 'Squat':
             # 未後製
             if len(videos) == 6:
                 self.videos = [video for video in videos
-                            if os.path.basename(video) in ('vision3.mp4', 'vision4.mp4', 'vision5.mp4')]
+                            if os.path.basename(video) in ('vision3.avi', 'vision4.avi', 'vision5.avi')]
                 if self.videos:
                     self.videos = [self.videos[0], self.videos[1], self.videos[2]]
                 self.datas = []
             # 已後製
             elif len(videos) == 8:
                 self.videos = [video for video in videos
-                            if os.path.basename(video) in ('vision2.mp4','vision3.mp4', 'vision4.mp4')]
+                            if os.path.basename(video) in ('vision2.avi','vision3.avi', 'vision4.avi')]
                 if self.videos:
-                    self.videos = [self.videos[1], self.videos[2], self.videos[0]]
+                    self.videos = [self.videos[0], self.videos[1], self.videos[2]]
                 # # 抓取計算完的檔案
                 # for i in range(len(self.data_path[self.currentsport])):
                 #     with open(f'./config/{self.currentsport}_data/{self.data_path[self.currentsport][i]}',

@@ -15,8 +15,8 @@ def deadlift_bar_loop(i, frame, label, save_sig, recording_sig, folder,
     # 錄影開始
     if recording_sig:
         if out is None:  # 初始化 VideoWriter
-            file = os.path.join(folder, f'vision{i + 1}.mp4')
-            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+            file = os.path.join(folder, f'vision{i + 1}.avi')
+            fourcc = cv2.VideoWriter_fourcc(*'MJPG')
             frame_size = (frame.shape[1], frame.shape[0])  # 幀大小 (width, height)
             out = cv2.VideoWriter(file, fourcc, 29, frame_size)
             print(f"Initialized VideoWriter for camera {i + 1}")
@@ -83,8 +83,8 @@ def deadlift_bone_loop(i, frame, label, save_sig, recording_sig, folder,
     # ✅ 錄影開始
     if recording_sig:
         if out is None:
-            file = os.path.join(folder, f'vision{i + 1}.mp4')
-            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+            file = os.path.join(folder, f'vision{i + 1}.avi')
+            fourcc = cv2.VideoWriter_fourcc(*'MJPG')
             frame_size = (frame.shape[1], frame.shape[0])
             out = cv2.VideoWriter(file, fourcc, 29, frame_size)
             print(f"Initialized VideoWriter for camera {i + 1}")
@@ -174,8 +174,8 @@ def deadlift_general_loop(i, frame, label, save_sig, recording_sig, folder,
     # 錄影開始
     if recording_sig:
         if out is None:  # 初始化 VideoWriter
-            file = os.path.join(folder, f'vision{i + 1}.mp4')
-            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+            file = os.path.join(folder, f'vision{i + 1}.avi')
+            fourcc = cv2.VideoWriter_fourcc(*'MJPG')
             frame_size = (frame.shape[1], frame.shape[0])  # 幀大小 (width, height)
             out = cv2.VideoWriter(file, fourcc, 29, frame_size)
             print(f"Initialized VideoWriter for camera {i + 1}")
@@ -210,8 +210,8 @@ YOLO_CONF  = 0.65                                                               
 YOLO_MAXDET= 1                                                                           # 只取一人/一物體
 
 # 錄影設定（全部改 MJPG）                                                                 # MJPG 設定
+FOURCC_MJPG = cv2.VideoWriter_fourcc(*'MJPG')                                            # MJPG fourcc
 # FOURCC_MJPG = cv2.VideoWriter_fourcc(*'MJPG')                                            # MJPG fourcc
-FOURCC_MJPG = cv2.VideoWriter_fourcc(*'mp4v')                                            # MJPG fourcc
 REC_FPS     = 29                                                                         # 錄影 FPS
 
 
@@ -233,11 +233,11 @@ def squat_bar_loop(i, frame, label, save_sig, recording_sig, folder,            
     if recording_sig:
         
         if original_out is None:                                                         # 原始影像 writer
-            ori_path = os.path.join(folder, f'original_vision{i+1}.mp4')                 # 檔名：original_vision*.mp4
+            ori_path = os.path.join(folder, f'original_vision{i+1}.avi')                 # 檔名：original_vision*.avi
             h, w = frame.shape[:2]                                                       # 高寬
             original_out = cv2.VideoWriter(ori_path, FOURCC_MJPG, REC_FPS, (w, h))       # 建立 writer
         if out is None:                                                                  # 疊圖影像 writer
-            vis_path = os.path.join(folder, f'vision{i+1}.mp4')                          # 檔名：vision*.mp4
+            vis_path = os.path.join(folder, f'vision{i+1}.avi')                          # 檔名：vision*.avi
             h, w = frame.shape[:2]                                                       # 高寬
             out = cv2.VideoWriter(vis_path, FOURCC_MJPG, REC_FPS, (w, h))                # 建立 writer
         if txt_file is None:                                                             # 槓座標 txt（沿用你的格式）
@@ -334,11 +334,11 @@ def squat_bone_loop(i, frame, label, save_sig, recording_sig, folder,           
     if recording_sig:                                                                     # 僅錄影時建立輸出
         if original_out is None:                                                          # 原始 writer
             h, w = frame.shape[:2]                                                        # 幀高寬
-            ori_path = os.path.join(folder, f'original_vision{i+1}.mp4')                  # 原始檔名
+            ori_path = os.path.join(folder, f'original_vision{i+1}.avi')                  # 原始檔名
             original_out = cv2.VideoWriter(ori_path, FOURCC_MJPG, REC_FPS, (w, h))        # 建立原始 writer
         if out is None:                                                                   # 疊圖 writer
             h, w = frame.shape[:2]                                                        # 幀高寬
-            vis_path = os.path.join(folder, f'vision{i+1}.mp4')                           # 疊圖檔名
+            vis_path = os.path.join(folder, f'vision{i+1}.avi')                           # 疊圖檔名
             out = cv2.VideoWriter(vis_path, FOURCC_MJPG, REC_FPS, (w, h))                 # 建立疊圖 writer
         if txt_file is None:                                                              # 骨架 txt
             txt_path = os.path.join(folder, 'mediapipe_landmarks.txt')                    # txt 檔名（沿用）
@@ -453,7 +453,7 @@ def squat_general_loop(i, frame, label, save_sig, recording_sig, folder,        
     # ---- 錄影（MJPG） ----                                                                  # 錄影
     if recording_sig:                                                                    # 若在錄影
         if out is None:                                                                  # 初始化 writer
-            path = os.path.join(folder, f'vision{i+1}.mp4')                              # 檔名
+            path = os.path.join(folder, f'vision{i+1}.avi')                              # 檔名
             h, w = frame.shape[:2]                                                       # 高寬
             out = cv2.VideoWriter(path, FOURCC_MJPG, REC_FPS, (w, h))                    # 建立 writer
         out.write(frame)                                                                 # 寫一幀
@@ -521,7 +521,7 @@ def _shared_set_many(shared_state, shared_lock, kv: dict):                      
 
 def _start_segment_writers(folder, i, seg_no, frame, need_original, need_txt, txt_suffix):    # 開啟暫存 writer 與 txt
     import os, cv2                                                                            # 檔案/影像
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')                                                  # mp4v 編碼
+    fourcc = cv2.VideoWriter_fourcc(*'MJPG')                                                  # MJPG 編碼
     size = (frame.shape[1], frame.shape[0])                                                   # 取影像尺寸
     tmp = {}                                                                                  # 暫存路徑字典
     out = None                                                                                # 疊圖 writer
@@ -529,9 +529,9 @@ def _start_segment_writers(folder, i, seg_no, frame, need_original, need_txt, tx
     txt_file = None                                                                           # txt 物件
     # 視訊路徑
     if need_original:                                                                         # 是否需要原始輸出
-        tmp['o'] = os.path.join(folder, f'_staging_cam{i}_seg{seg_no:03d}_original.mp4')      # 原始暫存檔名
+        tmp['o'] = os.path.join(folder, f'_staging_cam{i}_seg{seg_no:03d}_original.avi')      # 原始暫存檔名
         original_out = cv2.VideoWriter(tmp['o'], fourcc, 29, size)                            # 開原始 writer
-    tmp['v'] = os.path.join(folder, f'_staging_cam{i}_seg{seg_no:03d}_vision.mp4')            # 疊圖暫存檔名
+    tmp['v'] = os.path.join(folder, f'_staging_cam{i}_seg{seg_no:03d}_vision.avi')            # 疊圖暫存檔名
     out = cv2.VideoWriter(tmp['v'], fourcc, 29, size)                                         # 開疊圖 writer
     # 文字路徑
     if need_txt:                                                                              # 是否需要 txt
@@ -720,7 +720,7 @@ def benchpress_bar_loop(i, frame, label, save_sig, folder,                      
             out, original_out, txt_file,
             shared_state, shared_lock, tmp_paths_key, cam_rec_key,
             folder, i, seg_no,
-            mapping={"o":"original_vision1.mp4","v":"vision1.mp4","t":"yolo_coordinates.txt"},
+            mapping={"o":"original_vision1.avi","v":"vision1.avi","t":"yolo_coordinates.txt"},
             end_false_key=end_false_key,                 # ★ 必須補這行
             reset_frame_counter=True)                    #   才不會把 True 傳到 end_false_key
 
@@ -837,7 +837,7 @@ def benchpress_body_loop(i, frame, label, save_sig, folder,                     
             out, original_out, txt_file,                                                      # 連同原始 writer
             shared_state, shared_lock, tmp_paths_key, cam_rec_key,
             folder, i, seg_no,
-            mapping={"o":"original_vision2.mp4","v":"vision2.mp4","t":"yolo_body_keypoints.txt"},
+            mapping={"o":"original_vision2.avi","v":"vision2.avi","t":"yolo_body_keypoints.txt"},
             end_false_key=end_false_key)                                                      # 結束判定
         if ended:                                                                             # 段落已關
             out, txt_file = None, None                                                        # 釋放本地
@@ -906,7 +906,7 @@ def benchpress_head_loop(i, frame, label, save_sig, folder,                     
             out, original_out, None,
             shared_state, shared_lock, tmp_paths_key, cam_rec_key,
             folder, i, seg_no,
-            mapping={"o": "original_vision3.mp4", "v": "vision3.mp4"},                       # Head 檔名規則
+            mapping={"o": "original_vision3.avi", "v": "vision3.avi"},                       # Head 檔名規則
             end_false_key=end_false_key,
             reset_frame_counter=True)
         if ended:                                                                            # 若已關段
