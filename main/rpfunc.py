@@ -366,14 +366,14 @@ class Replaybackend():
             # 未後製
             if len(videos) == 5:
                 self.videos = [video for video in videos
-                            if os.path.basename(video) in ('vision1.avi', 'vision2.avi', 'vision3.avi')]
+                            if os.path.basename(video) in ('vision1.mp4', 'vision2.mp4', 'vision3.mp4')]
                 if self.videos:
                     self.videos = [self.videos[1], self.videos[2], self.videos[0]]
                 self.datas = []
             # 已後製
             elif len(videos) == 6:
                 self.videos = [video for video in videos
-                            if os.path.basename(video) in ('vision1_drawed.avi', 'vision2.avi', 'vision3.avi')]
+                            if os.path.basename(video) in ('vision1_drawed.mp4', 'vision2.mp4', 'vision3.mp4')]
                 if self.videos:
                     self.videos = [self.videos[1], self.videos[2], self.videos[0]]
                 # 抓取計算完的檔案
@@ -389,16 +389,16 @@ class Replaybackend():
                 ## squat
         if self.currentsport == 'Squat':
             # 未後製
-            if len(videos) == 5:
+            if len(videos) == 6:
                 self.videos = [video for video in videos
-                            if os.path.basename(video) in ('vision3.avi', 'vision4.avi', 'vision5.avi')]
+                            if os.path.basename(video) in ('vision3.mp4', 'vision4.mp4', 'vision5.mp4')]
                 if self.videos:
                     self.videos = [self.videos[0], self.videos[1], self.videos[2]]
                 self.datas = []
             # 已後製
-            elif len(videos) == 6:
+            elif len(videos) == 8:
                 self.videos = [video for video in videos
-                            if os.path.basename(video) in ('vision2.avi','vision3.avi', 'vision4.avi')]
+                            if os.path.basename(video) in ('vision2.mp4','vision3.mp4', 'vision4.mp4')]
                 if self.videos:
                     self.videos = [self.videos[1], self.videos[2], self.videos[0]]
                 # # 抓取計算完的檔案
