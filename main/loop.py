@@ -704,40 +704,45 @@ def benchpress_bar_loop(i, frame, label, save_sig, folder,                      
     return start_time, frame_count, fps, out, frame_count_for_detect, original_out, save_sig, txt_file  # 回傳
 
 def benchpress_body_loop(i, frame, label, save_sig, folder,                                   # 人體視角
-                         start_time, frame_count, fps, out, original_out, model, txt_file,    # ★ 新增 original_out 參數（原始影片 writer）
+                         start_time, frame_count, fps, out, model, txt_file,                  # I/O 與模型（順序不變）
                          frame_count_for_detect, skeleton_connections, barrier,               # 幀計數 / 柵欄
                          shared_state, shared_lock):                                          # 共享狀態
-    # 常用 key                                                                           # 固定 key
-    cam_rec_key = f"rec_cam{i}"                                                               # 是否在錄
-    cam_seg_key = f"seg_cam{i}"                                                               # 段號
+    # ---- 常用 key --------------------------------------------------------------------
+    cam_rec_key   = f"rec_cam{i}"                                                             # 是否在錄
+    cam_seg_key   = f"seg_cam{i}"                                                             # 段號
     end_false_key = f"rec_end_false_cam{i}"                                                   # False 緩衝
     tmp_paths_key = f"tmp_paths_cam{i}"                                                       # 暫存路徑
-    hit_key = f"body_hit_cnt_cam{i}"                                                          # 命中
-    miss_key = f"body_miss_cnt_cam{i}"                                                        # 未中
+    hit_key       = f"body_hit_cnt_cam{i}"                                                    # 命中
+    miss_key      = f"body_miss_cnt_cam{i}"                                                   # 未中
+    orig_wr_key   = f"original_out_cam{i}"                                                    # 原始 writer 句柄
 
-    # FPS 更新                                                                          # 每幀維護 FPS
+    # ---- FPS 更新 --------------------------------------------------------------------
     start_time, frame_count, fps = _update_fps(start_time, frame_count, fps)                  # 刷新 FPS
 
-    # 讀 gate 與狀態                                                                    # 集中讀
-    gate_ui = _shared_get(shared_state, shared_lock, "recording_sig", False)                  # UI Gate
-    is_rec  = _shared_get(shared_state, shared_lock, cam_rec_key, False)                      # 是否在錄
-    seg_no  = _shared_get(shared_state, shared_lock, cam_seg_key, 0)                          # 段號
+    # ---- 狀態讀取 --------------------------------------------------------------------
+    gate_ui   = _shared_get(shared_state, shared_lock, "recording_sig", False)                # UI Gate
+    is_rec    = _shared_get(shared_state, shared_lock, cam_rec_key, False)                    # 是否在錄
+    seg_no    = _shared_get(shared_state, shared_lock, cam_seg_key, 0)                        # 段號
     end_false_cnt = _shared_get(shared_state, shared_lock, end_false_key, 0)                  # False 緩衝
-    hit_cnt = _shared_get(shared_state, shared_lock, hit_key, 0)                              # 命中幀
-    miss_cnt = _shared_get(shared_state, shared_lock, miss_key, 0)                            # 未中幀
+    hit_cnt   = _shared_get(shared_state, shared_lock, hit_key, 0)                            # 命中幀
+    miss_cnt  = _shared_get(shared_state, shared_lock, miss_key, 0)                           # 未中幀
+    original_out = _shared_get(shared_state, shared_lock, orig_wr_key, None)                  # 取原始 writer
 
-    # UI 未啟動 → 統一收尾                                                                     # 早退模板
-    early, (out, original_out, txt_file), (save_sig, frame_count_for_detect) = \              
+    # ---- UI 未啟動 → 統一收尾（早退） -------------------------------------------------
+    early, (out, _unused_original, txt_file), (save_sig, frame_count_for_detect) =\
         _idle_if_ui_off(gate_ui, label, frame, fps, barrier,
                         shared_state, shared_lock, cam_rec_key,
-                        (out, original_out, txt_file), (save_sig, frame_count_for_detect))   # ★ 這裡也要包含 original_out
-    if early:                                                                                # 若早退
-        return start_time, frame_count, fps, out, original_out, frame_count_for_detect, save_sig, txt_file  # ★ 回傳也帶 original_out
+                        (out, None, txt_file), (save_sig, frame_count_for_detect))
+    if early:                                                                                 # 若早退
+        return start_time, frame_count, fps, out, frame_count_for_detect, save_sig, txt_file  # 回傳數量不變
 
-    # 在任何疊圖之前先複製一份原始畫面                                                  # 為 original_vision2.mp4 做準備
-    original_frame = frame.copy()                                                             # ★ 原始畫面保留
+    # ---- 保留原始畫面（給 original_vision2.mp4） ---------------------------------------
+    try:
+        original_frame = frame.copy()                                                         # 原始畫面
+    except Exception:
+        original_frame = frame                                                               # 退化保護
 
-    # YOLO 關鍵點 + 繪圖                                                               # 只保留偵測核心
+    # ---- YOLO 推論 + 疊圖 --------------------------------------------------------------
     try:
         results = list(model(source=frame, stream=True, verbose=False))                       # 推論
     except Exception as e:
@@ -745,12 +750,12 @@ def benchpress_body_loop(i, frame, label, save_sig, folder,                     
         print(f"[benchpress_body_loop] model error: {e}")                                     # 記錄
 
     frame_count_for_detect += 1                                                               # 偵測幀+1
-    body_now, rows = False, []                                                                # 當幀旗標/文字
+    body_now, rows = False, []                                                                # 當幀旗標/輸出列
     if results and getattr(results[0], "keypoints", None) is not None:                        # 有點集
         kpts = results[0].keypoints                                                           # 取點
         xy = kpts.xy                                                                          # xy
         if hasattr(xy, "detach"): xy = xy.detach().cpu().numpy()                              # tensor→np
-        first = xy[0] if len(xy)>0 else None                                                  # 第一人
+        first = xy[0] if len(xy) > 0 else None                                                # 第一人
         if first is not None:                                                                 # 有人體
             body_now = True                                                                   # 標記
             if not skeleton_connections:                                                      # 預設連線
@@ -760,58 +765,63 @@ def benchpress_body_loop(i, frame, label, save_sig, folder,                     
             for idx, (xk, yk) in enumerate(first[:, :2].astype(int)):                         # 逐點
                 valid = not (xk == 0 and yk == 0)                                             # 有效點
                 pts.append((xk, yk) if valid else None)                                       # 收集
-                if valid: cv2.circle(frame, (xk, yk), 5, (0,255,0), cv2.FILLED)               # 畫點（疊在 frame 上）
+                if valid: cv2.circle(frame, (xk, yk), 5, (0,255,0), cv2.FILLED)               # 畫點
                 rows.append(f"{frame_count_for_detect},{idx},{xk},{yk}")                      # 記錄
             for a, b in skeleton_connections:                                                 # 逐線
                 if a < len(pts) and b < len(pts) and pts[a] and pts[b]:                       # 檢查
-                    cv2.line(frame, pts[a], pts[b], (0,255,255), 2)                           # 畫線（疊在 frame 上）
+                    cv2.line(frame, pts[a], pts[b], (0,255,255), 2)                           # 畫線
 
-    # 人體 gate 鎖存（20 幀緩衝）                                                      # 共用緩衝器
+    # ---- 人體 gate 鎖存（20 幀緩衝） -----------------------------------------------------
     hit_cnt, miss_cnt, latched_now = _latch_by_buffer(hit_cnt, miss_cnt, body_now, BODY_BUF_FRAMES)  # 緩衝
     _shared_set_many(shared_state, shared_lock, {hit_key: hit_cnt, miss_key: miss_cnt})       # 回寫
     _shared_set_many(shared_state, shared_lock, {"body_detected": latched_now})               # 更新 gate
 
-    # 三 Gate 決策                                                                     # 統一三 gate
+    # ---- 三 Gate 決策 -------------------------------------------------------------------
     gate_bar = _shared_get(shared_state, shared_lock, "bar_y_changed", False)                 # 槓 gate
     should_record = gate_ui and latched_now and gate_bar                                      # 三者同時
 
-    # 開段（改為同時建 out 與 original_out）                                            # 共用開段
-    opened, seg_no, out_new, original_out_new, txt_new = _segment_start_if_needed(            # ★ 取得 original_out_new
+    # ---- 開段（同時建立疊圖 out 與原始 original_out） -----------------------------------
+    opened, seg_no, out_new, original_out_new, txt_new = _segment_start_if_needed(            # 取新 I/O
         should_record, is_rec, folder, i, seg_no, frame,
-        need_original=True, need_txt=True, txt_suffix="body",                                 # ★ need_original=True
+        need_original=True, need_txt=True, txt_suffix="body",                                 # 要原始+txt
         shared_state=shared_state, shared_lock=shared_lock,
         cam_seg_key=cam_seg_key, cam_rec_key=cam_rec_key,
         end_false_key=end_false_key, tmp_paths_key=tmp_paths_key)
-    if opened:                                                                                # 若剛開段
-        out, original_out, txt_file = out_new, original_out_new, txt_new                      # ★ 接手 I/O
 
-    # 寫入 / 關段                                                                       # 共用模板
+    if opened:                                                                                # 剛開段
+        out, txt_file = out_new, txt_new                                                      # 接手 I/O
+        if original_out_new is not None:                                                      # 記住原始 writer
+            _shared_set_many(shared_state, shared_lock, {orig_wr_key: original_out_new})      # 存共享
+            original_out = original_out_new                                                   # 更新本地
+
+    # ---- 寫入 / 關段 --------------------------------------------------------------------
     if should_record:                                                                         # 錄影中
-        if original_out is not None:                                                          # ★ 先寫原始畫面
-            original_out.write(original_frame)                                                # 寫原始畫面
-        if out is not None:                                                                   # 再寫疊圖畫面
-            out.write(frame)                                                                  # 寫疊圖畫面
-        if txt_file is not None:                                                              # 寫 txt
+        if original_out is not None:                                                          # 先寫原始
+            try: original_out.write(original_frame)                                           # 原始畫面
+            except Exception as e: print(f"[benchpress_body_loop] original write err: {e}")   # 保護
+        if out is not None:                                                                   # 再寫疊圖
+            out.write(frame)                                                                  # 疊圖畫面
+        if txt_file is not None:                                                              # 寫關鍵點
             if body_now and rows: txt_file.write("\n".join(rows) + "\n")                      # 批次
             else: txt_file.write(f"{frame_count_for_detect},no detection\n")                  # 無偵測
         _shared_set_many(shared_state, shared_lock, {end_false_key: 0})                       # 清緩衝
     else:                                                                                     # Gate False
         ended, end_false_cnt, _ = _segment_end_if_needed(
             should_record, is_rec, end_false_cnt, END_GRACE_FRAMES,
-            out, original_out, txt_file,                                                      # ★ 傳入 original_out
+            out, original_out, txt_file,                                                      # 連同原始 writer
             shared_state, shared_lock, tmp_paths_key, cam_rec_key,
             folder, i, seg_no,
-            mapping={ "o":"original_vision2.mp4", "v":"vision2.mp4", "t":"yolo_body_keypoints.txt" },  # ★ 新增原始檔名對應
+            mapping={"o":"original_vision2.mp4","v":"vision2.mp4","t":"yolo_body_keypoints.txt"},
             end_false_key=end_false_key)                                                      # 結束判定
-
-        # 若真的結束，保險起見把本地變數清掉（避免誤用）                                   # 清理
         if ended:                                                                             # 段落已關
-            out, original_out, txt_file = None, None, None                                    # 釋放句柄
+            out, txt_file = None, None                                                        # 釋放本地
+            _shared_set_many(shared_state, shared_lock, {orig_wr_key: None})                  # 清共享
+            original_out = None                                                               # 釋放原始
 
-    # 顯示與同步                                                                       # 共用顯示
-    _qt_show(label, frame, fps)                                                               # 顯示（預覽顯示疊圖）
+    # ---- 顯示與同步 ---------------------------------------------------------------------
+    _qt_show(label, frame, fps)                                                               # 顯示
     barrier.wait()                                                                            # 同步
-    return start_time, frame_count, fps, out, original_out, frame_count_for_detect, save_sig, txt_file  # ★ 回傳 original_out
+    return start_time, frame_count, fps, out, frame_count_for_detect, save_sig, txt_file      # 回傳（7）
 
 def benchpress_head_loop(i, frame, label, save_sig, folder,                                  # 頭部視角：跟三 Gate 錄影
                          start_time, frame_count, fps, out, original_out,                    # I/O 與 FPS 狀態
@@ -827,7 +837,8 @@ def benchpress_head_loop(i, frame, label, save_sig, folder,                     
 
     # ---- FPS 更新 -----------------------------------------------------------------
     start_time, frame_count, fps = _update_fps(start_time, frame_count, fps)                 # 刷新 FPS
-
+    # ---- Frame 前處理（視角旋轉） --------------------------------------------------
+    frame = cv2.rotate(frame, cv2.ROTATE_180)                                               # 旋轉 180°（如不需可移除）
     # ---- 三 Gate 讀取 --------------------------------------------------------------
     gate_ui   = _shared_get(shared_state, shared_lock, "recording_sig", False)              # UI Gate
     gate_body = _shared_get(shared_state, shared_lock, "body_detected", False)              # 人體 Gate
@@ -847,8 +858,6 @@ def benchpress_head_loop(i, frame, label, save_sig, folder,                     
     if early:                                                                                # 若已早退
         return start_time, frame_count, fps, out, original_out, save_sig, frame_count_for_detect  # 回傳
 
-    # ---- Frame 前處理（視角旋轉） --------------------------------------------------
-    frame = cv2.rotate(frame, cv2.ROTATE_180)                                               # 旋轉 180°（如不需可移除）
 
     # ---- 嘗試開新段（只建暫存） ----------------------------------------------------
     opened, seg_no, out_new, original_new, _ = _segment_start_if_needed(                    # 共用：開段

@@ -337,20 +337,20 @@ class Replaybackend():
     def File_combobox_TextChanged(self, file_comboBox, play_btn, icons, Frameslider):
         videofolder = file_comboBox.currentText()
         folder = self.folders[self.currentsport]
-        videos = glob.glob(f'{folder}/{videofolder}/*.avi')
+        videos = glob.glob(f'{folder}/{videofolder}/*.mp4')
         self.datas = []
         
         # 臥推有六部avi影片，要抽取三部    
         if self.currentsport == 'Benchpress':
             if len(videos) == 6:
                 self.videos = [video for video in videos 
-                            if os.path.basename(video) in ('vision1.avi', 'vision2.avi', 'vision3.avi')
+                            if os.path.basename(video) in ('vision1.mp4', 'vision2.mp4', 'vision3.mp4')
                             ]
                 if self.videos:
                     self.videos[1], self.videos[2] = self.videos[2], self.videos[1]
             if len(videos) == 7:
                 self.videos = [video for video in videos 
-                            if os.path.basename(video) in ('vision1_drawed.avi', 'vision2.avi', 'original_vision3.avi')
+                            if os.path.basename(video) in ('vision1_drawed.mp4', 'vision2.mp4', 'original_vision3.mp4')
                             ]
                 if self.videos:
                     self.videos[1], self.videos[2] = self.videos[2], self.videos[1]
