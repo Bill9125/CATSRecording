@@ -416,53 +416,102 @@ class Replaybackend():
             self.rp_qpixmaps.append(pixmap)
         self.stop(Frameslider, play_btn, icons)
     
-    def play_btn_clicked(self, fast_forward_combobox, Play_btn, icons, Frameslider):
-        self.index += 1
-        # play
-        if self.index % 2 == 1: 
-            fast_forward_combobox.setEnabled(False)
-            Frameslider.setEnabled(True)
-            Play_btn.setIcon(icons[0])
-            f_num = []
-            for video in self.videos:
-                cap = cv2.VideoCapture(video)
-                if cap.get(cv2.CAP_PROP_FRAME_COUNT) != 0:
-                    f_num.append(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-            framenumber = min(f_num)
+    def play_btn_clicked(self, fast_forward_combobox, Play_btn, icons, Frameslider):             # 播放鍵點擊處理
+        import os, cv2, threading                                                                 # 需求模組
+        self.index += 1                                                                           # 切換播放/暫停狀態計數
 
-            # stop 後播放
-            if self.is_stop:
-                print('threads created')
-                self.is_stop = False
-                if self.threads:
-                    self.del_mythreads()
-                if self.caps:
-                    self.caps.clear()
-                self.barrier_play = threading.Barrier(len(self.videos))
-                self.barrier_data = threading.Barrier(len(self.info_data))
-                for i, video in enumerate(self.videos):
-                    cap = cv2.VideoCapture(video)
-                    self.caps.append(cap)
-                    thread_play = MyThread(self.caps, i, Play_btn, icons, fast_forward_combobox,
-                                            Frameslider, framenumber, self.rp_Vision_labels,
-                                            self.rp_qpixmaps, self.barrier_play)
-                    thread_play.start()
-                    self.threads.append(thread_play)
-                    
-                if self.datas:
-                    for i, data in enumerate(self.info_data):
-                        data_thread = Thread_data(i, self.data_graph, data, self.barrier_data, fast_forward_combobox, Frameslider, framenumber)
-                        data_thread.start()
-                        self.threads.append(data_thread)
-                    
-            # pause 後繼續播放
+        # ======= 進入「播放」狀態 =======
+        if self.index % 2 == 1:                                                                   # 奇數次：播放
+            fast_forward_combobox.setEnabled(False)                                               # 播放中禁用倍率調整
+            Frameslider.setEnabled(True)                                                          # 啟用拖動條
+            Play_btn.setIcon(icons[0])                                                            # 換成「暫停」圖示
+
+            # --- 來源驗證：過濾可用影片 ---
+            valid_videos = []                                                                     # 可用影片清單
+            f_num = []                                                                            # 每支片的總幀數
+            for video in getattr(self, "videos", []):                                             # 逐一檢查 self.videos
+                if not video or not os.path.exists(video):                                        # 路徑不存在
+                    continue                                                                      # 略過
+                cap = cv2.VideoCapture(video)                                                     # 嘗試開檔
+                if cap.isOpened():                                                                # 成功開檔
+                    frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))                               # 讀總幀數
+                    if frames > 0:                                                                # 幀數有效
+                        valid_videos.append(video)                                                # 收錄可用影片
+                        f_num.append(frames)                                                      # 收錄幀數
+                    cap.release()                                                                 # 關檔
+                else:
+                    cap.release()                                                                 # 開檔失敗也關
+                    continue                                                                      # 略過
+
+            if not valid_videos:                                                                  # 沒有任何可播放影片
+                # 這裡可視需求彈警示窗或印 log
+                print("[Replay] 無可用影片：請先選擇正確的檔案。")                                   # 提示
+                # 回復 UI 狀態
+                fast_forward_combobox.setEnabled(True)                                            # 允許調倍率
+                Frameslider.setEnabled(False)                                                     # 關閉拖動條
+                Play_btn.setIcon(icons[1])                                                        # 換回「播放」圖示
+                self.index -= 1                                                                   # 還原狀態
+                return                                                                            # 中止
+
+            framenumber = min(f_num)                                                              # 同步播放上限（取最短片）
+
+            # --- stop 後的重新播放（重建 threads） ---
+            if getattr(self, "is_stop", False):                                                   # 若之前是 stop
+                print('threads created')                                                          # log
+                self.is_stop = False                                                              # 清除 stop 狀態
+
+                # 清理舊 threads / caps
+                if getattr(self, "threads", None):                                                # 有舊執行緒
+                    self.del_mythreads()                                                          # 自訂清理
+                if getattr(self, "caps", None) is not None:                                       # 有舊 cap
+                    self.caps.clear()                                                             # 清空
+                else:
+                    self.caps = []                                                                # 初始化
+
+                # 建立播放 barrier（以可用影片數量為準）
+                self.barrier_play = threading.Barrier(len(valid_videos))                          # 同步點（影片數）
+
+                # 若有資料曲線要播放，只有在有資料時才建立 barrier
+                info_count = len(getattr(self, "info_data", []))                                  # 資料筆數
+                self.barrier_data = (threading.Barrier(info_count) if info_count > 0 else None)   # 無資料則 None
+
+                # 重建播放 threads（使用 valid_videos）
+                self.threads = []                                                                 # 重建容器
+                self.videos = valid_videos                                                        # 以有效片覆寫
+                self.caps = []                                                                    # 對應 cap 清單
+                for i, video in enumerate(self.videos):                                           # 逐支影片
+                    cap = cv2.VideoCapture(video)                                                 # 重新開檔
+                    self.caps.append(cap)                                                         # 收 cap
+                    thread_play = MyThread(                                                       # 建立播放執行緒
+                        self.caps, i, Play_btn, icons, fast_forward_combobox,                     # 參數同原本
+                        Frameslider, framenumber, self.rp_Vision_labels,                          # 參數同原本
+                        self.rp_qpixmaps, self.barrier_play)                                      # 參數同原本
+                    thread_play.start()                                                           # 啟動
+                    self.threads.append(thread_play)                                              # 收執行緒
+
+                # 建立資料曲線 threads（只有在 self.datas / info_data 有內容時）
+                if getattr(self, "datas", False) and info_count > 0:                              # 有資料才跑
+                    for i, data in enumerate(self.info_data):                                     # 逐筆資料
+                        data_thread = Thread_data(                                                # 建立資料執行緒
+                            i, self.data_graph, data, self.barrier_data,                          # 圖表/資料/同步點
+                            fast_forward_combobox, Frameslider, framenumber                       # 控制/同步幀
+                        )
+                        data_thread.start()                                                       # 啟動
+                        self.threads.append(data_thread)                                          # 收執行緒
+
+            # --- pause 後繼續 ---
             else:
-                print('resume')
-                for thread in self.threads:
-                    thread.resume()
-        # pause
-        elif self.index % 2 == 0:
-            self.pause_event(fast_forward_combobox, Play_btn, icons)
+                print('resume')                                                                   # log
+                for thread in getattr(self, "threads", []):                                       # 逐一喚醒
+                    try:
+                        thread.resume()                                                           # 喚醒執行緒
+                    except Exception as e:
+                        print(f"[Replay] resume 失敗: {e}")                                       # 失敗記錄
+
+        # ======= 進入「暫停」狀態 =======
+        else:                                                                                     # 偶數次：暫停
+            self.pause_event(fast_forward_combobox, Play_btn, icons)                              # 呼叫暫停邏輯
+
 
     def pause_event(self, fast_forward_combobox, Play_btn, icons):
         fast_forward_combobox.setEnabled(True)
