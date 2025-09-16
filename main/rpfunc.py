@@ -333,59 +333,59 @@ class Replaybackend():
 
 
     # 讀取combobox內的資料夾
-def File_combobox_TextChanged(self, file_comboBox, play_btn, icons, Frameslider):
-    videofolder = file_comboBox.currentText()                             # 目前選取的資料夾
-    folder = self.folders[self.currentsport]                              # 對應運動類別的根資料夾
-    all_videos = glob.glob(f'{folder}/{videofolder}/*.avi')               # 把資料夾下所有 avi 撈出
-    self.datas = []                                                       # 清空資料曲線
+    def File_combobox_TextChanged(self, file_comboBox, play_btn, icons, Frameslider):
+        videofolder = file_comboBox.currentText()                             # 目前選取的資料夾
+        folder = self.folders[self.currentsport]                              # 對應運動類別的根資料夾
+        all_videos = glob.glob(f'{folder}/{videofolder}/*.avi')               # 把資料夾下所有 avi 撈出
+        self.datas = []                                                       # 清空資料曲線
 
-    # --- 依運動類型定義「優先片名」清單（依序嘗試） ---
-    # 目標：最後挑出 3 支（頭 + 兩個底部）
-    if self.currentsport == 'Squat':
-        # 可能的命名：vision2/3/4/5、或 original_vision*、或 *drawed 版本
-        desired_groups = [
-            ('vision2_drawed.avi', 'vision3_drawed.avi', 'vision4_drawed.avi'),  # 先嘗試有疊圖
-            ('original_vision2.avi', 'original_vision3.avi', 'original_vision4.avi'),  # 再嘗試原始
-            ('vision2.avi', 'vision3.avi', 'vision4.avi'),                        # 最後一般命名
-            ('vision3.avi', 'vision4.avi', 'vision5.avi'),                        # 兼容你舊邏輯
-        ]
-    elif self.currentsport == 'Deadlift':
-        desired_groups = [
-            ('vision1_drawed.avi', 'vision2.avi', 'vision3.avi'),
-            ('vision1.avi', 'vision2.avi', 'vision3.avi'),
-        ]
-    else:  # Benchpress
-        desired_groups = [
-            ('vision1_drawed.avi', 'vision2.avi', 'original_vision3.avi'),
-            ('vision1.avi',        'vision2.avi', 'vision3.avi'),
-        ]
+        # --- 依運動類型定義「優先片名」清單（依序嘗試） ---
+        # 目標：最後挑出 3 支（頭 + 兩個底部）
+        if self.currentsport == 'Squat':
+            # 可能的命名：vision2/3/4/5、或 original_vision*、或 *drawed 版本
+            desired_groups = [
+                ('vision2_drawed.avi', 'vision3_drawed.avi', 'vision4_drawed.avi'),  # 先嘗試有疊圖
+                ('original_vision2.avi', 'original_vision3.avi', 'original_vision4.avi'),  # 再嘗試原始
+                ('vision2.avi', 'vision3.avi', 'vision4.avi'),                        # 最後一般命名
+                ('vision3.avi', 'vision4.avi', 'vision5.avi'),                        # 兼容你舊邏輯
+            ]
+        elif self.currentsport == 'Deadlift':
+            desired_groups = [
+                ('vision1_drawed.avi', 'vision2.avi', 'vision3.avi'),
+                ('vision1.avi', 'vision2.avi', 'vision3.avi'),
+            ]
+        else:  # Benchpress
+            desired_groups = [
+                ('vision1_drawed.avi', 'vision2.avi', 'original_vision3.avi'),
+                ('vision1.avi',        'vision2.avi', 'vision3.avi'),
+            ]
 
-    # --- 依優先順序取出最貼近的一組 ---
-    picked = []
-    base_names = {os.path.basename(v): v for v in all_videos}             # 映射檔名→完整路徑
-    for group in desired_groups:                                          # 按序嘗試
-        candidate = [base_names.get(name) for name in group if name in base_names]  # 取到就加
-        if len(candidate) == 3:                                           # 找到完整三支
-            picked = candidate
-            break
-        if not picked and len(candidate) >= 1:                            # 先記下至少一支，避免全軍覆沒
-            picked = candidate
+        # --- 依優先順序取出最貼近的一組 ---
+        picked = []
+        base_names = {os.path.basename(v): v for v in all_videos}             # 映射檔名→完整路徑
+        for group in desired_groups:                                          # 按序嘗試
+            candidate = [base_names.get(name) for name in group if name in base_names]  # 取到就加
+            if len(candidate) == 3:                                           # 找到完整三支
+                picked = candidate
+                break
+            if not picked and len(candidate) >= 1:                            # 先記下至少一支，避免全軍覆沒
+                picked = candidate
 
-    self.videos = picked                                                  # 實際使用清單
-    self.info_data = []                                                   # Squat 目前不載 JSON（你的原碼註解掉）
-    self.pred_data = []                                                   # 同上
+        self.videos = picked                                                  # 實際使用清單
+        self.info_data = []                                                   # Squat 目前不載 JSON（你的原碼註解掉）
+        self.pred_data = []                                                   # 同上
 
-    # --- 重置 pixmap 容器，避免累積 ---
-    self.rp_qpixmaps = []                                                # ✅ 先清空
-    for _ in range(len(self.videos)):                                     # 依影片數建立空 pixmap
-        self.rp_qpixmaps.append(QtGui.QPixmap())
+        # --- 重置 pixmap 容器，避免累積 ---
+        self.rp_qpixmaps = []                                                # ✅ 先清空
+        for _ in range(len(self.videos)):                                     # 依影片數建立空 pixmap
+            self.rp_qpixmaps.append(QtGui.QPixmap())
 
-    # --- 統一進入 stop 狀態，會觸發 showprevision() 嘗試顯示第一張 ---
-    self.stop(Frameslider, play_btn, icons)                                # 停止→預覽
+        # --- 統一進入 stop 狀態，會觸發 showprevision() 嘗試顯示第一張 ---
+        self.stop(Frameslider, play_btn, icons)                                # 停止→預覽
 
-    # --- 偵錯訊息（可留可去） ---
-    if not self.videos:
-        print(f"[Replay][{self.currentsport}] 於資料夾 {videofolder} 找不到可用影片")  # 幫助你查錯
+        # --- 偵錯訊息（可留可去） ---
+        if not self.videos:
+            print(f"[Replay][{self.currentsport}] 於資料夾 {videofolder} 找不到可用影片")  # 幫助你查錯
 
     
     def play_btn_clicked(self, fast_forward_combobox, Play_btn, icons, Frameslider):             # 播放鍵點擊處理
