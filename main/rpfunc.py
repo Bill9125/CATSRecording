@@ -21,19 +21,17 @@ class GraphUpdater(QObject):
 
 class LineLabel(QtWidgets.QLabel):
     def __init__(self, parent=None):
-        super().__init__(parent)
-        self.vertical_line_x = 0  # 初始垂直線位置
-        self.horizontal_line_y = 0  # 初始水平線位置
+        super().__init__(parent)                                         # 呼叫父類初始化
+        self.vertical_line_x = 0                                         # 垂直線 X 位置
+        self.horizontal_line_y = 0                                       # 水平線 Y 位置
 
     def set_vertical_line(self, value):
-        """更新垂直線的位置 (X 軸) 並重新繪製"""
-        self.horizontal_line_y = value
-        self.update()  # 重新觸發 paintEvent()
+        self.vertical_line_x = value                                     # ✅ 應該更新 X（原本寫成 horizontal）
+        self.update()                                                    # 重新觸發繪製
 
     def set_horizontal_line(self, value):
-        """更新水平線的位置 (Y 軸) 並重新繪製"""
-        self.vertical_line_x = value
-        self.update()  # 重新觸發 paintEvent()
+        self.horizontal_line_y = value                                   # ✅ 應該更新 Y（原本寫成 vertical）
+        self.update()                                                    # 重新觸發繪製
 
     def paintEvent(self, event):
         super().paintEvent(event)  # 保持 QLabel 原本的行為
@@ -315,11 +313,12 @@ class Replaybackend():
             Deadlift_btn.setStyleSheet("font-size:18px;background-color: #666666")
 
         elif sport == 'Squat':
-            folderPath = 'C:/Users/92A27/barbell_squat/recordings'
-            self.folders[sport] = folderPath
-            Benchpress_btn.setStyleSheet("font-size:18px;background-color: #888888")
-            Squat_btn.setStyleSheet("font-size:18px;background-color: #666666")
-            Deadlift_btn.setStyleSheet("font-size:18px;background-color: #666666")
+            folderPath = 'C:/Users/92A27/barbell_squat/recordings'               # 指定 Squat 錄影資料夾
+            self.folders[sport] = folderPath                                     # 記住資料夾
+            Squat_btn.setStyleSheet("font-size:18px;background-color:#888888")   # ✅ 選中的應該是 Squat
+            Benchpress_btn.setStyleSheet("font-size:18px;background-color:#666666") # 其他置灰
+            Deadlift_btn.setStyleSheet("font-size:18px;background-color:#666666")   # 其他置灰
+
 
         File_comboBox.clear()
         self.all_items = os.listdir(self.folders[sport])
@@ -334,87 +333,60 @@ class Replaybackend():
 
 
     # 讀取combobox內的資料夾
-    def File_combobox_TextChanged(self, file_comboBox, play_btn, icons, Frameslider):
-        videofolder = file_comboBox.currentText()
-        folder = self.folders[self.currentsport]
-        videos = glob.glob(f'{folder}/{videofolder}/*.avi')
-        self.datas = []
-        
-        # 臥推有六部avi影片，要抽取三部    
-        if self.currentsport == 'Benchpress':
-            if len(videos) == 6:
-                self.videos = [video for video in videos 
-                            if os.path.basename(video) in ('vision1.avi', 'vision2.avi', 'vision3.avi')
-                            ]
-                if self.videos:
-                    self.videos[1], self.videos[2] = self.videos[2], self.videos[1]
-            if len(videos) == 7:
-                self.videos = [video for video in videos 
-                            if os.path.basename(video) in ('vision1_drawed.avi', 'vision2.avi', 'original_vision3.avi')
-                            ]
-                if self.videos:
-                    self.videos[1], self.videos[2] = self.videos[2], self.videos[1]
-                for i in range(len(self.data_path[self.currentsport])):
-                    with open(f'./config/{self.currentsport}_data/{self.data_path[self.currentsport][i]}',
-                                mode='r', encoding='utf-8') as file:
-                        if file:
-                            data = json.load(file)
-                            self.datas.append(data)
-                
-        ## 硬舉avi只需要 1, 2, 3 視角
-        if self.currentsport == 'Deadlift':
-            # 未後製.
-            if len(videos) == 5:
-                self.videos = [video for video in videos
-                            if os.path.basename(video) in ('vision1.avi', 'vision2.avi', 'vision3.avi')]
-                if self.videos:
-                    self.videos = [self.videos[1], self.videos[2], self.videos[0]]
-                self.datas = []
-            # 已後製
-            elif len(videos) == 6:
-                self.videos = [video for video in videos
-                            if os.path.basename(video) in ('vision1_drawed.avi', 'vision2.avi', 'vision3.avi')]
-                if self.videos:
-                    self.videos = [self.videos[1], self.videos[2], self.videos[0]]
-                # 抓取計算完的檔案
-                for i in range(len(self.data_path[self.currentsport])):
-                    with open(f'./config/{self.currentsport}_data/{self.data_path[self.currentsport][i]}',
-                                mode='r', encoding='utf-8') as file:
-                        data = json.load(file)
-                        self.datas.append(data)
-                # 將 data 分為角度資訊以及分數
-                self.info_data = self.datas[:4]
-                self.pred_data = self.datas[4]
+def File_combobox_TextChanged(self, file_comboBox, play_btn, icons, Frameslider):
+    videofolder = file_comboBox.currentText()                             # 目前選取的資料夾
+    folder = self.folders[self.currentsport]                              # 對應運動類別的根資料夾
+    all_videos = glob.glob(f'{folder}/{videofolder}/*.avi')               # 把資料夾下所有 avi 撈出
+    self.datas = []                                                       # 清空資料曲線
 
-                # squat
-        if self.currentsport == 'Squat':
-            # 未後製
-            if len(videos) == 6:
-                self.videos = [video for video in videos
-                            if os.path.basename(video) in ('vision3.avi', 'vision4.avi', 'vision5.avi')]
-                if self.videos:
-                    self.videos = [self.videos[0], self.videos[1], self.videos[2]]
-                self.datas = []
-            # 已後製
-            elif len(videos) == 8:
-                self.videos = [video for video in videos
-                            if os.path.basename(video) in ('vision2.avi','vision3.avi', 'vision4.avi')]
-                if self.videos:
-                    self.videos = [self.videos[0], self.videos[1], self.videos[2]]
-                # # 抓取計算完的檔案
-                # for i in range(len(self.data_path[self.currentsport])):
-                #     with open(f'./config/{self.currentsport}_data/{self.data_path[self.currentsport][i]}',
-                #                 mode='r', encoding='utf-8') as file:
-                #         data = json.load(file)
-                #         self.datas.append(data)
-                # # 將 data 分為角度資訊以及分數
-                # self.info_data = self.datas[:4]
-                # self.pred_data = self.datas[4]
-        
-        for _ in range(len(self.videos)):
-            pixmap = QtGui.QPixmap()
-            self.rp_qpixmaps.append(pixmap)
-        self.stop(Frameslider, play_btn, icons)
+    # --- 依運動類型定義「優先片名」清單（依序嘗試） ---
+    # 目標：最後挑出 3 支（頭 + 兩個底部）
+    if self.currentsport == 'Squat':
+        # 可能的命名：vision2/3/4/5、或 original_vision*、或 *drawed 版本
+        desired_groups = [
+            ('vision2_drawed.avi', 'vision3_drawed.avi', 'vision4_drawed.avi'),  # 先嘗試有疊圖
+            ('original_vision2.avi', 'original_vision3.avi', 'original_vision4.avi'),  # 再嘗試原始
+            ('vision2.avi', 'vision3.avi', 'vision4.avi'),                        # 最後一般命名
+            ('vision3.avi', 'vision4.avi', 'vision5.avi'),                        # 兼容你舊邏輯
+        ]
+    elif self.currentsport == 'Deadlift':
+        desired_groups = [
+            ('vision1_drawed.avi', 'vision2.avi', 'vision3.avi'),
+            ('vision1.avi', 'vision2.avi', 'vision3.avi'),
+        ]
+    else:  # Benchpress
+        desired_groups = [
+            ('vision1_drawed.avi', 'vision2.avi', 'original_vision3.avi'),
+            ('vision1.avi',        'vision2.avi', 'vision3.avi'),
+        ]
+
+    # --- 依優先順序取出最貼近的一組 ---
+    picked = []
+    base_names = {os.path.basename(v): v for v in all_videos}             # 映射檔名→完整路徑
+    for group in desired_groups:                                          # 按序嘗試
+        candidate = [base_names.get(name) for name in group if name in base_names]  # 取到就加
+        if len(candidate) == 3:                                           # 找到完整三支
+            picked = candidate
+            break
+        if not picked and len(candidate) >= 1:                            # 先記下至少一支，避免全軍覆沒
+            picked = candidate
+
+    self.videos = picked                                                  # 實際使用清單
+    self.info_data = []                                                   # Squat 目前不載 JSON（你的原碼註解掉）
+    self.pred_data = []                                                   # 同上
+
+    # --- 重置 pixmap 容器，避免累積 ---
+    self.rp_qpixmaps = []                                                # ✅ 先清空
+    for _ in range(len(self.videos)):                                     # 依影片數建立空 pixmap
+        self.rp_qpixmaps.append(QtGui.QPixmap())
+
+    # --- 統一進入 stop 狀態，會觸發 showprevision() 嘗試顯示第一張 ---
+    self.stop(Frameslider, play_btn, icons)                                # 停止→預覽
+
+    # --- 偵錯訊息（可留可去） ---
+    if not self.videos:
+        print(f"[Replay][{self.currentsport}] 於資料夾 {videofolder} 找不到可用影片")  # 幫助你查錯
+
     
     def play_btn_clicked(self, fast_forward_combobox, Play_btn, icons, Frameslider):             # 播放鍵點擊處理
         import os, cv2, threading                                                                 # 需求模組
@@ -819,13 +791,11 @@ class Replaybackend():
             self.stop(Frameslider, Play_btn, icons)
             
     def search_text_changed(self, comboBox, filter_text):
-        comboBox.clear()
-        
-        # 過濾符合條件的項目
-        filtered_items = [item for item in self.all_items if filter_text in item.lower()]
-        
-        # 重新加入篩選後的項目
-        comboBox.addItems(filtered_items)
+        comboBox.clear()                                                       # 清空重建
+        text = (filter_text or "").lower()                                    # 轉小寫並避免 None
+        filtered = [item for item in self.all_items if text in item.lower()]  # 兩邊都小寫
+        comboBox.addItems(filtered)                                           # 加回符合項
+
         
     # 遍歷 layout，清空所有子佈局和控件
     def clear_layout(self, layout):
