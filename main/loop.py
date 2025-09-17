@@ -632,102 +632,129 @@ def _segment_end_if_needed(should_record, is_rec, end_false_cnt,
         _shared_set_many(shared_state, shared_lock, {end_false_key: 0})                      # 清 False 緩衝
     return ended, end_false_cnt, None                                                        # 無需重設幀數則回 None
 
-def benchpress_bar_loop(i, frame, label, save_sig, folder,                                   # 槓視角
-                        start_time, frame_count, fps, out, original_out, model, txt_file,    # I/O 與模型
-                        frame_count_for_detect, barrier,                                     # 幀計數 / 柵欄
-                        shared_state, shared_lock, BAR_MOVE_THRESH):                         # 共享狀態 / 門檻
-    # 常用 key                                                                           # 事先把 key 固定好
-    cam_rec_key = f"rec_cam{i}"                                                               # 是否在錄
-    cam_seg_key = f"seg_cam{i}"                                                               # 段號
-    end_false_key = f"rec_end_false_cam{i}"                                                   # False 緩衝
-    tmp_paths_key = f"tmp_paths_cam{i}"                                                       # 暫存路徑
+def benchpress_bar_loop(i, frame, label, save_sig, folder,                                     # 槓視角  # i=相機idx, frame=影像, label=Qt顯示, save_sig=收尾旗標, folder=輸出根目錄
+                        start_time, frame_count, fps, out, original_out, model,               # I/O 與模型  # 計時/FPS、疊圖writer、原始writer、YOLO模型
+                        txt_file, frame_count_for_detect, barrier,                             # 偵測txt/幀計數/柵欄
+                        shared_state, shared_lock, BAR_MOVE_THRESH):                           # 共享狀態/鎖/位移閾值
+    # -------- 常用 shared key --------
+    cam_rec_key   = f"rec_cam{i}"                                                             # 是否在錄 key
+    cam_seg_key   = f"seg_cam{i}"                                                             # 段號 key
+    end_false_key = f"rec_end_false_cam{i}"                                                   # Gate False 緩衝 key
+    tmp_paths_key = f"tmp_paths_cam{i}"                                                       # 暫存路徑 key
 
-    # FPS 更新                                                                          # 每幀維護 FPS
-    start_time, frame_count, fps = _update_fps(start_time, frame_count, fps)                  # 刷新 FPS
+    # -------- FPS 更新 --------
+    start_time, frame_count, fps = _update_fps(start_time, frame_count, fps)                  # 每秒刷新 FPS
 
-    # 讀 gate 與狀態                                                                    # 集中讀取
-    gate_ui = _shared_get(shared_state, shared_lock, "recording_sig", False)                  # UI Gate
-    is_rec  = _shared_get(shared_state, shared_lock, cam_rec_key, False)                      # 是否在錄
-    seg_no  = _shared_get(shared_state, shared_lock, cam_seg_key, 0)                          # 段號
-    end_false_cnt = _shared_get(shared_state, shared_lock, end_false_key, 0)                  # False 緩衝
+    # -------- 狀態讀取 --------
+    gate_ui   = _shared_get(shared_state, shared_lock, "recording_sig", False)                # UI Gate
+    is_rec    = _shared_get(shared_state, shared_lock, cam_rec_key, False)                    # 是否在錄
+    seg_no    = _shared_get(shared_state, shared_lock, cam_seg_key, 0)                        # 段號
+    end_false_cnt = _shared_get(shared_state, shared_lock, end_false_key, 0)                  # False 緩衝幀數
 
-    # UI 未啟動 → 統一收尾                                                             # 用共用工具早退
+    # -------- UI 未啟動 → 統一早退（關 I/O、顯示、同步） --------
     early, (out, original_out, txt_file), (save_sig, frame_count_for_detect) = \
-        _idle_if_ui_off(gate_ui, label, frame, fps, barrier,
+        _idle_if_ui_off(gate_ui, label, frame, fps, barrier,                                  # UI 關就早退
                         shared_state, shared_lock, cam_rec_key,
                         (out, original_out, txt_file), (save_sig, frame_count_for_detect))
-    if early:                                                                                # 若早退
-        return start_time, frame_count, fps, out, frame_count_for_detect, original_out, save_sig, txt_file   # 回
+    if early:                                                                                 # 若已早退
+        return start_time, frame_count, fps, out, frame_count_for_detect, original_out, save_sig, txt_file  # 與呼叫端介面一致
 
-    # YOLO 推論 + 疊圖                                                                 # 偵測第一框
-    results = model.predict(source=frame, imgsz=320, conf=0.5, verbose=False)                 # YOLO
-    xywh = _yolo_first_box_xywh(results)                                                      # 取第一框
-    for r in results: frame = r.plot()                                                        # 疊圖
+    # -------- 先保留乾淨原始幀（避免 plot 汙染 original） --------
+    try:
+        original_frame = frame.copy()                                                         # 乾淨原始幀
+    except Exception:
+        original_frame = frame                                                                # 退化保護
 
-    # 更新 bar gate（保持/遺失容忍）                                                   # 只專注 gate 計算
-    prev_x = _shared_get(shared_state, shared_lock, "prev_bar_x", None)                       # 上一幀x
-    prev_y = _shared_get(shared_state, shared_lock, "prev_bar_y", None)                       # 上一幀y
-    bar_hold_key = f"bar_hold_cam{i}"                                                         # 保持
-    bar_loss_key = f"bar_loss_cnt_cam{i}"                                                     # 遺失
-    bar_hold = _shared_get(shared_state, shared_lock, bar_hold_key, 0)                        # 讀保持
-    bar_loss = _shared_get(shared_state, shared_lock, bar_loss_key, 0)                        # 讀遺失
-    if xywh is not None:                                                                      # 有偵測
-        x, y, w, h = xywh                                                                     # 解包
+    # -------- YOLO 推論 + 疊圖（只畫在 frame） --------
+    try:
+        results = model.predict(source=frame, imgsz=320, conf=0.5, verbose=False)             # YOLO 推論
+    except Exception as e:
+        results = []                                                                          # 推論失敗視為無偵測
+        print(f"[benchpress_bar_loop] model error: {e}")                                      # 紀錄錯誤
+    xywh = _yolo_first_box_xywh(results)                                                      # 取第一個框 (x,y,w,h)
+    for r in results:                                                                          # 疊偵測框到 frame（僅供 vision1）
+        try:
+            frame = r.plot()                                                                  # 在 frame 上畫框
+        except Exception:
+            pass                                                                              # 疊圖失敗不影響錄影
+
+    # -------- 槓 Gate（位移保持/遺失容忍） --------
+    prev_x = _shared_get(shared_state, shared_lock, "prev_bar_x", None)                       # 上一幀 x
+    prev_y = _shared_get(shared_state, shared_lock, "prev_bar_y", None)                       # 上一幀 y
+    bar_hold_key = f"bar_hold_cam{i}"                                                         # 保持計數 key
+    bar_loss_key = f"bar_loss_cnt_cam{i}"                                                     # 遺失計數 key
+    bar_hold = _shared_get(shared_state, shared_lock, bar_hold_key, 0)                        # 當前保持
+    bar_loss = _shared_get(shared_state, shared_lock, bar_loss_key, 0)                        # 當前遺失
+    if xywh is not None:                                                                      # 有偵測到槓
+        x, y, w, h = xywh                                                                     # 解析座標
         bar_loss = 0                                                                          # 遺失清零
-        if prev_y is not None and abs(y - prev_y) >= BAR_MOVE_THRESH:                         # 主要門檻
-            bar_hold = BAR_HOLD_FRAMES                                                        # 續滿
-        elif bar_hold > 0 and ((prev_x is not None and abs(x - prev_x) >= 1) or (prev_y is not None and abs(y - prev_y) >= 1)):
-            bar_hold = BAR_HOLD_FRAMES                                                        # 續命
+        if prev_y is not None and abs(y - prev_y) >= BAR_MOVE_THRESH:                         # y 位移超閾
+            bar_hold = BAR_HOLD_FRAMES                                                        # 續滿保持
+        elif bar_hold > 0 and ((prev_x is not None and abs(x - prev_x) >= 1) or               # 輕微抖動續命
+                               (prev_y is not None and abs(y - prev_y) >= 1)):
+            bar_hold = BAR_HOLD_FRAMES                                                        # 續命保持
         else:
-            bar_hold = max(0, bar_hold - 1)                                                   # 遞減
-        _shared_set_many(shared_state, shared_lock, {"prev_bar_x": x, "prev_bar_y": y})       # 更新 prev
+            bar_hold = max(0, bar_hold - 1)                                                   # 緩慢遞減
+        _shared_set_many(shared_state, shared_lock, {"prev_bar_x": x, "prev_bar_y": y})       # 更新上一幀
     else:                                                                                     # 無偵測
         bar_loss += 1                                                                         # 遺失+1
-        bar_hold = max(0, bar_hold - 1) if bar_loss <= BAR_LOSS_TOL_FRAMES else 0            # 超過容忍清零
-    _shared_set_many(shared_state, shared_lock, {bar_hold_key: bar_hold, bar_loss_key: bar_loss, "bar_y_changed": (bar_hold>0)})  # 回寫 gate
+        bar_hold = max(0, bar_hold - 1) if bar_loss <= BAR_LOSS_TOL_FRAMES else 0            # 超容忍清零
+    _shared_set_many(shared_state, shared_lock, {                                             # 回寫 Gate 與計數
+        bar_hold_key: bar_hold,
+        bar_loss_key: bar_loss,
+        "bar_y_changed": (bar_hold > 0)
+    })
 
-    # 三 Gate 決策                                                                     # 統一三 gate
-    gate_body = _shared_get(shared_state, shared_lock, "body_detected", False)                # 人體 gate
-    should_record = gate_ui and gate_body and (bar_hold > 0)                                  # 三者同時
+    # -------- 三 Gate 決策（UI + 人體 + 槓） --------
+    gate_body = _shared_get(shared_state, shared_lock, "body_detected", False)                # 人體 Gate
+    should_record = gate_ui and gate_body and (bar_hold > 0)                                  # 三者同時才錄
 
-    # 開段（只建暫存）                                                                 # 共用開段
-    opened, seg_no, out_new, original_new, txt_new = _segment_start_if_needed(
+    # -------- 視段開啟（只建暫存 writer/txt） --------
+    opened, seg_no, out_new, original_new, txt_new = _segment_start_if_needed(                # 視需要開段
         should_record, is_rec, folder, i, seg_no, frame,
-        need_original=True, need_txt=True, txt_suffix="bar",
+        need_original=True, need_txt=True, txt_suffix="bar",                                  # 槓端要原始+txt
         shared_state=shared_state, shared_lock=shared_lock,
         cam_seg_key=cam_seg_key, cam_rec_key=cam_rec_key,
         end_false_key=end_false_key, tmp_paths_key=tmp_paths_key)
-    if opened:                                                                                # 若剛開段
+    if opened:                                                                                # 剛開段
         out, original_out, txt_file = out_new, original_new, txt_new                          # 接手 I/O
-        frame_count_for_detect = 0                                                            # 清幀
+        frame_count_for_detect = 0                                                            # 偵測幀歸零
 
-    # 寫入 / 關段                                                                       # 共用模板
+    # -------- 寫入 / 結束控制 --------
     if should_record:                                                                         # 錄影中
-        if original_out is not None: original_out.write(frame)                                # 寫原始
-        if out is not None: out.write(frame)                                                  # 寫疊圖
+        if original_out is not None:
+            try: original_out.write(original_frame)                                           # ★原始檔：寫乾淨 original_frame
+            except Exception as e: print(f"[benchpress_bar_loop] original write err: {e}")    # 寫檔保護
+        if out is not None:
+            out.write(frame)                                                                  # 疊圖檔：寫被 plot 的 frame
         frame_count_for_detect += 1                                                           # 偵測幀+1
-        if txt_file is not None:                                                              # 寫 txt
+        if txt_file is not None:                                                              # 寫坐標 txt
             if xywh is not None:
-                x,y,w,h = xywh                                                                # 解包
-                txt_file.write(f"{frame_count_for_detect},{x},{y},{w},{h}\n")                 # 記錄
+                x, y, w, h = xywh                                                             # 解析座標
+                txt_file.write(f"{frame_count_for_detect},{x},{y},{w},{h}\n")                 # 記錄 xywh
             else:
-                txt_file.write(f"{frame_count_for_detect},no detection\n")                    # 無偵測
-        _shared_set_many(shared_state, shared_lock, {end_false_key: 0})                       # 清緩衝
-    else:                                                                                     # Gate False
-# --- 在 benchpress_bar_loop() 內，關段的那一段，補 end_false_key ---
-        ended, end_false_cnt, reset = _segment_end_if_needed(
+                txt_file.write(f"{frame_count_for_detect},no detection\n")                    # 無偵測記錄
+        _shared_set_many(shared_state, shared_lock, {end_false_key: 0})                       # 清 False 緩衝
+    else:                                                                                     # Gate False：可能觸發關段
+        ended, end_false_cnt, frame_reset = _segment_end_if_needed(                           # 判斷是否關段
             should_record, is_rec, end_false_cnt, END_GRACE_FRAMES,
             out, original_out, txt_file,
             shared_state, shared_lock, tmp_paths_key, cam_rec_key,
             folder, i, seg_no,
-            mapping={"o":"original_vision1.avi","v":"vision1.avi","t":"yolo_coordinates.txt"},
-            end_false_key=end_false_key,                 # ★ 必須補這行
-            reset_frame_counter=True)                    #   才不會把 True 傳到 end_false_key
+            mapping={"o": "original_vision1.avi", "v": "vision1.avi", "t": "yolo_coordinates.txt"},  # 搬檔命名
+            end_false_key=end_false_key,                                                      # ★一定要帶入
+            reset_frame_counter=True)                                                         # 關段後可歸零
+        if ended:                                                                             # 若已關段
+            out, original_out, txt_file = None, None, None                                    # 釋放本地 I/O
+        if frame_reset is not None:                                                           # 若需重設幀
+            frame_count_for_detect = frame_reset                                              # 歸零
 
-    # 顯示與同步                                                                       # 共用顯示
-    _qt_show(label, frame, fps)                                                               # 顯示
-    barrier.wait()                                                                            # 同步
-    return start_time, frame_count, fps, out, frame_count_for_detect, original_out, save_sig, txt_file  # 回傳
+    # -------- 顯示與同步 --------
+    _qt_show(label, frame, fps)                                                               # 疊 FPS 並顯示
+    barrier.wait()                                                                            # 多線程同步
+
+    # -------- 回傳 --------
+    return start_time, frame_count, fps, out, frame_count_for_detect, original_out, save_sig, txt_file  # 與呼叫端介面一致
 
 def benchpress_body_loop(i, frame, label, save_sig, folder,                                   # 人體視角
                          start_time, frame_count, fps, out, model, txt_file,                  # I/O 與模型（順序不變）
@@ -758,7 +785,7 @@ def benchpress_body_loop(i, frame, label, save_sig, folder,                     
     early, (out, _unused_original, txt_file), (save_sig, frame_count_for_detect) =\
         _idle_if_ui_off(gate_ui, label, frame, fps, barrier,
                         shared_state, shared_lock, cam_rec_key,
-                        (out, None, txt_file), (save_sig, frame_count_for_detect))
+                        (out, None, txt_file), (save_sig, frame_count_for_detect))            # UI 關閉時的保護
     if early:                                                                                 # 若早退
         return start_time, frame_count, fps, out, frame_count_for_detect, save_sig, txt_file  # 回傳數量不變
 
@@ -766,9 +793,9 @@ def benchpress_body_loop(i, frame, label, save_sig, folder,                     
     try:
         original_frame = frame.copy()                                                         # 原始畫面
     except Exception:
-        original_frame = frame                                                               # 退化保護
+        original_frame = frame                                                                # 退化保護
 
-    # ---- YOLO 推論 + 疊圖 --------------------------------------------------------------
+    # ---- YOLO 推論 --------------------------------------------------------------------
     try:
         results = list(model(source=frame, stream=True, verbose=False))                       # 推論
     except Exception as e:
@@ -776,78 +803,99 @@ def benchpress_body_loop(i, frame, label, save_sig, folder,                     
         print(f"[benchpress_body_loop] model error: {e}")                                     # 記錄
 
     frame_count_for_detect += 1                                                               # 偵測幀+1
-    body_now, rows = False, []                                                                # 當幀旗標/輸出列
-    if results and getattr(results[0], "keypoints", None) is not None:                        # 有點集
-        kpts = results[0].keypoints                                                           # 取點
-        xy = kpts.xy                                                                          # xy
-        if hasattr(xy, "detach"): xy = xy.detach().cpu().numpy()                              # tensor→np
-        first = xy[0] if len(xy) > 0 else None                                                # 第一人
-        if first is not None:                                                                 # 有人體
-            body_now = True                                                                   # 標記
+
+    # ---- 關鍵點解析（保留浮點；套用左右重排） --------------------------------------------
+    body_now = False                                                                          # 本幀是否有人體
+    frame_points = None                                                                       # 本幀要寫入的點
+    if results and getattr(results[0], "keypoints", None) is not None:                        # 有 keypoints
+        kpts = results[0].keypoints                                                           # 取點物件
+        xy = kpts.xy                                                                          # (N, K, 2) 浮點
+        if hasattr(xy, "detach"):                                                             # 若為 tensor
+            xy = xy.detach().cpu().numpy()                                                    # 轉 numpy
+        first = xy[0] if len(xy) > 0 else None                                                # 取第一人
+        if first is not None and first.shape[0] >= 8:                                         # 至少 8 點
+            body_now = True                                                                   # 標記偵測到
+            # 你期望的順序與模型原順序成對互換（0↔1、2↔3、4↔5、6↔7）
+            index_map = [1, 0, 3, 2, 5, 4, 7, 6]                                              # 左右對調映射
+            reordered = first[index_map, :2]                                                  # 重排後的 (8,2) 浮點
+            # 構成輸出列表（浮點不取整）
+            frame_points = [(float(x), float(y)) for (x, y) in reordered]                     # 供寫檔使用
+
+            # ---- 視覺化（僅繪圖時轉 int，不影響輸出檔） --------------------------------
+            import cv2                                                                        # 只在此處用
+            draw_pts = [(int(x), int(y)) for (x, y) in frame_points]                          # 轉成整數點
             if not skeleton_connections:                                                      # 預設連線
-                skeleton_connections = [(0,1),(0,2),(0,4),(1,3),(1,5),(2,3),(4,6),(5,7)]      # 簡化
-            import cv2                                                                        # 僅此處用
-            pts = []                                                                          # 點集
-            for idx, (xk, yk) in enumerate(first[:, :2].astype(int)):                         # 逐點
-                valid = not (xk == 0 and yk == 0)                                             # 有效點
-                pts.append((xk, yk) if valid else None)                                       # 收集
-                if valid: cv2.circle(frame, (xk, yk), 5, (0,255,0), cv2.FILLED)               # 畫點
-                rows.append(f"{frame_count_for_detect},{idx},{xk},{yk}")                      # 記錄
-            for a, b in skeleton_connections:                                                 # 逐線
-                if a < len(pts) and b < len(pts) and pts[a] and pts[b]:                       # 檢查
-                    cv2.line(frame, pts[a], pts[b], (0,255,255), 2)                           # 畫線
+                skeleton_connections = [(0,1),(0,2),(1,3),(2,3),(4,6),(5,7),(0,4),(1,5)]      # 合理簡化骨架
+            for p in draw_pts:                                                                # 畫點
+                cv2.circle(frame, p, 5, (0,255,0), cv2.FILLED)                                # 綠色點
+            for a, b in skeleton_connections:                                                 # 畫線
+                if a < len(draw_pts) and b < len(draw_pts):
+                    cv2.line(frame, draw_pts[a], draw_pts[b], (0,255,255), 2)                 # 黃線
 
     # ---- 人體 gate 鎖存（20 幀緩衝） -----------------------------------------------------
     hit_cnt, miss_cnt, latched_now = _latch_by_buffer(hit_cnt, miss_cnt, body_now, BODY_BUF_FRAMES)  # 緩衝
-    _shared_set_many(shared_state, shared_lock, {hit_key: hit_cnt, miss_key: miss_cnt})       # 回寫
+    _shared_set_many(shared_state, shared_lock, {hit_key: hit_cnt, miss_key: miss_cnt})       # 回寫計數
     _shared_set_many(shared_state, shared_lock, {"body_detected": latched_now})               # 更新 gate
 
     # ---- 三 Gate 決策 -------------------------------------------------------------------
     gate_bar = _shared_get(shared_state, shared_lock, "bar_y_changed", False)                 # 槓 gate
-    should_record = gate_ui and latched_now and gate_bar                                      # 三者同時
+    should_record = gate_ui and latched_now and gate_bar                                      # 三者同時 True 才錄
 
     # ---- 開段（同時建立疊圖 out 與原始 original_out） -----------------------------------
-    opened, seg_no, out_new, original_out_new, txt_new = _segment_start_if_needed(            # 取新 I/O
+    opened, seg_no, out_new, original_out_new, txt_new = _segment_start_if_needed(            # 檢查開段
         should_record, is_rec, folder, i, seg_no, frame,
         need_original=True, need_txt=True, txt_suffix="body",                                 # 要原始+txt
         shared_state=shared_state, shared_lock=shared_lock,
         cam_seg_key=cam_seg_key, cam_rec_key=cam_rec_key,
-        end_false_key=end_false_key, tmp_paths_key=tmp_paths_key)
+        end_false_key=end_false_key, tmp_paths_key=tmp_paths_key)                             # 共享鍵
 
     if opened:                                                                                # 剛開段
-        out, txt_file = out_new, txt_new                                                      # 接手 I/O
+        out, txt_file = out_new, txt_new                                                      # 更新 I/O
         if original_out_new is not None:                                                      # 記住原始 writer
             _shared_set_many(shared_state, shared_lock, {orig_wr_key: original_out_new})      # 存共享
             original_out = original_out_new                                                   # 更新本地
 
     # ---- 寫入 / 關段 --------------------------------------------------------------------
     if should_record:                                                                         # 錄影中
-        if original_out is not None:                                                          # 先寫原始
-            try: original_out.write(original_frame)                                           # 原始畫面
-            except Exception as e: print(f"[benchpress_body_loop] original write err: {e}")   # 保護
-        if out is not None:                                                                   # 再寫疊圖
+        if original_out is not None:                                                          # 寫原始
+            try:
+                original_out.write(original_frame)                                            # 原始畫面
+            except Exception as e:
+                print(f"[benchpress_body_loop] original write err: {e}")                      # 例外保護
+        if out is not None:                                                                   # 寫疊圖
             out.write(frame)                                                                  # 疊圖畫面
-        if txt_file is not None:                                                              # 寫關鍵點
-            if body_now and rows: txt_file.write("\n".join(rows) + "\n")                      # 批次
-            else: txt_file.write(f"{frame_count_for_detect},no detection\n")                  # 無偵測
+
+        # ---- 關鍵點文字輸出（改成你要的格式） -------------------------------------------
+        if txt_file is not None:
+            if frame_points is not None:                                                      # 有偵測
+                # Frame N: [[(x,y), (x,y), ...]]
+                line = "Frame {}: [[{}]]\n".format(                                           # 組字串
+                    frame_count_for_detect,
+                    ", ".join(f"({x:.6f}, {y:.6f})" for (x, y) in frame_points)               # 6 位小數
+                )
+                txt_file.write(line)                                                          # 寫入
+            else:
+                txt_file.write(f"Frame {frame_count_for_detect}: [[no detection]]\n")         # 無偵測
+
         _shared_set_many(shared_state, shared_lock, {end_false_key: 0})                       # 清緩衝
     else:                                                                                     # Gate False
-        ended, end_false_cnt, _ = _segment_end_if_needed(
+        ended, end_false_cnt, _ = _segment_end_if_needed(                                     # 檢查關段
             should_record, is_rec, end_false_cnt, END_GRACE_FRAMES,
-            out, original_out, txt_file,                                                      # 連同原始 writer
+            out, original_out, txt_file,                                                      # 一併收 writer
             shared_state, shared_lock, tmp_paths_key, cam_rec_key,
             folder, i, seg_no,
-            mapping={"o":"original_vision2.avi","v":"vision2.avi","t":"yolo_body_keypoints.txt"},
-            end_false_key=end_false_key)                                                      # 結束判定
+            mapping={"o":"original_vision2.avi","v":"vision2.avi","t":"yolo_skeleton.txt"},   # ★ 改名
+            end_false_key=end_false_key)                                                      # 緩衝鍵
         if ended:                                                                             # 段落已關
-            out, txt_file = None, None                                                        # 釋放本地
+            out, txt_file = None, None                                                        # 置空本地
             _shared_set_many(shared_state, shared_lock, {orig_wr_key: None})                  # 清共享
             original_out = None                                                               # 釋放原始
 
     # ---- 顯示與同步 ---------------------------------------------------------------------
-    _qt_show(label, frame, fps)                                                               # 顯示
-    barrier.wait()                                                                            # 同步
+    _qt_show(label, frame, fps)                                                               # 顯示影像與 FPS
+    barrier.wait()                                                                            # 三視角同步柵欄
     return start_time, frame_count, fps, out, frame_count_for_detect, save_sig, txt_file      # 回傳（7）
+
 
 def benchpress_head_loop(i, frame, label, save_sig, folder,                                  # 頭部視角：跟三 Gate 錄影
                          start_time, frame_count, fps, out, original_out,                    # I/O 與 FPS 狀態
