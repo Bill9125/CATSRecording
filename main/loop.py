@@ -761,16 +761,36 @@ def benchpress_body_loop(i, frame, label, save_sig, folder,                     
                          frame_count_for_detect, skeleton_connections, barrier,               # 幀計數 / 柵欄
                          shared_state, shared_lock):                                          # 共享狀態
     # ============== 參數（可視情況微調） ==============
-    BOX_CONF_TH   = 0.60                                                                      # 人框信心值門檻
+    BOX_CONF_TH   = 0.60                                                                      # 人框信心值下限
     AREA_MIN_RATE = 0.02                                                                      # 框佔畫面最小比例
     AREA_MAX_RATE = 0.90                                                                      # 框佔畫面最大比例
-    EDGE_PX_TH    = 6                                                                         # 邊界距離像素閾值
+    EDGE_PX_TH    = 6                                                                         # 邊界像素閾值（防角落假點）
     EDGE_RATE_MAX = 0.25                                                                      # 邊緣點比例上限
     MIN_VALID_KP  = 4                                                                         # 最少有效關鍵點數
-    INDEX_MAP     = [1,0,3,2,5,4,7,6]                                                         # 左右對調映射（0↔1,2↔3,4↔5,6↔7）
+    INDEX_MAP     = [1,0,3,2,5,4,7,6]                                                         # 左右對調映射
+    # ---- ROI（長椅位於中央區域；用百分比定義） ----
+    ROI_X1_RATE, ROI_Y1_RATE = 0.30, 0.20                                                     # ROI 左上角（相對座標）
+    ROI_X2_RATE, ROI_Y2_RATE = 0.70, 0.92                                                     # ROI 右下角（相對座標）
+    ROI_IOU_MIN = 0.10                                                                         # 與 ROI 的最小 IoU
+    DRAW_ROI = True                                                                            # 除錯用畫 ROI
 
-    H, W = frame.shape[:2]                                                                    # 影像大小
-    img_area = float(H * W)                                                                   # 影像面積
+    H, W = frame.shape[:2]                                                                    # 影像寬高
+    rx1, ry1 = int(W*ROI_X1_RATE), int(H*ROI_Y1_RATE)                                         # ROI px 左上
+    rx2, ry2 = int(W*ROI_X2_RATE), int(H*ROI_Y2_RATE)                                         # ROI px 右下
+    roi_area = max(0, rx2-rx1) * max(0, ry2-ry1)                                              # ROI 面積
+
+    # ---- 工具：IoU 計算 ----
+    def _iou_xyxy(a, b):                                                                      # 計算兩框 IoU
+        ax1, ay1, ax2, ay2 = a                                                                # 解析 a
+        bx1, by1, bx2, by2 = b                                                                # 解析 b
+        ix1, iy1 = max(ax1, bx1), max(ay1, by1)                                               # 交集左上
+        ix2, iy2 = min(ax2, bx2), min(ay2, by2)                                               # 交集右下
+        iw, ih = max(0, ix2-ix1), max(0, iy2-iy1)                                             # 交集寬高
+        inter = iw * ih                                                                       # 交集面積
+        aa = max(0, ax2-ax1) * max(0, ay2-ay1)                                                # a 面積
+        bb = max(0, bx2-bx1) * max(0, by2-by1)                                                # b 面積
+        union = aa + bb - inter + 1e-6                                                        # 聯集（避免 0）
+        return inter / union                                                                  # IoU
 
     # ---- 常用 key --------------------------------------------------------------------
     cam_rec_key   = f"rec_cam{i}"                                                             # 是否在錄
@@ -797,15 +817,20 @@ def benchpress_body_loop(i, frame, label, save_sig, folder,                     
     early, (out, _unused_original, txt_file), (save_sig, frame_count_for_detect) =\
         _idle_if_ui_off(gate_ui, label, frame, fps, barrier,
                         shared_state, shared_lock, cam_rec_key,
-                        (out, None, txt_file), (save_sig, frame_count_for_detect))            # UI 關閉時的保護
+                        (out, None, txt_file), (save_sig, frame_count_for_detect))            # UI 關閉保護
     if early:                                                                                 # 若早退
-        return start_time, frame_count, fps, out, frame_count_for_detect, save_sig, txt_file  # 回傳數量不變
+        return start_time, frame_count, fps, out, frame_count_for_detect, save_sig, txt_file  # 回傳
 
     # ---- 保留原始畫面（給 original_vision2.mp4） ---------------------------------------
     try:
         original_frame = frame.copy()                                                         # 原始畫面
     except Exception:
         original_frame = frame                                                                # 退化保護
+
+    # ---- 畫 ROI（除錯用） --------------------------------------------------------------
+    if DRAW_ROI:                                                                              # 需要畫 ROI
+        import cv2                                                                            # 延遲載入
+        cv2.rectangle(frame, (rx1, ry1), (rx2, ry2), (0, 255, 255), 2)                        # 黃框 ROI
 
     # ---- YOLO 推論 --------------------------------------------------------------------
     try:
@@ -816,82 +841,81 @@ def benchpress_body_loop(i, frame, label, save_sig, folder,                     
 
     frame_count_for_detect += 1                                                               # 偵測幀+1
 
-    # ---- 關鍵點解析（先做偵測過濾） ------------------------------------------------------
+    # ---- 關鍵點解析（加上 ROI 過濾） -----------------------------------------------------
     body_now = False                                                                          # 本幀是否有人體
-    frame_points = None                                                                       # 本幀要寫入的點（浮點）
+    frame_points = None                                                                       # 本幀輸出點（浮點）
     if results and getattr(results[0], "keypoints", None) is not None and \
-       getattr(results[0], "boxes", None) is not None:                                        # 需同時有 box 與 keypoints
-        det_boxes = results[0].boxes                                                          # Boxes 物件
-        det_kpts  = results[0].keypoints                                                      # Keypoints 物件
+       getattr(results[0], "boxes", None) is not None:                                        # 需同時有 box/kpts
+        det_boxes = results[0].boxes                                                          # Boxes
+        det_kpts  = results[0].keypoints                                                      # Keypoints
         xy_all    = det_kpts.xy                                                               # (N,K,2)
         kconf     = getattr(det_kpts, "conf", None)                                           # (N,K) 或 None
-        # 轉 numpy
-        if hasattr(xy_all, "detach"): xy_all = xy_all.detach().cpu().numpy()                  # tensor→np
-        if kconf is not None and hasattr(kconf, "detach"): kconf = kconf.detach().cpu().numpy() # tensor→np
+        # tensor → numpy
+        if hasattr(xy_all, "detach"): xy_all = xy_all.detach().cpu().numpy()                  # 轉 numpy
+        if kconf is not None and hasattr(kconf, "detach"): kconf = kconf.detach().cpu().numpy()# 轉 numpy
 
-        sel_idx, sel_score = -1, -1.0                                                         # 最佳人框索引/分數
-        for idx in range(len(det_boxes)):                                                     # 逐一檢視每個偵測
-            box = det_boxes[idx]                                                              # 第 idx 個框
+        best_idx, best_score = -1, -1.0                                                       # 最佳人框索引/分數
+        for idx in range(len(det_boxes)):                                                     # 逐框過濾
+            box = det_boxes[idx]                                                              # 第 idx 框
             conf = float(box.conf[0]) if hasattr(box, "conf") else 0.0                        # 信心值
-            if conf < BOX_CONF_TH:                                                            # 低於門檻跳過
+            if conf < BOX_CONF_TH:                                                            # 低信心丟棄
                 continue                                                                      # 跳過
-            # 取框面積
-            if hasattr(box, "xyxy"):                                                          # xyxy 可用
-                x1,y1,x2,y2 = [float(v) for v in box.xyxy[0].tolist()]                        # 讀 xyxy
-                area = max(0.0, (x2-x1)) * max(0.0, (y2-y1))                                  # 面積
-                rate = area / img_area if img_area > 0 else 0                                 # 佔比
-                if not (AREA_MIN_RATE <= rate <= AREA_MAX_RATE):                              # 框過小/過大
-                    continue                                                                  # 跳過
-            # 取該偵測的關鍵點
-            if idx >= xy_all.shape[0]:                                                        # 防呆
+            if not hasattr(box, "xyxy"):                                                      # 無座標丟棄
+                continue                                                                      # 跳過
+            x1,y1,x2,y2 = [float(v) for v in box.xyxy[0].tolist()]                            # 取 xyxy
+            bw, bh = max(0.0, x2-x1), max(0.0, y2-y1)                                         # 框寬高
+            area = bw * bh                                                                    # 框面積
+            rate = area / float(W*H + 1e-6)                                                   # 佔比
+            if not (AREA_MIN_RATE <= rate <= AREA_MAX_RATE):                                  # 大小不合理
+                continue                                                                      # 跳過
+            cx, cy = (x1+x2)/2.0, (y1+y2)/2.0                                                 # 框中心
+            if not (rx1 <= cx <= rx2 and ry1 <= cy <= ry2):                                   # 中心不在 ROI
+                continue                                                                      # 跳過
+            iou = _iou_xyxy((x1,y1,x2,y2), (rx1,ry1,rx2,ry2))                                 # 與 ROI 的 IoU
+            if iou < ROI_IOU_MIN:                                                             # IoU 太小
+                continue                                                                      # 跳過
+            if idx >= xy_all.shape[0]:                                                        # 防越界
                 continue                                                                      # 跳過
             kps = xy_all[idx]                                                                 # (K,2)
-            # 有效點（非 (0,0)）
             valid_mask = ~((kps[:,0] == 0) & (kps[:,1] == 0))                                 # 有效點遮罩
-            valid_cnt = int(valid_mask.sum())                                                 # 有效點數
+            valid_cnt  = int(valid_mask.sum())                                                # 有效點數
             if valid_cnt < MIN_VALID_KP:                                                      # 有效點太少
                 continue                                                                      # 跳過
-            # 邊緣點比例（防止點黏在邊角）
             edge_mask = (kps[:,0] < EDGE_PX_TH) | (kps[:,0] > (W-1-EDGE_PX_TH)) | \
                         (kps[:,1] < EDGE_PX_TH) | (kps[:,1] > (H-1-EDGE_PX_TH))               # 邊緣判定
             edge_rate = float(edge_mask.sum()) / float(kps.shape[0])                          # 邊緣比例
             if edge_rate > EDGE_RATE_MAX:                                                     # 邊緣點過多
                 continue                                                                      # 跳過
-            # 若 keypoint conf 可用，計入分數（平均）
-            score = conf                                                                      # 以 box conf 為主
-            if kconf is not None and idx < kconf.shape[0]:                                    # 有 kp conf
-                score = 0.7 * conf + 0.3 * float(kconf[idx][valid_mask].mean())               # 加權分數
-            # 保留分數最高者
-            if score > sel_score:                                                             # 更佳
-                sel_score, sel_idx = score, idx                                              # 更新選擇
+            score = conf                                                                      # 基礎分數：box conf
+            if kconf is not None and idx < kconf.shape[0] and valid_cnt > 0:                  # 若有 kp conf
+                score = 0.7*conf + 0.3*float(kconf[idx][valid_mask].mean())                   # 加權分數
+            if score > best_score:                                                            # 取最佳
+                best_score, best_idx = score, idx                                             # 更新
 
-        # 依最佳索引輸出
-        if sel_idx >= 0:                                                                      # 有通過過濾的人框
-            first = xy_all[sel_idx]                                                           # (K,2) 浮點
+        if best_idx >= 0:                                                                     # 找到合格的人
+            first = xy_all[best_idx]                                                          # (K,2) 浮點
             if first.shape[0] >= 8:                                                           # 至少 8 點
                 body_now = True                                                               # 標記偵測到
-                reordered = first[INDEX_MAP, :2]                                              # 左右對調後的 (8,2)
-                frame_points = [(float(x), float(y)) for (x, y) in reordered]                 # 供寫檔
-
-                # ---- 視覺化（僅繪圖時轉 int） ------------------------------------------
-                import cv2                                                                    # 局部 import
-                draw_pts = [(int(x), int(y)) for (x, y) in frame_points]                      # 轉 int 畫點
+                reordered = first[INDEX_MAP, :2]                                              # 左右對調
+                frame_points = [(float(x), float(y)) for (x, y) in reordered]                 # 給寫檔用
+                # ---- 視覺化（僅繪圖轉 int） --------------------------------------------
+                import cv2                                                                    # 延遲載入
+                draw_pts = [(int(x), int(y)) for (x, y) in frame_points]                      # int 點
                 if not skeleton_connections:                                                  # 預設連線
                     skeleton_connections = [(0,1),(0,2),(1,3),(2,3),(4,6),(5,7),(0,4),(1,5)]  # 簡化骨架
-                for p in draw_pts:                                                            # 畫點
-                    cv2.circle(frame, p, 5, (0,255,0), cv2.FILLED)                            # 綠點
+                for p in draw_pts: cv2.circle(frame, p, 5, (0,255,0), cv2.FILLED)             # 畫點
                 for a, b in skeleton_connections:                                             # 畫線
                     if a < len(draw_pts) and b < len(draw_pts):
-                        cv2.line(frame, draw_pts[a], draw_pts[b], (0,255,255), 2)             # 黃線
+                        cv2.line(frame, draw_pts[a], draw_pts[b], (0,255,255), 2)             # 畫線
 
     # ---- 人體 gate 鎖存（20 幀緩衝） -----------------------------------------------------
-    hit_cnt, miss_cnt, latched_now = _latch_by_buffer(hit_cnt, miss_cnt, body_now, BODY_BUF_FRAMES)  # 緩衝
-    _shared_set_many(shared_state, shared_lock, {hit_key: hit_cnt, miss_key: miss_cnt})       # 回寫計數
+    hit_cnt, miss_cnt, latched_now = _latch_by_buffer(hit_cnt, miss_cnt, body_now, BODY_BUF_FRAMES)  # 遲滯
+    _shared_set_many(shared_state, shared_lock, {hit_key: hit_cnt, miss_key: miss_cnt})       # 回寫
     _shared_set_many(shared_state, shared_lock, {"body_detected": latched_now})               # 更新 gate
 
     # ---- 三 Gate 決策 -------------------------------------------------------------------
     gate_bar = _shared_get(shared_state, shared_lock, "bar_y_changed", False)                 # 槓 gate
-    should_record = gate_ui and latched_now and gate_bar                                      # 三者同時 True 才錄
+    should_record = gate_ui and latched_now and gate_bar                                      # 三者皆 True 才錄
 
     # ---- 開段（同時建立疊圖 out 與原始 original_out） -----------------------------------
     opened, seg_no, out_new, original_out_new, txt_new = _segment_start_if_needed(            # 檢查開段
@@ -901,49 +925,43 @@ def benchpress_body_loop(i, frame, label, save_sig, folder,                     
         cam_seg_key=cam_seg_key, cam_rec_key=cam_rec_key,
         end_false_key=end_false_key, tmp_paths_key=tmp_paths_key)                             # 共享鍵
 
-    if opened:                                                                                # 剛開段
+    if opened:
         out, txt_file = out_new, txt_new                                                      # 更新 I/O
-        if original_out_new is not None:                                                      # 記住原始 writer
+        if original_out_new is not None:
             _shared_set_many(shared_state, shared_lock, {orig_wr_key: original_out_new})      # 存共享
             original_out = original_out_new                                                   # 更新本地
 
     # ---- 寫入 / 關段 --------------------------------------------------------------------
-    if should_record:                                                                         # 錄影中
-        if original_out is not None:                                                          # 寫原始
-            try:
-                original_out.write(original_frame)                                            # 原始畫面
-            except Exception as e:
-                print(f"[benchpress_body_loop] original write err: {e}")                      # 例外保護
-        if out is not None:                                                                   # 寫疊圖
-            out.write(frame)                                                                  # 疊圖畫面
-
-        # ---- 關鍵點文字輸出（目標格式） -------------------------------------------------
-        if txt_file is not None:
-            if frame_points is not None:                                                      # 有偵測
-                line = "Frame {}: [[{}]]\n".format(                                           # 建立字串
+    if should_record:
+        if original_out is not None:
+            try: original_out.write(original_frame)                                          # 原始畫面
+            except Exception as e: print(f"[benchpress_body_loop] original write err: {e}")  # 例外
+        if out is not None: out.write(frame)                                                 # 疊圖
+        if txt_file is not None:                                                             # 寫關鍵點
+            if frame_points is not None:
+                line = "Frame {}: [[{}]]\n".format(                                          # 組字串
                     frame_count_for_detect,
-                    ", ".join(f"({x:.6f}, {y:.6f})" for (x, y) in frame_points)               # 6 位小數
-                )
-                txt_file.write(line)                                                          # 寫入
+                    ", ".join(f"({x:.6f}, {y:.6f})" for (x, y) in frame_points))             # 浮點6位
+                txt_file.write(line)                                                         # 寫入
             else:
-                txt_file.write(f"Frame {frame_count_for_detect}: [[no detection]]\n")         # 無偵測
-        _shared_set_many(shared_state, shared_lock, {end_false_key: 0})                       # 清緩衝
-    else:                                                                                     # Gate False
-        ended, end_false_cnt, _ = _segment_end_if_needed(                                     # 檢查關段
+                txt_file.write(f"Frame {frame_count_for_detect}: [[no detection]]\n")        # 無偵測
+        _shared_set_many(shared_state, shared_lock, {end_false_key: 0})                      # 清緩衝
+    else:
+        ended, end_false_cnt, _ = _segment_end_if_needed(                                    # 檢查關段
             should_record, is_rec, end_false_cnt, END_GRACE_FRAMES,
-            out, original_out, txt_file,                                                      # 一併收 writer
+            out, original_out, txt_file,
             shared_state, shared_lock, tmp_paths_key, cam_rec_key,
             folder, i, seg_no,
-            mapping={"o":"original_vision2.avi","v":"vision2.avi","t":"yolo_skeleton.txt"},   # txt 檔名
-            end_false_key=end_false_key)                                                      # 緩衝鍵
-        if ended:                                                                             # 段落已關
-            out, txt_file = None, None                                                        # 置空本地
-            _shared_set_many(shared_state, shared_lock, {orig_wr_key: None})                  # 清共享
-            original_out = None                                                               # 釋放原始
+            mapping={"o":"original_vision2.avi","v":"vision2.avi","t":"yolo_skeleton.txt"},
+            end_false_key=end_false_key)
+        if ended:
+            out, txt_file = None, None                                                       # 釋放本地
+            _shared_set_many(shared_state, shared_lock, {orig_wr_key: None})                 # 清共享
+            original_out = None                                                              # 釋放原始
 
     # ---- 顯示與同步 ---------------------------------------------------------------------
-    _qt_show(label, frame, fps)                                                               # 顯示影像與 FPS
-    barrier.wait()                                                                            # 三視角同步柵欄
+    _qt_show(label, frame, fps)                                                               # 顯示
+    barrier.wait()                                                                            # 同步
     return start_time, frame_count, fps, out, frame_count_for_detect, save_sig, txt_file      # 回傳（7）
 
 
