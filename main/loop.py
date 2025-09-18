@@ -768,16 +768,15 @@ def benchpress_body_loop(i, frame, label, save_sig, folder,                     
     EDGE_RATE_MAX = 0.25                                                                      # 邊緣點比例上限
     MIN_VALID_KP  = 4                                                                         # 最少有效關鍵點數
     INDEX_MAP     = [1,0,3,2,5,4,7,6]                                                         # 左右對調映射
-    # ---- ROI（長椅位於中央區域；用百分比定義） ----
-    ROI_X1_RATE, ROI_Y1_RATE = 0.30, 0.20                                                     # ROI 左上角（相對座標）
-    ROI_X2_RATE, ROI_Y2_RATE = 0.70, 0.92                                                     # ROI 右下角（相對座標）
-    ROI_IOU_MIN = 0.10                                                                         # 與 ROI 的最小 IoU
-    DRAW_ROI = True                                                                            # 除錯用畫 ROI
+    # ---- ROI（只吃上半身；加寬、縮短） ----
+    ROI_X1_RATE, ROI_Y1_RATE = 0.20, 0.15                                                     # ROI 左上角（相對座標）：更寬更高一點
+    ROI_X2_RATE, ROI_Y2_RATE = 0.80, 0.75                                                     # ROI 右下角（相對座標）：高度縮短聚焦上半身
+    ROI_IOU_MIN = 0.40                                                                        # 與 ROI 的最小 IoU（提高以趨近全在 ROI）
+    DRAW_ROI = True                                                                           # 除錯用畫 ROI
 
     H, W = frame.shape[:2]                                                                    # 影像寬高
     rx1, ry1 = int(W*ROI_X1_RATE), int(H*ROI_Y1_RATE)                                         # ROI px 左上
     rx2, ry2 = int(W*ROI_X2_RATE), int(H*ROI_Y2_RATE)                                         # ROI px 右下
-    roi_area = max(0, rx2-rx1) * max(0, ry2-ry1)                                              # ROI 面積
 
     # ---- 工具：IoU 計算 ----
     def _iou_xyxy(a, b):                                                                      # 計算兩框 IoU
@@ -827,21 +826,27 @@ def benchpress_body_loop(i, frame, label, save_sig, folder,                     
     except Exception:
         original_frame = frame                                                                # 退化保護
 
-    # ---- 畫 ROI（除錯用） --------------------------------------------------------------
+    # ---- 顯示層 ROI（可視化） ----------------------------------------------------------
     if DRAW_ROI:                                                                              # 需要畫 ROI
         import cv2                                                                            # 延遲載入
         cv2.rectangle(frame, (rx1, ry1), (rx2, ry2), (0, 255, 255), 2)                        # 黃框 ROI
 
-    # ---- YOLO 推論 --------------------------------------------------------------------
+    # ================== B) 推論前遮黑 ROI 外部 ==================
+    import cv2                                                                                # 用於遮罩
+    masked_frame = original_frame.copy()                                                      # 建推論用影像（避免汙染顯示） 
+    cv2.rectangle(masked_frame, (0, 0), (W, ry1), (0,0,0), cv2.FILLED)                        # 遮黑 ROI 上方
+    cv2.rectangle(masked_frame, (0, ry2), (W, H), (0,0,0), cv2.FILLED)                        # 遮黑 ROI 下方
+    cv2.rectangle(masked_frame, (0, ry1), (rx1, ry2), (0,0,0), cv2.FILLED)                    # 遮黑 ROI 左側
+    cv2.rectangle(masked_frame, (rx2, ry1), (W, ry2), (0,0,0), cv2.FILLED)                    # 遮黑 ROI 右側
+
+    # ---- YOLO 推論（改用 masked_frame） -----------------------------------------------
     try:
-        results = list(model(source=frame, stream=True, verbose=False))                       # 推論
+        results = list(model(source=masked_frame, stream=True, verbose=False))                # 僅以 ROI 內容推論
     except Exception as e:
         results = []                                                                          # 失敗視為無偵測
         print(f"[benchpress_body_loop] model error: {e}")                                     # 記錄
 
-    frame_count_for_detect += 1                                                               # 偵測幀+1
-
-    # ---- 關鍵點解析（加上 ROI 過濾） -----------------------------------------------------
+    # ---- 關鍵點解析（含 ROI/IoU 基本過濾） ----------------------------------------------
     body_now = False                                                                          # 本幀是否有人體
     frame_points = None                                                                       # 本幀輸出點（浮點）
     if results and getattr(results[0], "keypoints", None) is not None and \
@@ -886,6 +891,7 @@ def benchpress_body_loop(i, frame, label, save_sig, folder,                     
             edge_rate = float(edge_mask.sum()) / float(kps.shape[0])                          # 邊緣比例
             if edge_rate > EDGE_RATE_MAX:                                                     # 邊緣點過多
                 continue                                                                      # 跳過
+
             score = conf                                                                      # 基礎分數：box conf
             if kconf is not None and idx < kconf.shape[0] and valid_cnt > 0:                  # 若有 kp conf
                 score = 0.7*conf + 0.3*float(kconf[idx][valid_mask].mean())                   # 加權分數
@@ -898,9 +904,7 @@ def benchpress_body_loop(i, frame, label, save_sig, folder,                     
                 body_now = True                                                               # 標記偵測到
                 reordered = first[INDEX_MAP, :2]                                              # 左右對調
                 frame_points = [(float(x), float(y)) for (x, y) in reordered]                 # 給寫檔用
-                # ---- 視覺化（僅繪圖轉 int） --------------------------------------------
-                import cv2                                                                    # 延遲載入
-                draw_pts = [(int(x), int(y)) for (x, y) in frame_points]                      # int 點
+                draw_pts = [(int(x), int(y)) for (x, y) in frame_points]                      # 視覺化用 int
                 if not skeleton_connections:                                                  # 預設連線
                     skeleton_connections = [(0,1),(0,2),(1,3),(2,3),(4,6),(5,7),(0,4),(1,5)]  # 簡化骨架
                 for p in draw_pts: cv2.circle(frame, p, 5, (0,255,0), cv2.FILLED)             # 畫點
@@ -925,39 +929,49 @@ def benchpress_body_loop(i, frame, label, save_sig, folder,                     
         cam_seg_key=cam_seg_key, cam_rec_key=cam_rec_key,
         end_false_key=end_false_key, tmp_paths_key=tmp_paths_key)                             # 共享鍵
 
-    if opened:
+    if opened:                                                                                # 若剛開段
         out, txt_file = out_new, txt_new                                                      # 更新 I/O
         if original_out_new is not None:
             _shared_set_many(shared_state, shared_lock, {orig_wr_key: original_out_new})      # 存共享
             original_out = original_out_new                                                   # 更新本地
+        frame_count_for_detect = 0                                                            # 每段從 1 起算
 
     # ---- 寫入 / 關段 --------------------------------------------------------------------
-    if should_record:
+    if should_record:                                                                         # 錄影中才寫
+        frame_count_for_detect += 1                                                           # 幀+1（錄影有效幀）
+
         if original_out is not None:
-            try: original_out.write(original_frame)                                          # 原始畫面
-            except Exception as e: print(f"[benchpress_body_loop] original write err: {e}")  # 例外
-        if out is not None: out.write(frame)                                                 # 疊圖
-        if txt_file is not None:                                                             # 寫關鍵點
+            try:
+                original_out.write(original_frame)                                            # 原始畫面
+            except Exception as e:
+                print(f"[benchpress_body_loop] original write err: {e}")                      # 例外
+        if out is not None:
+            out.write(frame)                                                                  # 疊圖
+
+        if txt_file is not None:                                                              # 寫關鍵點
             if frame_points is not None:
-                line = "Frame {}: [[{}]]\n".format(                                          # 組字串
+                line = "Frame {}: [[{}]]\n".format(                                           # 組字串
                     frame_count_for_detect,
                     ", ".join(f"({x:.6f}, {y:.6f})" for (x, y) in frame_points))             # 浮點6位
-                txt_file.write(line)                                                         # 寫入
+                txt_file.write(line)                                                          # 寫入
             else:
-                txt_file.write(f"Frame {frame_count_for_detect}: [[no detection]]\n")        # 無偵測
-        _shared_set_many(shared_state, shared_lock, {end_false_key: 0})                      # 清緩衝
-    else:
-        ended, end_false_cnt, _ = _segment_end_if_needed(                                    # 檢查關段
+                txt_file.write(f"Frame {frame_count_for_detect}: [[no detection]]\n")         # 無偵測
+        _shared_set_many(shared_state, shared_lock, {end_false_key: 0})                       # 清緩衝
+    else:                                                                                     # Gate False：可能關段
+        ended, end_false_cnt, frame_reset = _segment_end_if_needed(                           # 檢查關段
             should_record, is_rec, end_false_cnt, END_GRACE_FRAMES,
             out, original_out, txt_file,
             shared_state, shared_lock, tmp_paths_key, cam_rec_key,
             folder, i, seg_no,
-            mapping={"o":"original_vision2.avi","v":"vision2.avi","t":"yolo_skeleton.txt"},
-            end_false_key=end_false_key)
+            mapping={"o":"original_vision2.avi","v":"vision2.avi","t":"yolo_skeleton.txt"},   # 檔名對應
+            end_false_key=end_false_key,
+            reset_frame_counter=True)                                                         # 關段後把幀歸零
         if ended:
-            out, txt_file = None, None                                                       # 釋放本地
-            _shared_set_many(shared_state, shared_lock, {orig_wr_key: None})                 # 清共享
-            original_out = None                                                              # 釋放原始
+            out, txt_file = None, None                                                        # 釋放本地
+            _shared_set_many(shared_state, shared_lock, {orig_wr_key: None})                  # 清共享
+            original_out = None                                                               # 釋放原始
+        if frame_reset is not None:                                                           # 若需歸零
+            frame_count_for_detect = frame_reset                                              # 歸零
 
     # ---- 顯示與同步 ---------------------------------------------------------------------
     _qt_show(label, frame, fps)                                                               # 顯示
