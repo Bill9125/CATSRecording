@@ -113,46 +113,84 @@ class Recordingbackend():
         self.creat_threads(sport, labels)
     
     def source_get(self, sport):
-        self.vision_src = {}
-        for i in range(self.struct[sport]):
-            self.vision_src[f'Vision{i+1}'] = i
+        # 讀取來源順序與啟用設定（-1 代表停用）                       # 功能說明
+        self.vision_src = {}                                            # 重置來源映射
+        max_slots = self.struct[sport]                                  # 該運動最大插槽數
+        try:
+            with open('./config/click_order.json', mode='r', encoding='utf-8') as file:  # 修正為 'r'
+                data = json.load(file)                                  # 載入JSON
+                raw_list = data.get(sport, [])                          # 取對應運動的清單
+        except Exception as e:
+            print(f"[WARN] read click_order.json failed: {e}")          # 讀檔失敗警告
+            raw_list = list(range(max_slots))                           # 退回預設 0..N-1
 
-        with open('./config/click_order.json', mode='r', newline='', encoding='utf-8') as file:
-            data = json.load(file)
-            for i in range(self.struct[sport]):
-                self.vision_src[f'Vision{i+1}'] = int(data[sport][i])
+        # 規範化：長度對齊最大插槽數，不足以 -1 補齊                     # 對齊長度
+        if len(raw_list) < max_slots:
+            raw_list = raw_list + [-1] * (max_slots - len(raw_list))    # 不足補 -1
+        else:
+            raw_list = raw_list[:max_slots]                             # 超過則截斷
+
+        # 過濾出實際啟用的來源（非 -1 才算）                              # 建立啟用順序
+        self.active_sources = [src for src in raw_list if isinstance(src, int) and src >= 0]  # 實際要開的來源
+        # 也保留「插槽到來源」的可讀映射（Vision1..N -> src or -1）         # 除錯觀察
+        for i in range(max_slots):
+            self.vision_src[f'Vision{i+1}'] = raw_list[i]               # 保留原始設定（可能為 -1）
+        print(f"[INFO] enabled sources: {self.active_sources}")         # 列出將啟用的來源
+
         
     def initialize_cameras(self):
-        cameras = []
-        i = 0
-        for src in self.vision_src.values():
-            try:
-                print(f'cam {i} with {src}')
-                i+=1
-                cam = MyVideoCapture(src)
-                if cam.isOpened():
-                    cameras.append(cam)
-                else:
-                    print(f"Camera {src} is not available.")
-            except Exception as e:
-                print(f"Error opening camera {src}: {e}")
+        cameras = []                                                    # 實際要用的相機容器
+        if not hasattr(self, 'active_sources') or len(self.active_sources) == 0:  # 若沒有任何啟用
+            print("[WARN] No active sources configured.")               # 警告
+            return cameras                                              # 回傳空清單
 
-        if not cameras:
-            print("No cameras connected.")
-        return cameras
+        for idx, src in enumerate(self.active_sources):                 # 逐一嘗試開啟
+            try:
+                print(f'opening cam slot {idx} -> src {src}')           # 除錯訊息
+                cam = MyVideoCapture(src)                               # 開相機
+                if cam.isOpened():                                      # 檢查狀態
+                    cameras.append(cam)                                 # 加入啟用清單
+                else:
+                    print(f"[WARN] Camera {src} is not available.")     # 無法開啟警告
+            except Exception as e:
+                print(f"[ERROR] Error opening camera {src}: {e}")       # 例外處理
+
+        if not cameras:                                                 # 若完全沒開到
+            print("[ERROR] No cameras connected or all disabled.")      # 錯誤訊息
+        return cameras                                                  # 回傳「實際啟用」的相機清單
+
         
     def creat_threads(self, sport, labels):
-        # Start YOLO and MediaPipe threads
-        self.threads =[]
-        if self.barrier:
-            self.barrier.abort()
-        self.stop_event.clear()
-        self.barrier = threading.Barrier(self.struct[sport])
-        for i in range(self.struct[sport]):
-            thread = threading.Thread(target=self.process_vision,
-                                      args = (i, sport, labels[i], self.barrier) , daemon=True)
-            self.threads.append(thread)
-            thread.start()
+        # 用「實際啟用的相機數」來建立 Barrier 與 Threads                  # 核心修正
+        self.threads = []                                               # 重置執行緒清單
+        if self.barrier:                                                # 若舊 barrier 存在
+            try:
+                self.barrier.abort()                                    # 中止舊 barrier（避免阻塞）
+            except:                                                     # 可能已經 broken
+                pass
+        self.stop_event.clear()                                         # 清除停止旗標
+
+        active_n = len(self.cameras)                                    # 實際啟用數
+        if active_n == 0:                                               # 若沒有相機
+            print("[ERROR] No active cameras; skip thread creation.")   # 錯誤訊息
+            return                                                      # 直接返回
+
+        self.barrier = threading.Barrier(active_n)                      # ★ 以啟用數建立 Barrier
+
+        # labels 也要依啟用數裁剪（缺的就給預設）                           # 保護 labels
+        safe_labels = (labels or [])[:active_n]                         # 取前 active_n 個
+        if len(safe_labels) < active_n:                                 # 若不足
+            safe_labels += [f"Cam{j}" for j in range(len(safe_labels), active_n)]  # 補上預設
+
+        for i in range(active_n):                                       # 以 0..active_n-1 迭代
+            thread = threading.Thread(                                  # 建立執行緒
+                target=self.process_vision,                             # 跑影像流程
+                args=(i, sport, safe_labels[i], self.barrier),          # 傳入序號/運動/標籤/Barrier
+                daemon=True                                             # 設為daemon
+            )
+            self.threads.append(thread)                                 # 收集
+            thread.start()                                              # 啟動
+
             
     def model_select(self, sport):
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -178,86 +216,121 @@ class Recordingbackend():
             body_model.to(device)
             head_model.to(device)
             return [bar_model, body_model, head_model]
-        
+            
     def process_vision(self, i, sport, label, barrier):
-        start_time = time.time()
-        frame_count = 0
-        frame_count_for_detect = 0
-        fps = 0
-        out = None
-        original_out = None
-        txt_file = None
-        # 基本錄製結構
-        while not self.stop_event.is_set():
-            cap = self.cameras[i]
-            ret, frame = cap.get_frame()
-            if ret:
-                if sport == 'Deadlift':
-                    if i == 0:
-                        start_time, frame_count, fps, out, frame_count_for_detect, self.save_sig_1, txt_file = loop.deadlift_bar_loop(
-                            i, frame, label, self.save_sig_1, self.recording_sig,
-                            self.folder, start_time, frame_count, fps, out, self.models[i],
-                            txt_file, frame_count_for_detect, barrier)
-                    elif i == 1:
-                        start_time, frame_count, fps, out, frame_count_for_detect, self.save_sig_2, txt_file = loop.deadlift_bone_loop(
-                            i, frame, label, self.save_sig_2, self.recording_sig,
-                            self.folder, start_time, frame_count, fps, out, self.models[i],
-                            txt_file, frame_count_for_detect, self.skeleton_connections, barrier)
-                    else:
-                        start_time, frame_count, fps, out, self.save_sig_3 = loop.deadlift_general_loop(
-                            i, frame, label, self.save_sig_3, self.recording_sig,
-                            self.folder, start_time, frame_count, fps, out, barrier)
-                
-                elif sport == 'Benchpress':                                                                               # 臥推模式
-                    if i == 0:                                                                                            # 相機0（槓視角）：更新 bar_y_changed + Gate 錄影
-                        start_time, frame_count, fps, out, frame_count_for_detect, original_out, self.save_sig_1, txt_file = loop.benchpress_bar_loop(
-                            i, frame, label, self.save_sig_1,                                                            # 與原介面一致：save_sig 
-                            self.folder, start_time, frame_count, fps, out, original_out, self.models[i],                 # 輸出夾 / writer / 模型
-                            txt_file, frame_count_for_detect, barrier,                                                    # txt / 幀計數 / 柵欄
-                            self.shared_state, self.shared_lock, self.BAR_MOVE_THRESH)                                    # ★ 新增：共享狀態 / 鎖 / 位移閾值
+        start_time = time.time()                                        # 起始時間（計算 FPS / 命名等用途）
+        frame_count = 0                                                 # 畫面幀計數
+        frame_count_for_detect = 0                                      # 偵測幀計數（給各 loop 做抽樣/節流）
+        fps = 0                                                         # 當前 FPS
+        out = None                                                      # 疊圖用的 VideoWriter（各 loop 會建立/回傳）
+        original_out = None                                             # 原始畫面用的 VideoWriter（需要雙軌輸出的情境）
+        txt_file = None                                                 # 開啟/寫入 txt 的檔案物件或路徑（交由各 loop 管）
 
-                    elif i == 1:                                                                                          # 相機1（人體視角）：更新 body_detected + Gate 錄影
-                        start_time, frame_count, fps, out, frame_count_for_detect, self.save_sig_2, txt_file = loop.benchpress_body_loop(
-                            i, frame, label, self.save_sig_2,                                                             # 與原介面一致：save_sig 
-                            self.folder, start_time, frame_count, fps, out,                                               # writer 與計時
-                            self.models[1], txt_file, frame_count_for_detect, None, barrier,                              # YOLO body 模型 / txt / 幀計數 / 連線None→預設 / 柵欄
-                            self.shared_state, self.shared_lock)                                                          # ★ 新增：共享狀態 / 鎖
+        while not self.stop_event.is_set():                             # 主迴圈：直到收到停止事件
+            cap = self.cameras[i]                                       # 取對應啟用序 i 的相機（self.cameras 已是啟用清單）
+            ret, frame = cap.get_frame()                                # 讀取一幀
+            if not ret:                                                 # 若抓幀失敗（USB 掉幀或暫時取不到）
+                continue                                                # 略過這一輪，避免 thread 中斷
 
-                    else:                                                                                                 # 相機2（頭部視角）：只跟 Gate 錄影
-                        start_time, frame_count, fps, out, original_out, self.save_sig_3, frame_count_for_detect = loop.benchpress_head_loop(
-                            i, frame, label, self.save_sig_3,                                                             # 與原介面一致：save_sig 
-                            self.folder, start_time, frame_count, fps, out, original_out, frame_count_for_detect, barrier,# writer / 幀計數 / 柵欄
-                            self.shared_state, self.shared_lock)    
-                    
-                    
-                elif sport == 'Squat':
-                    if i == 0:
-                        # cam1：bar（新增 original_out；回傳也要多接 original_out）
-                        start_time, frame_count, fps, out, original_out, frame_count_for_detect, self.save_sig_1, txt_file = loop.squat_bar_loop(
-                            i, frame, label, self.save_sig_1, self.recording_sig,
-                            self.folder, start_time, frame_count, fps,
-                            out, original_out,                      # ★ 傳入疊圖 writer 與原始 writer
-                            self.models[i], txt_file, frame_count_for_detect, barrier
-                        )
+            # === Deadlift 模式 ===                                      # 依運動類型分流
+            if sport == 'Deadlift':
+                if i == 0:                                              # 啟用序 0 當作「bar 視角」
+                    start_time, frame_count, fps, out, frame_count_for_detect, self.save_sig_1, txt_file = loop.deadlift_bar_loop(
+                        i, frame, label, self.save_sig_1,               # 基本識別/錄影旗標
+                        self.recording_sig,                             # UI 錄影 Gate（老布林，仍保留）
+                        self.folder, start_time, frame_count, fps, out, # 輸出資料夾與 writer / 計時
+                        self.models[0],                                 # ★ Deadlift: bar_model 固定用 models[0]
+                        txt_file, frame_count_for_detect, barrier       # 文檔/偵測幀/Barrier（多機同步）
+                    )
+                elif i == 1:                                            # 啟用序 1 當作「骨架視角」
+                    start_time, frame_count, fps, out, frame_count_for_detect, self.save_sig_2, txt_file = loop.deadlift_bone_loop(
+                        i, frame, label, self.save_sig_2,               # 基本識別/錄影旗標
+                        self.recording_sig,                             # UI 錄影 Gate
+                        self.folder, start_time, frame_count, fps, out, # 輸出與計時
+                        self.models[1],                                 # ★ Deadlift: bone_model 固定用 models[1]
+                        txt_file, frame_count_for_detect,               # 文檔/偵測幀
+                        self.skeleton_connections, barrier              # 骨架連線/Barrier
+                    )
+                else:                                                   # 其他啟用序 → 一般錄影（無模型）
+                    start_time, frame_count, fps, out, self.save_sig_3 = loop.deadlift_general_loop(
+                        i, frame, label, self.save_sig_3,               # 旗標
+                        self.recording_sig,                             # UI 錄影 Gate
+                        self.folder, start_time, frame_count, fps, out, # 輸出與計時
+                        barrier                                         # Barrier
+                    )
 
-                    elif i == 1:
-                        # cam2：bone（同樣新增 original_out；回傳也要多接 original_out）
-                        start_time, frame_count, fps, out, original_out, frame_count_for_detect, self.save_sig_2, txt_file = loop.squat_bone_loop(
-                            i, frame, label, self.save_sig_2, self.recording_sig,
-                            self.folder, start_time, frame_count, fps,
-                            out, original_out,                      # ★ 傳入疊圖 writer 與原始 writer
-                            self.models[i], txt_file, frame_count_for_detect,
-                            self.skeleton_connections, barrier
-                        )
+            # === Benchpress 模式 ===                                    # 臥推
+            elif sport == 'Benchpress':
+                if i == 0:                                              # 啟用序 0 → 槓視角（bar）：更新 bar_y_changed + Gate 錄影
+                    start_time, frame_count, fps, out, frame_count_for_detect, original_out, self.save_sig_1, txt_file = loop.benchpress_bar_loop(
+                        i, frame, label, self.save_sig_1,               # 旗標
+                        self.folder, start_time, frame_count, fps,      # I/O 與計時
+                        out, original_out,                              # 疊圖/原始 writer
+                        self.models[0],                                 # ★ Benchpress: bar_model 固定用 models[0]
+                        txt_file, frame_count_for_detect, barrier,      # 文檔/偵測幀/Barrier
+                        self.shared_state, self.shared_lock,            # 共享狀態（會更新 bar_y_changed）
+                        self.BAR_MOVE_THRESH                            # 槓 y 位移閾值（像素）
+                    )
+                elif i == 1:                                            # 啟用序 1 → 人體視角（body）：更新 body_detected + Gate 錄影
+                    start_time, frame_count, fps, out, frame_count_for_detect, self.save_sig_2, txt_file = loop.benchpress_body_loop(
+                        i, frame, label, self.save_sig_2,               # 旗標
+                        self.folder, start_time, frame_count, fps, out, # I/O 與計時
+                        self.models[1],                                 # ★ Benchpress: body_model 固定用 models[1]
+                        txt_file, frame_count_for_detect,               # 文檔/偵測幀
+                        None,                                           # skeleton_connections（此處給 None 讓 loop 走預設）
+                        barrier,                                        # Barrier
+                        self.shared_state, self.shared_lock             # 共享狀態（會更新 body_detected）
+                    )
+                elif i == 2:                                            # 啟用序 2 → 頭部視角（head）：只跟 Gate 錄影
+                    start_time, frame_count, fps, out, original_out, self.save_sig_3, frame_count_for_detect = loop.benchpress_head_loop(
+                        i, frame, label, self.save_sig_3,               # 旗標
+                        self.folder, start_time, frame_count, fps,      # I/O 與計時
+                        out, original_out,                              # 疊圖/原始 writer
+                        self.models[2],                                 # ★ Benchpress: head_model 固定用 models[2]
+                        frame_count_for_detect, barrier,                # 偵測幀/Barrier
+                        self.shared_state, self.shared_lock             # 共享狀態（若 head 也需要 Gate 條件）
+                    )
+                else:                                                   # 多於三路時，當一般錄影（或你也可選擇直接略過）
+                    start_time, frame_count, fps, out, self.save_sig_3 = loop.deadlift_general_loop(
+                        i, frame, label, self.save_sig_3,               # 沿用簡單 general loop（可替換成 benchpress_general_loop）
+                        self.recording_sig,                             # UI 錄影 Gate
+                        self.folder, start_time, frame_count, fps, out, # I/O 與計時
+                        barrier                                         # Barrier
+                    )
 
-                    else:
-                        # cam3~cam6：general（介面不變）
-                        start_time, frame_count, fps, out, self.save_sig_3 = loop.squat_general_loop(
-                            i, frame, label, self.save_sig_3, self.recording_sig,
-                            self.folder, start_time, frame_count, fps, out, barrier
-                        )
+            # === Squat 模式 ===                                         # 深蹲
+            elif sport == 'Squat':
+                if i == 0:                                              # 啟用序 0 → bar（含 original_out）
+                    start_time, frame_count, fps, out, original_out, frame_count_for_detect, self.save_sig_1, txt_file = loop.squat_bar_loop(
+                        i, frame, label, self.save_sig_1,               # 旗標
+                        self.recording_sig,                             # UI 錄影 Gate
+                        self.folder, start_time, frame_count, fps,      # I/O 與計時
+                        out, original_out,                              # 疊圖/原始 writer
+                        self.models[0],                                 # ★ Squat: bar_model 固定用 models[0]
+                        txt_file, frame_count_for_detect, barrier       # 文檔/偵測幀/Barrier
+                    )
+                elif i == 1:                                            # 啟用序 1 → bone（含 original_out）
+                    start_time, frame_count, fps, out, original_out, frame_count_for_detect, self.save_sig_2, txt_file = loop.squat_bone_loop(
+                        i, frame, label, self.save_sig_2,               # 旗標
+                        self.recording_sig,                             # UI 錄影 Gate
+                        self.folder, start_time, frame_count, fps,      # I/O 與計時
+                        out, original_out,                              # 疊圖/原始 writer
+                        self.models[1],                                 # ★ Squat: bone_model 固定用 models[1]
+                        txt_file, frame_count_for_detect,               # 文檔/偵測幀
+                        self.skeleton_connections, barrier              # 骨架連線/Barrier
+                    )
+                else:                                                   # 其他啟用序 → 一般錄影
+                    start_time, frame_count, fps, out, self.save_sig_3 = loop.squat_general_loop(
+                        i, frame, label, self.save_sig_3,               # 旗標
+                        self.recording_sig,                             # UI 錄影 Gate
+                        self.folder, start_time, frame_count, fps, out, # I/O 與計時
+                        barrier                                         # Barrier
+                    )
 
-        cap.__del__()
+            # 其他未列運動類型可在此擴充                                # 可擴充其他運動
+        
+        cap.__del__()                                                   # 跳出主迴圈後釋放相機資源
+
 
     def messagebox(self, type, text):
         Form = QtWidgets.QWidget()
