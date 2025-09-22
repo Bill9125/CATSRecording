@@ -770,7 +770,7 @@ def benchpress_body_loop(i, frame, label, save_sig, folder,                     
     INDEX_MAP     = [1,0,3,2,5,4,7,6]                                                         # 左右對調映射
     # ---- ROI（只吃上半身；加寬、縮短） ----
     ROI_X1_RATE, ROI_Y1_RATE = 0.20, 0.15                                                     # ROI 左上角（相對座標）：更寬更高一點
-    ROI_X2_RATE, ROI_Y2_RATE = 0.80, 0.75                                                     # ROI 右下角（相對座標）：高度縮短聚焦上半身
+    ROI_X2_RATE, ROI_Y2_RATE = 0.80, 0.80                                                     # ROI 右下角（相對座標）：高度縮短聚焦上半身
     ROI_IOU_MIN = 0.40                                                                        # 與 ROI 的最小 IoU（提高以趨近全在 ROI）
     DRAW_ROI = True                                                                           # 除錯用畫 ROI
 
