@@ -484,9 +484,9 @@ def squat_general_loop(i, frame, label, save_sig, recording_sig, folder,        
 # benchpress
 # ====== 緩衝常數（可依需求調整）======
 BODY_BUF_FRAMES = 20                     # 人體偵測命中/未命中緩衝幀數                         # 遲滯
-BAR_HOLD_FRAMES = 20                     # 槓位移命中後維持 True 的幀數                       # 槓Gate保持
-BAR_LOSS_TOL_FRAMES = 10                 # 槓暫時偵測不到時可容忍的連續幀數                   # 偵測遺失容忍
-END_GRACE_FRAMES = 15                    # Gate 轉 False 後需連續幀數才真正結束分段           # 關檔緩衝
+BAR_HOLD_FRAMES = 10                     # 槓位移命中後維持 True 的幀數                       # 槓Gate保持
+BAR_LOSS_TOL_FRAMES = 20                 # 槓暫時偵測不到時可容忍的連續幀數                   # 偵測遺失容忍
+END_GRACE_FRAMES = 30                    # Gate 轉 False 後需連續幀數才真正結束分段           # 關檔緩衝
 # ============================== 共用工具（utils for loops） ==============================
 
 def _update_fps(start_time, frame_count, fps):                                                # 每秒刷新 FPS
