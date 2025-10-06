@@ -344,11 +344,10 @@ class Replaybackend():
         if self.currentsport == 'Squat':
             # 可能的命名：vision2/3/4/5、或 original_vision*、或 *drawed 版本
             desired_groups = [
-                ('vision2_drawed.avi', 'vision3_drawed.avi', 'vision4_drawed.avi'),  # 先嘗試有疊圖
-                ('original_vision2.avi', 'original_vision3.avi', 'original_vision4.avi'),  # 再嘗試原始
-                ('vision2.avi', 'vision3.avi', 'vision4.avi'),                        # 最後一般命名
-                ('vision3.avi', 'vision4.avi', 'vision5.avi'),                        # 兼容你舊邏輯
+                ('original_vision2.avi', 'vision3.avi', 'vision6.avi'),  # 再嘗試原始
+                ('vision2.avi', 'vision3.avi', 'vision6.avi'),    # 先嘗試有疊圖
             ]
+            0
         elif self.currentsport == 'Deadlift':
             desired_groups = [
                 ('vision1_drawed.avi', 'vision2.avi', 'vision3.avi'),
@@ -356,8 +355,8 @@ class Replaybackend():
             ]
         else:  # Benchpress
             desired_groups = [
-                ('vision1_drawed.avi', 'vision2.avi', 'original_vision3.avi'),
-                ('vision1.avi',        'vision2.avi', 'vision3.avi'),
+                ('original_vision1.avi', 'original_vision2.avi', 'vision3.avi'),
+                ('vision1.avi', 'vision2.avi', 'vision3.avi'),
             ]
 
         # --- 依優先順序取出最貼近的一組 ---
