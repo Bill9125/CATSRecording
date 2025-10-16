@@ -1,5 +1,7 @@
 import time, os, cv2
 from PyQt5 import QtCore, QtGui
+import os, tempfile, shutil, uuid                         # 檔案/暫存/搬移/隨機ID  # 
+from datetime import datetime                             # 只引入類別，便於 datetime.now()  # 
 
 def deadlift_bar_loop(i, frame, label, save_sig, recording_sig, folder,
                       start_time, frame_count, fps, out, model, txt_file, frame_count_for_detect, barrier):
@@ -100,7 +102,7 @@ def deadlift_bone_loop(i, frame, label, save_sig, recording_sig, folder,
     results = list(model(source=frame, stream=True, verbose=False))
     frame_count_for_detect += 1
 
-    if results and results[0].keypoints:  # ✅ 確保有偵測到人
+    if results and results[0].keysegment_filespoints:  # ✅ 確保有偵測到人
         r2 = results[0]  # ✅ 只取第一個偵測結果
         keypoints = r2.keypoints
         kpts = keypoints[0]  # ✅ 只取第一個人的骨架點
@@ -478,25 +480,36 @@ def _shared_set_many(shared_state, shared_lock, kv: dict):                      
         for k, v in kv.items():                                                               # 逐項
             shared_state[k] = v                                                               # 回寫
 
-def _start_segment_writers(folder, i, seg_no, frame, need_original, need_txt, txt_suffix):    # 開啟暫存 writer 與 txt
-    import os, cv2                                                                            # 檔案/影像
-    fourcc = cv2.VideoWriter_fourcc(*'MJPG')                                                  # MJPG 編碼
-    size = (frame.shape[1], frame.shape[0])                                                   # 取影像尺寸
-    tmp = {}                                                                                  # 暫存路徑字典
-    out = None                                                                                # 疊圖 writer
-    original_out = None                                                                       # 原始 writer
-    txt_file = None                                                                           # txt 物件
-    # 視訊路徑
-    if need_original:                                                                         # 是否需要原始輸出
-        tmp['o'] = os.path.join(folder, f'_staging_cam{i}_seg{seg_no:03d}_original.avi')      # 原始暫存檔名
-        original_out = cv2.VideoWriter(tmp['o'], fourcc, 29, size)                            # 開原始 writer
-    tmp['v'] = os.path.join(folder, f'_staging_cam{i}_seg{seg_no:03d}_vision.avi')            # 疊圖暫存檔名
-    out = cv2.VideoWriter(tmp['v'], fourcc, 29, size)                                         # 開疊圖 writer
-    # 文字路徑
-    if need_txt:                                                                              # 是否需要 txt
-        tmp['t'] = os.path.join(folder, f'_staging_cam{i}_seg{seg_no:03d}_{txt_suffix}.txt')  # txt 暫存檔名
-        txt_file = open(tmp['t'], 'w')                                                        # 開啟 txt
-    return out, original_out, txt_file, tmp                                                   # 回傳 I/O 與路徑
+def _start_segment_writers(folder, i, seg_no, frame, need_original, need_txt, txt_suffix):  # 開啟暫存 writer 與 txt
+    import os, cv2  # 檔案與影像
+    fourcc = cv2.VideoWriter_fourcc(*'MJPG')  # MJPG 編碼
+    size = (frame.shape[1], frame.shape[0])  # 幀尺寸
+    tmp = {}  # 暫存路徑字典
+    out = None  # 疊圖 writer
+    original_out = None  # 原始 writer
+    txt_file = None  # txt 物件
+
+    if _safe_folder(folder):  # 若最終資料夾可用則直接寫入
+        base_dir = folder  # 目的地
+        _ensure_dir(base_dir)  # 確保存在
+        prefix = os.path.join(base_dir, f"_staging_cam{i}_seg{seg_no:03d}")  # 統一前綴
+    else:  # 否則寫到暫存區
+        base_dir = _staging_dir_for_cam(i)  # cam 專屬暫存
+        prefix = os.path.join(base_dir, f"_staging_cam{i}_seg{seg_no:03d}")  # 暫存前綴
+
+    if need_original:  # 原始影片
+        tmp['o'] = f"{prefix}_original.avi"  # 原始檔名
+        original_out = cv2.VideoWriter(tmp['o'], fourcc, 29, size)  # 建立原始 writer
+
+    tmp['v'] = f"{prefix}_vision.avi"  # 疊圖檔名
+    out = cv2.VideoWriter(tmp['v'], fourcc, 29, size)  # 建立疊圖 writer
+
+    if need_txt:  # 需要 txt 就建
+        tmp['t'] = f"{prefix}_{txt_suffix}.txt"  # txt 檔名
+        txt_file = open(tmp['t'], 'w', encoding='utf-8')  # 開啟 txt
+
+    return out, original_out, txt_file, tmp  # 回傳 I/O 與路徑
+
 
 def _close_io(out=None, original_out=None, txt_file=None):                                    # 關閉 I/O
     if txt_file is not None: txt_file.close()                                                 # 關 txt
@@ -504,18 +517,28 @@ def _close_io(out=None, original_out=None, txt_file=None):                      
     if original_out is not None: original_out.release()                                       # 關原始
     return None                                                                               # 無回傳
 
-def _end_and_move(folder, i, seg_no, tmp_paths, mapping):                                     # 結束段落、建資料夾並搬檔
-    import os, shutil, time                                                                   # 檔案/時間
-    end_ts = time.strftime("%Y%m%d_%H%M%S")                                                   # 以結束時間命名
-    root_dir = os.path.dirname(folder)                                                        # recordings 根目錄
-    rec_folder = os.path.join(root_dir, f"recording_{end_ts}")                                # 目標資料夾
-    os.makedirs(rec_folder, exist_ok=True)                                                    # 建資料夾
-    for k, new_name in mapping.items():                                                       # 依對應表搬移
-        p = tmp_paths.get(k)                                                                  # 暫存路徑
-        if p and os.path.exists(p):                                                           # 存在才搬
-            shutil.move(p, os.path.join(rec_folder, new_name))                                # 搬並改名
-    print(f"[SEG] End SEG {seg_no:03d} on cam{i+1} -> {rec_folder}")                          # 紀錄
-    return rec_folder                                                                         # 回傳目的資料夾路徑
+def _end_and_move(folder, i, seg_no, tmp_paths, mapping):                                     # 結束段落、建立最終資料夾並搬檔  #
+    import os, shutil, time                                                                     # 檔案與時間  #
+    end_ts = time.strftime("%Y%m%d_%H%M%S")                                                     # 以結束時刻命名  #
+    # ==== 決定最終根目錄：優先使用呼叫端傳入的 folder，否則就用 _final_root() ====
+    try:
+        base_root = folder if _safe_folder(folder) else _final_root()                           # 目的根目錄  #
+    except Exception:
+        base_root = _final_root()                                                               # 防呆退回 _FINAL_BASE_DIR  #
+    # ==== 最終資料夾命名：recording_YYYYMMDD_HHMMSS（不加 seg 編號） ====
+    rec_folder = os.path.join(base_root, f"recording_{end_ts}")                                 # 最終錄影資料夾  #
+    os.makedirs(rec_folder, exist_ok=True)                                                      # 確保存在  #
+    # ==== 逐檔搬移並改名 ====
+    for k, new_name in mapping.items():                                                         # 逐檔搬移  #
+        p = tmp_paths.get(k)                                                                    # 暫存檔路徑  #
+        if p and os.path.exists(p):                                                             # 檔案存在才搬  #
+            dst = os.path.join(rec_folder, new_name)                                            # 目標完整路徑  #
+            if os.path.exists(dst):                                                             # 若已存在先刪  #
+                try: os.remove(dst)                                                             # 刪除舊檔  #
+                except Exception: pass                                                          # 忽略刪除失敗  #
+            shutil.move(p, dst)                                                                 # 搬到最終資料夾  #
+    print(f"[SEG] End SEG {seg_no:03d} on cam{i+1} -> {rec_folder}")                            # 紀錄路徑  #
+    return rec_folder                                                                            # 回傳最終資料夾  #
 
 def _yolo_first_box_xywh(results):                                                            # 取第一個框 xywh
     try:                                                                                      # 防呆
@@ -618,7 +641,8 @@ def benchpress_bar_loop(i, frame, label, save_sig, folder,                      
     start_time, frame_count, fps = _update_fps(start_time, frame_count, fps)                  # 每秒刷新 FPS  # 說明
 
     # -------- 狀態讀取 --------
-    gate_ui   = _shared_get(shared_state, shared_lock, "recording_sig", False)                # UI Gate  # 說明
+    # benchpress_bar_loop 內的 UI gate 讀取
+    gate_ui   = _shared_get(shared_state, shared_lock, "auto_recording_sig", False)           # UI Gate 改讀 auto_recording_sig
     is_rec    = _shared_get(shared_state, shared_lock, cam_rec_key, False)                    # 是否在錄  # 說明
     seg_no    = _shared_get(shared_state, shared_lock, cam_seg_key, 0)                        # 段號  # 說明
     end_false_cnt = _shared_get(shared_state, shared_lock, end_false_key, 0)                  # False 緩衝幀  # 說明
@@ -817,7 +841,7 @@ def benchpress_body_loop(i, frame, label, save_sig, folder,                     
     start_time, frame_count, fps = _update_fps(start_time, frame_count, fps)                  # 刷新 FPS 計算  # 說明
 
     # ---- 讀共享狀態 ----
-    gate_ui   = _shared_get(shared_state, shared_lock, "recording_sig", False)                # UI Gate 是否開啟  # 說明
+    gate_ui   = _shared_get(shared_state, shared_lock, "auto_recording_sig", False)           # UI Gate 改讀 auto_recording_sig
     is_rec    = _shared_get(shared_state, shared_lock, cam_rec_key, False)                    # 是否在錄影中  # 說明
     seg_no    = _shared_get(shared_state, shared_lock, cam_seg_key, 0)                        # 當前段號  # 說明
     end_false_cnt = _shared_get(shared_state, shared_lock, end_false_key, 0)                  # 關段緩衝幀數  # 說明
@@ -1040,7 +1064,7 @@ def benchpress_head_loop(i, frame, label, save_sig, folder,                     
 
     # ---- 三 Gate 讀取 --------------------------------------------------------------
     gate3_cnt_key = f"gate3_true_cnt_cam{i}"                                                    # 三 Gate 連續命中計數 key
-    gate_ui   = _shared_get(shared_state, shared_lock, "recording_sig", False)                  # UI gate
+    gate_ui   = _shared_get(shared_state, shared_lock, "auto_recording_sig", False)           # UI Gate 改讀 auto_recording_sig
     gate_body = _shared_get(shared_state, shared_lock, "body_detected", False)                  # 人體 gate
     gate_bar  = _shared_get(shared_state, shared_lock, "bar_y_changed", False)                  # 槓 gate
     should_record = _debounce_three_gate(                                                       # 呼叫共用防抖函式
@@ -1092,3 +1116,46 @@ def benchpress_head_loop(i, frame, label, save_sig, folder,                     
 
     # ---- 回傳狀態 ------------------------------------------------------------------
     return start_time, frame_count, fps, out, original_out, save_sig, frame_count_for_detect # 與既有介面一致
+
+def _ensure_dir(p):                                       # 確保資料夾存在  # 
+    os.makedirs(p, exist_ok=True)                         # 不存在就建立  # 
+
+def _safe_folder(folder):                                 # 檢查最終 folder 是否可用  # 
+    return isinstance(folder, (str, bytes, os.PathLike)) and str(folder) != ""  # 可用回 True  # 
+
+_STAGE_SESSION = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"  # 本次程式階段ID  # 
+
+def _staging_root():                                      # 取得暫存根目錄  # 
+    root = os.path.join(tempfile.gettempdir(), "CATS_stage")  # 放在系統暫存區  # 
+    _ensure_dir(root)                                     # 確保存在  # 
+    return root                                           # 回傳路徑  # 
+
+def _staging_dir_for_cam(i):                              # 依相機編號分開的暫存資料夾  # 
+    d = os.path.join(_staging_root(), _STAGE_SESSION, f"cam{i}")  # cam 專屬暫存  # 
+    _ensure_dir(d)                                        # 確保存在  # 
+    return d                                              # 回傳路徑  # 
+
+# ====== 新增：最終輸出根目錄與命名規則 ======
+
+_FINAL_BASE_DIR = r"C:\Users\92A27\benchpress\recordings" # 最終成品儲存根目錄  # 
+
+def _final_root():                                        # 取得最終輸出根目錄  # 
+    _ensure_dir(_FINAL_BASE_DIR)                          # 確保根目錄存在  # 
+    return _FINAL_BASE_DIR                                # 回傳根目錄  # 
+
+from typing import Optional  # ← 加在檔案開頭
+def make_final_recording_dir(ts_str: Optional[str] = None):  # 依規則建立 recording_YYYYMMDD_HHMMSS 資料夾  #
+    ts = ts_str or datetime.now().strftime('%Y%m%d_%H%M%S')  # 若未指定則用現在時間  # 
+    d = os.path.join(_final_root(), f"recording_{ts}")    # 最終資料夾完整路徑  # 
+    _ensure_dir(d)                                        # 確保存在  # 
+    return d                                              # 回傳最終資料夾路徑  # 
+
+def commit_stage_to_final(ts_str: Optional[str] = None):  # 將本階段暫存整批搬到最終資料夾  #
+    src = os.path.join(_staging_root(), _STAGE_SESSION)   # 本階段暫存根目錄  # 
+    if not os.path.isdir(src):                            # 若暫存不存在則略過  # 
+        return None                                       # 無可搬資料回傳 None  # 
+    dst = make_final_recording_dir(ts_str)                # 先建立最終錄影資料夾  # 
+    for name in os.listdir(src):                          # 逐一搬移暫存內容  # 
+        shutil.move(os.path.join(src, name), os.path.join(dst, name))  # cam 子資料夾整批搬  # 
+    shutil.rmtree(src, ignore_errors=True)                # 清理暫存  # 
+    return dst                                            # 回傳最終資料夾路徑  # 

@@ -138,7 +138,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.auto_recording_btn = QtWidgets.QPushButton(self.ui.Recording_tab)
         self.auto_recording_btn.setText("AUTO RECORDING")
-        self.auto_recording_btn.setEnabled(False)
+        self.auto_recording_btn.setEnabled(False)  
         self.auto_recording_btn.setStyleSheet("font-size: 45px")
         self.auto_recording_btn.setMinimumSize(500, 150)
         self.ctrl_layout.addWidget(self.auto_recording_btn)
@@ -217,7 +217,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.auto_recording_btn = QtWidgets.QPushButton(self.ui.Recording_tab)
         self.auto_recording_btn.setText("AUTO RECORDING")
-        self.auto_recording_btn.setEnabled(False)
+        self.auto_recording_btn.setEnabled(True)
         self.auto_recording_btn.setStyleSheet("font-size: 45px")
         self.auto_recording_btn.setMinimumSize(500, 150)
         self.ctrl_layout.addWidget(self.auto_recording_btn)
@@ -271,7 +271,15 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.rc_Vision_labels, self.rc_qpixmaps = self.rpbf.creat_vision_labels_pixmaps([x * 1.5 for x in labelsize], self.ui.Recording_tab, self.Benchpress_vision_layout, 'Benchpress', 3)
         self.data_produce_btn.clicked.connect(lambda: self.rcbf.data_produce_btn_clicked('Benchpress'))
         self.source_ctrl_btn.clicked.connect(lambda: self.rcbf.source_ctrl_btn_clicked('Benchpress', self.rc_Vision_labels))
-        self.recording_ctrl_btn.clicked.connect(lambda: self.rcbf.recording_ctrl_btn_clicked('Benchpress', self.data_produce_btn, self.source_ctrl_btn, self.back_toolbtn))
+        # self.recording_ctrl_btn.clicked.connect(lambda: self.rcbf.recording_ctrl_btn_clicked('Benchpress', self.data_produce_btn, self.source_ctrl_btn, self.back_toolbtn))
+        # --- 原本只有 recording_ctrl_btn 被綁到 rcbf.recording_ctrl_btn_clicked(...) ---
+        self.recording_ctrl_btn.clicked.connect(
+            lambda: self.rcbf.recording_ctrl_btn_clicked('Benchpress', self.data_produce_btn, self.source_ctrl_btn, self.back_toolbtn)
+        )  # 手動錄影：維持既有綁定，對應 shared_state["recording_sig"]  #
+        # --- 新增：把 AUTO 鈕綁到「自動錄影切換」(設定 shared_state["auto_recording_sig"]) ---
+        self.auto_recording_btn.clicked.connect(
+            lambda: self.rcbf.auto_recording_btn_clicked('Benchpress', self.data_produce_btn, self.source_ctrl_btn, self.back_toolbtn)
+        )  # 自動錄影：切換 shared_state["auto_recording_sig"]  
 
     def apply_big_yellow_button(widget, font_size=64):
         widget.setStyleSheet(f"font-size: {font_size}px; color: yellow;")
@@ -432,13 +440,6 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.ui.rp_Deadlift_btn, self.ui.rp_Benchpress_btn, self.ui.rp_Squat_btn, self.ui.Play_btn, self.icons, self.ui.Stop_btn, 
                 self.ui.Frameslider, self.ui.fast_forward_combobox, self.ui.File_comboBox, self.ui.Replay_tab, self.ui.play_layout,
                 self.head_Vis_label, self.bottom_Vis_labels, self.graph)
-
-
-
-
-
-
-
 
         self.ui.data_ctrl_layout_V.addLayout(self.ui.bottom_controls_layout)
             

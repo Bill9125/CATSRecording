@@ -86,7 +86,7 @@ class Recordingbackend():
         self.stop_event = threading.Event()
         
         self.shared_state = {                         # 跨執行緒共享旗標                   # 初始化共享旗標
-            "recording_sig": False,                   # 由 UI 控制是否允許錄影              # 初始 False
+            "auto_recording_sig": False,              # 由 UI 控制是否允許錄影              # 初始 False
             "body_detected": False,                   # 由 body loop 更新是否有人體           # 初始 False
             "bar_y_changed": False,                   # 由 bar loop 更新槓是否有位移          # 初始 False
             "prev_bar_y": None                        # 由 bar loop 記憶上一幀 y             # 初始 None
@@ -112,6 +112,14 @@ class Recordingbackend():
         self.models = self.model_select(sport)
         self.creat_threads(sport, labels)
     
+    def auto_recording_btn_clicked(self, sport, data_btn, source_btn, back_btn):                  # AUTO錄影按鈕事件
+        if sport != 'Benchpress':                                                                  # 僅限 Benchpress
+            return                                                                                # 其他運動不處理 
+        with self.shared_lock:                                                                     # 進入臨界區  
+            cur = self.shared_state.get("auto_recording_sig", False)                               # 讀目前自動錄影旗標 
+            self.shared_state["auto_recording_sig"] = (not cur)                                    # 反轉旗標  
+        # 你也可以在這裡更新 UI 樣式或文字提示，例如：data_btn.setText(...) 等                          # UI 提示  
+
     def source_get(self, sport):
         # 讀取來源順序與啟用設定（-1 代表停用）                       # 功能說明
         self.vision_src = {}                                            # 重置來源映射
