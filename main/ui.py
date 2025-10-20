@@ -10,6 +10,7 @@
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 import pyautogui
+import os  # 用於判斷是否為資料夾與後續 os.system 呼叫
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -139,25 +140,36 @@ class Ui_MainWindow(object):
         self.rp_Squat_btn.setObjectName("Squat_play_btn")
         self.top_controls_layout.addWidget(self.rp_Squat_btn)
 
-        self.File_comboBox = QtWidgets.QComboBox(self.Replay_tab)
-        self.File_comboBox.setObjectName("File_comboBox")
-        self.File_comboBox.setEditable(False)
-        self.File_comboBox.setStyleSheet("font-size:20px; color:yellow;")
-        self.top_controls_layout.addWidget(self.File_comboBox)
+        self.File_comboBox = QtWidgets.QComboBox(self.Replay_tab)  # 檔案/資料夾下拉選單
+        self.File_comboBox.setObjectName("File_comboBox")  # 設定物件名稱
+        self.File_comboBox.setEditable(False)  # 不可編輯
+        self.File_comboBox.setStyleSheet("font-size:20px; color:yellow;")  # 字型樣式
+        self.File_comboBox.setFixedWidth(800)  # 直接縮短寬度（你可改 400~700 之間微調）
+        self.File_comboBox.currentTextChanged.connect(self.handle_file_selection_changed)  # 當選項改變時更新 self.folder
+        self.top_controls_layout.addWidget(self.File_comboBox)  # 加到上方控制列
+
+                
+        self.search_LineEdit = QtWidgets.QLineEdit(self.Replay_tab)  # 搜尋輸入框
+        self.search_LineEdit.setObjectName('search_LineEdit')  # 設定物件名稱
+        self.search_LineEdit.setText('請輸入想尋找的文件')  # 預設提示文字
+        self.search_LineEdit.setStyleSheet("font-size:20px; color:yellow;")  # 字型樣式
+        self.top_controls_layout.addWidget(self.search_LineEdit)  # 加到上方控制列
+
+
+        self.data_produce_btn_rp = QtWidgets.QPushButton(self.Replay_tab)  # 新增 data produce 按鈕
+        self.data_produce_btn_rp.setObjectName("data_produce_btn_rp")  # 設定物件名稱
+        self.data_produce_btn_rp.setText("data produce")  # 顯示文字
+        self.data_produce_btn_rp.setStyleSheet("font-size:20px; color:yellow; border:1px solid yellow; font-family:'Times New Roman';")  # 外觀樣式
+        self.top_controls_layout.addWidget(self.data_produce_btn_rp)  # 放在 search 後方
+
+        self.top_controls_layout.setStretch(0, 1)  # Deadlift 按鈕
+        self.top_controls_layout.setStretch(1, 1)  # Benchpress 按鈕
+        self.top_controls_layout.setStretch(2, 1)  # Squat 按鈕
+        self.top_controls_layout.setStretch(3, 8)  # File_comboBox（已縮短寬度）
+        self.top_controls_layout.setStretch(4, 6)  # search_LineEdit
+        self.top_controls_layout.setStretch(5, 2)  # data_produce_btn_rp
         
-        self.search_LineEdit = QtWidgets.QLineEdit(self.Replay_tab)
-        self.search_LineEdit.setObjectName('search_LineEdit')
-        self.search_LineEdit.setText('請輸入想尋找的文件')
-        self.search_LineEdit.setStyleSheet("font-size:20px; color:yellow;")
-        self.top_controls_layout.addWidget(self.search_LineEdit)
-        
-        self.top_controls_layout.setStretch(0, 1)
-        self.top_controls_layout.setStretch(1, 1)
-        self.top_controls_layout.setStretch(2, 1)
-        self.top_controls_layout.setStretch(3, 20)
-        self.top_controls_layout.setStretch(4, 5)
-        
-        self.top_controls_layout.setContentsMargins(0, 0, 500, 0)
+        self.top_controls_layout.setContentsMargins(0, 0, 20, 0)  # 右側保留 20px 內距即可
         self.replay_layout.addLayout(self.top_controls_layout)
 
         self.play_groupBox = QtWidgets.QGroupBox(self.Replay_tab)
@@ -237,3 +249,10 @@ class Ui_MainWindow(object):
         self.rp_Deadlift_btn.setText(_translate("MainWindow", "Deadlift"))
         self.rp_Benchpress_btn.setText(_translate("MainWindow", "Benchpress"))
         self.rp_Squat_btn.setText(_translate("MainWindow", "Squat"))
+
+    def handle_file_selection_changed(self, text):  # 當 File_comboBox 選項改變
+        path = text.strip()  # 取選項文字
+        if path and os.path.isdir(path):  # 若是存在的資料夾
+            self.folder = path  # 設定為目前資料夾
+        else:
+            self.folder = None  # 否則清空，避免誤用

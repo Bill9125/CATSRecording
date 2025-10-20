@@ -293,10 +293,11 @@ class Replaybackend():
             Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout,
             )
         
-    def rp_btn_press(
-        self, sport, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons, 
-        Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout
-        ):
+    def rp_btn_press(                                                           # 播放區共用的按鍵初始化與狀態設定
+        self, sport, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons,  # sport 與三個 sport 切換按鈕與圖示
+        Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab,    # 停止鍵、時間軸、倍速、資料夾選單、分頁容器
+        play_layout,                                                             # 追加參數：呼叫端已傳入的 play_layout，這裡先不使用
+        ):    
                 
         if sport == 'Deadlift':
             folderPath = 'C:/Users/92A27/MOCAP/recordings'
@@ -335,6 +336,8 @@ class Replaybackend():
     # 讀取combobox內的資料夾
     def File_combobox_TextChanged(self, file_comboBox, play_btn, icons, Frameslider):
         videofolder = file_comboBox.currentText()                             # 目前選取的資料夾
+        root_dir = self.folders.get(self.currentsport, "")                             # 取得目前運動類型對應的根資料夾
+        self.folder = os.path.join(root_dir, videofolder) if videofolder else None     # 設定目前選取資料夾的絕對路徑
         folder = self.folders[self.currentsport]                              # 對應運動類別的根資料夾
         all_videos = glob.glob(f'{folder}/{videofolder}/*.avi')               # 把資料夾下所有 avi 撈出
         self.datas = []                                                       # 清空資料曲線
@@ -809,3 +812,40 @@ class Replaybackend():
                     self.clear_layout(sub_layout)  # 遞迴刪除子佈局
         layout.update()  # 更新佈局，確保視圖刷新
 
+
+    def data_produce_btn_clicked_rp(self, sport):                                  # Replay 的 data produce 主流程
+        # === 檢查目前是否已選到有效資料夾（沿用 ui.on_data_produce_clicked 的保護） ===   # 說明
+        folder = getattr(self, "folder", None)                                      # 取目前儲存的資料夾路徑
+        if not folder or not os.path.isdir(folder):                                 # 檢查不存在或不是資料夾
+            QtWidgets.QMessageBox.warning(                                          # 跳提示視窗
+                None, "注意", "請先在下拉選單選擇一個有效的資料夾！"                       # 與原 UI 一致的訊息
+            )                                                                       
+            return                                                                  # 中止流程
+
+        # === 以下維持你原本的最小指令流程（僅把 self.folder 換成本地變數 folder 使用） === # 說明
+        if sport == 'Deadlift':                                                     # Deadlift 流程
+            os.system(f'python ./tools/Deadlift_tool/interpolate.py {folder}')      # 槓端與骨架內插
+            os.system(f'python ./tools/Benchpress_tool/bar_data_produce.py {folder} --out ./config --sport deadlift')  # bar
+            os.system(f'python ./tools/Deadlift_tool/data_produce.py {folder} --out ./config')                         # angle
+            os.system(f'python ./tools/Deadlift_tool/data_split.py {folder}')       # split
+            os.system(f'python ./tools/Deadlift_tool/predict.py {folder} --out ./config')                               # predict
+
+        if sport == 'Benchpress':                                                   # Benchpress 流程
+            os.system(f'python ./tools/Benchpress_tool/interpolate.py {folder}')      # 槓端與骨架內插
+            os.system(f'python ./tools/Benchpress_tool/bar_data_produce.py {folder} --out ./config --sport benchpress')   # bar（保留你原設定）
+            # os.system(f'python ./tools/Benchpress_tool/step0_hampel_bar.py {self.folder}')
+            # os.system(f'python ./tools/Benchpress_tool/step0_hampel_yolo_ske_rear.py {self.folder}')
+            # os.system(f'python ./tools/Benchpress_tool/step0_hampel_yolo_ske_top.py {self.folder} ')
+            # os.system(f'python ./tools/Benchpress_tool/step1_interpolate_bar.py {self.folder}')
+            # os.system(f'python ./tools/Benchpress_tool/step2_interpolate_yolo_ske.py {self.folder}')
+            # os.system(f'python ./tools/Benchpress_tool/step3_autocutting_0801.py {self.folder}')
+            # os.system(f'python ./tools/Benchpress_tool/step5_calculate_angle_new_feature_test.py {self.folder}')
+            # os.system(f'python ./tools/Benchpress_tool/step6_cut.py {self.folder} ')
+            # os.system(f'python ./tools/Benchpress_tool/step7_length_100.py {self.folder}')
+            # os.system(f'python ./tools/Benchpress_tool/step8_normalize.py {self.folder}')
+
+        if sport == 'Squat':                                                        # Squat 流程
+            pass                                                                    # 目前無動作（保留）
+
+        os.system(f'python ./tools/trajectory.py {folder}')                         # 後製軌跡影片
+        print('執行完成')                                                            # 完成訊息

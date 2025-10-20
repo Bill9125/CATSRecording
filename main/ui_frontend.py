@@ -53,6 +53,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ui.Frameslider.sliderReleased.connect(self.rpbf.slider_released)
         self.ui.Frameslider.valueChanged.connect(lambda: self.rpbf.slider_changed(self.ui.Frameslider, self.ui.Play_btn, self.icons))
         self.ui.search_LineEdit.textChanged.connect(lambda: self.rpbf.search_text_changed(self.ui.File_comboBox, self.ui.search_LineEdit.text()))
+        self.ui.data_produce_btn_rp.clicked.connect(lambda: self.rpbf.data_produce_btn_clicked_rp(self.rpbf.currentsport))
 
     def tab_changed(self, index):
         if index == 0:
