@@ -334,27 +334,24 @@ class Replaybackend():
 
 
     # 讀取combobox內的資料夾
+    # 讀取combobox內的資料夾
     def File_combobox_TextChanged(self, file_comboBox, play_btn, icons, Frameslider):
-        videofolder = file_comboBox.currentText()                             # 目前選取的資料夾
-        root_dir = self.folders.get(self.currentsport, "")                             # 取得目前運動類型對應的根資料夾
-        self.folder = os.path.join(root_dir, videofolder) if videofolder else None     # 設定目前選取資料夾的絕對路徑
-        folder = self.folders[self.currentsport]                              # 對應運動類別的根資料夾
-        all_videos = glob.glob(f'{folder}/{videofolder}/*.avi')               # 把資料夾下所有 avi 撈出
-        self.datas = []                                                       # 清空資料曲線
+        selected_subdir = file_comboBox.currentText()                                 # 目前選到的子資料夾名稱（純字串）
+        sport_root = self.folders.get(self.currentsport, "")                          # 依當前運動類型取得根資料夾
+        self.folder = os.path.join(sport_root, selected_subdir) if selected_subdir else None  # 把完整路徑存到狀態 self.folder
+        all_videos = glob.glob(f'{sport_root}/{selected_subdir}/*.avi')               # 掃描該子資料夾下的 .avi
+        self.datas = []                                                                # 清空資料曲線
 
-        # --- 依運動類型定義「優先片名」清單（依序嘗試） ---
-        # 目標：最後挑出 3 支（頭 + 兩個底部）
+        # 依運動類型定義候選影片組（會按序挑到完整的三支）
         if self.currentsport == 'Squat':
-            # 可能的命名：vision2/3/4/5、或 original_vision*、或 *drawed 版本
             desired_groups = [
-                ('original_vision2.avi', 'vision3.avi', 'vision6.avi'),  # 再嘗試原始
-                ('vision2.avi', 'vision3.avi', 'vision6.avi'),    # 先嘗試有疊圖
-            ]
-            0
+                ('original_vision2.avi', 'vision3.avi', 'vision6.avi'),                # 優先原始命名
+                ('vision2.avi', 'vision3.avi', 'vision6.avi'),                         # 次選一般命名
+            ]                                                                          # ← 你原本多打一個孤立的 0，已移除
         elif self.currentsport == 'Deadlift':
             desired_groups = [
                 ('vision1_drawed.avi', 'vision2.avi', 'vision3.avi'),
-                ('vision1.avi', 'vision2.avi', 'vision3.avi'),
+            ('vision1.avi', 'vision2.avi', 'vision3.avi'),
             ]
         else:  # Benchpress
             desired_groups = [
@@ -362,32 +359,29 @@ class Replaybackend():
                 ('vision1.avi', 'vision2.avi', 'vision3.avi'),
             ]
 
-        # --- 依優先順序取出最貼近的一組 ---
-        picked = []
-        base_names = {os.path.basename(v): v for v in all_videos}             # 映射檔名→完整路徑
-        for group in desired_groups:                                          # 按序嘗試
-            candidate = [base_names.get(name) for name in group if name in base_names]  # 取到就加
-            if len(candidate) == 3:                                           # 找到完整三支
+        picked = []                                                                    # 最終選用的影片清單
+        base_map = {os.path.basename(p): p for p in all_videos}                        # 檔名 → 完整路徑對照表
+        for group in desired_groups:                                                   # 依優先順序嘗試
+            candidate = [base_map[name] for name in group if name in base_map]         # 該組有的就收
+            if len(candidate) == 3:                                                    # 三支都齊就用這組
                 picked = candidate
                 break
-            if not picked and len(candidate) >= 1:                            # 先記下至少一支，避免全軍覆沒
+            if not picked and len(candidate) >= 1:                                     # 先記下至少有一支的組（避免全沒）
                 picked = candidate
 
-        self.videos = picked                                                  # 實際使用清單
-        self.info_data = []                                                   # Squat 目前不載 JSON（你的原碼註解掉）
-        self.pred_data = []                                                   # 同上
+        self.videos = picked                                                           # 儲存實際要用的影片清單
+        self.info_data = []                                                            # （維持原設計）先清空
+        self.pred_data = []                                                            # （維持原設計）先清空
 
-        # --- 重置 pixmap 容器，避免累積 ---
-        self.rp_qpixmaps = []                                                # ✅ 先清空
-        for _ in range(len(self.videos)):                                     # 依影片數建立空 pixmap
-            self.rp_qpixmaps.append(QtGui.QPixmap())
+        # 重置 pixmap 容器，避免殘留
+        self.rp_qpixmaps = [QtGui.QPixmap() for _ in range(len(self.videos))]          # 為每支影片準備空 pixmap
 
-        # --- 統一進入 stop 狀態，會觸發 showprevision() 嘗試顯示第一張 ---
-        self.stop(Frameslider, play_btn, icons)                                # 停止→預覽
+        # 切回 stop 狀態並顯示預覽第一幀
+        self.stop(Frameslider, play_btn, icons)                                        # 停止 → 預覽
 
-        # --- 偵錯訊息（可留可去） ---
-        if not self.videos:
-            print(f"[Replay][{self.currentsport}] 於資料夾 {videofolder} 找不到可用影片")  # 幫助你查錯
+        # 除錯訊息
+        if not self.videos:                                                            # 找不到可用影片時提示
+            print(f"[Replay][{self.currentsport}] 於資料夾 {selected_subdir} 找不到可用影片")
 
     
     def play_btn_clicked(self, fast_forward_combobox, Play_btn, icons, Frameslider):             # 播放鍵點擊處理
@@ -831,18 +825,20 @@ class Replaybackend():
             os.system(f'python ./tools/Deadlift_tool/predict.py {folder} --out ./config')                               # predict
 
         if sport == 'Benchpress':                                                   # Benchpress 流程
-            os.system(f'python ./tools/Benchpress_tool/interpolate.py {folder}')      # 槓端與骨架內插
-            os.system(f'python ./tools/Benchpress_tool/bar_data_produce.py {folder} --out ./config --sport benchpress')   # bar（保留你原設定）
-            # os.system(f'python ./tools/Benchpress_tool/step0_hampel_bar.py {self.folder}')
-            # os.system(f'python ./tools/Benchpress_tool/step0_hampel_yolo_ske_rear.py {self.folder}')
-            # os.system(f'python ./tools/Benchpress_tool/step0_hampel_yolo_ske_top.py {self.folder} ')
-            # os.system(f'python ./tools/Benchpress_tool/step1_interpolate_bar.py {self.folder}')
-            # os.system(f'python ./tools/Benchpress_tool/step2_interpolate_yolo_ske.py {self.folder}')
-            # os.system(f'python ./tools/Benchpress_tool/step3_autocutting_0801.py {self.folder}')
-            # os.system(f'python ./tools/Benchpress_tool/step5_calculate_angle_new_feature_test.py {self.folder}')
-            # os.system(f'python ./tools/Benchpress_tool/step6_cut.py {self.folder} ')
-            # os.system(f'python ./tools/Benchpress_tool/step7_length_100.py {self.folder}')
-            # os.system(f'python ./tools/Benchpress_tool/step8_normalize.py {self.folder}')
+            
+            os.system(f'python ./tools/Benchpress_tool/interpolate.py "{folder}"')                                 # 若要做骨架/槓端內插再開
+            os.system(f'python ./tools/Benchpress_tool/offline_benchpress_head.py "{folder}"')                       # 接著跑頭部/槓端流程
+            os.system(f'python ./tools/Benchpress_tool/step0_hampel_bar.py "{folder}"')                              # 先做 Hampel 濾波
+            os.system(f'python ./tools/Benchpress_tool/bar_data_produce.py {folder} --out ./config --sport benchpress')  # bar            
+            os.system(f'python ./tools/Benchpress_tool/step0_hampel_yolo_ske_rear.py {folder}')
+            os.system(f'python ./tools/Benchpress_tool/step0_hampel_yolo_ske_top.py {folder} ')
+            os.system(f'python ./tools/Benchpress_tool/step1_interpolate_bar.py {folder}')
+            os.system(f'python ./tools/Benchpress_tool/step2_interpolate_yolo_ske.py {folder}')
+            os.system(f'python ./tools/Benchpress_tool/step3_autocutting_0801.py {folder}')
+            os.system(f'python ./tools/Benchpress_tool/step5_calculate_angle_new_feature_test.py {folder}')
+            # os.system(f'python ./tools/Benchpress_tool/step6_cut.py {folder} ')
+            # os.system(f'python ./tools/Benchpress_tool/step7_length_100.py {folder}')
+            # os.system(f'python ./tools/Benchpress_tool/step8_normalize.py {folder}')
 
         if sport == 'Squat':                                                        # Squat 流程
             pass                                                                    # 目前無動作（保留）

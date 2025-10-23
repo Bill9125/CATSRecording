@@ -100,7 +100,7 @@ def process_all_skeletons(root_dir):
     processed_files = []
     files = os.listdir(root_dir)  # 不用 walk，只取該資料夾
     for file in files:
-        if file == "yolo_skeleton_top_11m.txt":
+        if file == "yolo_skeleton_top.txt":
             input_path = os.path.join(root_dir, file)
             output_path = os.path.join(root_dir, "yolo_skeleton_top_11m_hampel.txt")
             success = process_skeleton_file(input_path, output_path)
@@ -134,5 +134,5 @@ if __name__ == "__main__":
 
     latest_folder = max(all_folders, key=os.path.getmtime)  # 依建立時間找最新資料夾
     base_path = os.path.join(latest_folder, '')  # base_path 最後補上斜線
-
+    print(f"hamp ske top process folder : {base_path}")
     process_all_skeletons(base_path)

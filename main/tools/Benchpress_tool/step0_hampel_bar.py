@@ -118,5 +118,5 @@ if __name__ == "__main__":
 
     latest_folder = max(all_folders, key=os.path.getmtime)  # 依建立時間找最新資料夾
     base_path = os.path.join(latest_folder, '')  # base_path 最後補上斜線
-
+    print(f"hampel bar process folder : {base_path}")
     process_yolo_file(base_path)

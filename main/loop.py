@@ -1025,7 +1025,7 @@ def benchpress_body_loop(i, frame, label, save_sig, folder,                     
             out, original_out, txt_file,
             shared_state, shared_lock, tmp_paths_key, cam_rec_key,
             folder, i, seg_no,
-            mapping={"o":"original_vision2.avi","v":"vision2.avi","t":"yolo_skeleton.txt"},   # 關段時檔名對應  # 說明
+            mapping={"o":"original_vision2.avi","v":"vision2.avi","t":"yolo_skeleton_top.txt"},   # 關段時檔名對應  # 說明
             end_false_key=end_false_key,
             reset_frame_counter=True)                                                         # 關段後幀數歸零  # 說明
         if ended:                                                                             # 已關段  # 說明

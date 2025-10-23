@@ -23,7 +23,7 @@ def parse_yolo_file(file_path):
                     continue
     return frames, coords
 
-def calc_angle(a, b, c):
+def calc_angle(a, b, c): #2 左肘 0左肩 4左手腕 -> 0/ 2/ 4
     v1 = a - b
     v2 = c - b
     norm1 = np.linalg.norm(v1)
@@ -109,7 +109,7 @@ def process_subject_folder(subject_path):
     file_rear = os.path.join(subject_path, "yolo_skeleton_interpolated_hampel.txt")
     file_bar = os.path.join(subject_path, "yolo_coordinates_interpolated_hampel.txt")
 
-    # 11m view
+    # 11m top view
     if os.path.exists(file_top_11m):
         frames_top_11m, coords_top_11m = parse_yolo_file(file_top_11m)
         r_arm_angle_11m = [calc_angle(p[2], p[0], p[4]) for p in coords_top_11m]
@@ -136,8 +136,8 @@ def process_subject_folder(subject_path):
         frames_rear, coords_rear = parse_yolo_file(file_rear)
         r_shoulder = [calc_angle(p[0], p[1], p[3]) if len(p) > 3 else None for p in coords_rear]
         l_shoulder = [calc_angle(p[1], p[0], p[2]) if len(p) > 2 else None for p in coords_rear]
-        r_elbow = [180 - calc_angle(p[3], p[1], p[5]) if len(p) > 5 and calc_angle(p[3], p[1], p[5]) is not None else None for p in coords_rear]
-        l_elbow = [180 - calc_angle(p[2], p[0], p[4]) if len(p) > 4 and calc_angle(p[2], p[0], p[4]) is not None else None for p in coords_rear]
+        r_elbow = [calc_angle(p[1], p[3], p[5]) if len(p) > 5 and calc_angle(p[1], p[3], p[5]) is not None else None for p in coords_rear]
+        l_elbow = [calc_angle(p[0], p[2], p[4]) if len(p) > 4 and calc_angle(p[0], p[2], p[4]) is not None else None for p in coords_rear]
         save_feature(os.path.join(subject_path, "right_shoulder_angle.txt"), frames_rear, r_shoulder)
         save_feature(os.path.join(subject_path, "left_shoulder_angle.txt"), frames_rear, l_shoulder)
         save_feature(os.path.join(subject_path, "right_elbow_angle.txt"), frames_rear, r_elbow)
