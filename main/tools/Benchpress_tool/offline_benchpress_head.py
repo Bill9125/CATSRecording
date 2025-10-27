@@ -142,16 +142,23 @@ def run_offline(folder, model_path="./model/benchpress/head_model/yolo11n.pt",
     print(f"TXT: {txt_path}")                                                                                      # TXT 路徑
     print(f"Video: {out_video}")                                                                                   # 影片路徑
 
-if __name__ == "__main__":                                                                                        # 入口
-    USE_LATEST = True                                                                                              # 自動抓最新
-    recordings_dir = r"C:/Users/92A27/benchpress/recordings"                                                       # 根目錄
-    if not os.path.exists(recordings_dir): raise FileNotFoundError(recordings_dir)                                 # 檢查
-    if USE_LATEST:
-        subs = [os.path.join(recordings_dir,d) for d in os.listdir(recordings_dir)
-                if os.path.isdir(os.path.join(recordings_dir,d))]                                                  # 列子目錄
-        if not subs: raise FileNotFoundError("recordings 下沒有子資料夾")                                          # 無子目錄
-        base_path = max(subs, key=os.path.getmtime)                                                                # 取最新
-    else:
-        base_path = r"E:/DATASET/abc"                                                                              # 手動指定
-    print(f"處理資料夾: {base_path}")                                                                              # 顯示
-    run_offline(base_path, conf=0.5, rotate180=False, device=None, BATCH=32, IMG=448, DRAW=True, PRE_RESIZE=True)  # 執行
+
+if __name__ == "__main__":                                                                                             # 程式入口
+    import sys                                                                                                         # 取參數用
+    recordings_dir = r"C:/Users/92A27/benchpress/recordings"                                                           # 根目錄（預設）
+    if not os.path.exists(recordings_dir): raise FileNotFoundError(recordings_dir)                                     # 檢查根目錄存在
+
+    # === 優先級：CLI 參數 > 自動取最新 ===                                                                             # 說明優先順序
+    if len(sys.argv) >= 2:                                                                                             # 有傳資料夾參數
+        base_path = sys.argv[1]                                                                                        # 取第一個參數
+        if not os.path.isdir(base_path):                                                                               # 參數需為資料夾
+            raise FileNotFoundError(f"指定的資料夾不存在：{base_path}")                                                  # 拋錯提示
+    else:                                                                                                              # 沒傳參數
+        subs = [os.path.join(recordings_dir, d) for d in os.listdir(recordings_dir)                                    # 列子資料夾
+                if os.path.isdir(os.path.join(recordings_dir, d))]                                                     # 僅取資料夾
+        if not subs:                                                                                                   # 無子資料夾
+            raise FileNotFoundError("recordings 下沒有子資料夾可處理，且未提供參數")                                    # 拋錯
+        base_path = max(subs, key=os.path.getmtime)                                                                    # 取最新
+
+    print(f"處理資料夾: {base_path}")                                                                                  # 明確顯示本次實際處理的資料夾
+    run_offline(base_path, conf=0.5, rotate180=False, device=None, BATCH=32, IMG=448, DRAW=True, PRE_RESIZE=True)      # 執行主流程

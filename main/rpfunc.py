@@ -231,8 +231,8 @@ class Replaybackend():
         self.firstclicked_S = True
         self.data_path = {'Deadlift': ['Bar_Position.json', 'Hip_Angle.json', 
                                        'Knee_Angle.json', 'Knee_to_Hip.json', 'Score.json'],
-                          'Benchpress' : ['Bar_Position.json', 'Armpit_Angle.json', 
-                                          'Shoulder_Angle.json', 'Elbow_Angle.json'],
+                          'Benchpress' : ['Bar_Position.json', 'right_elbow_torsor_angle_top.json', 
+                                          'left_elbow_torsor_angle_top.json'],
                            'Squat': ['Bar_Position.json', 'Hip_Angle.json', 
                                        'Knee_Angle.json', 'Knee_to_Hip.json', 'Score.json']}
         self.folders = {}
@@ -355,8 +355,8 @@ class Replaybackend():
             ]
         else:  # Benchpress
             desired_groups = [
+                ('vision1_drawed.avi', 'original_vision2.avi', 'vision3.avi'),
                 ('original_vision1.avi', 'original_vision2.avi', 'vision3.avi'),
-                ('vision1.avi', 'vision2.avi', 'vision3.avi'),
             ]
 
         picked = []                                                                    # 最終選用的影片清單
@@ -520,72 +520,212 @@ class Replaybackend():
         self.del_mythreads()
         event.accept()
         
-    def showprevision(self):
-        
-        if not hasattr(self, "data_graph") or self.data_graph.get("axes") is None:
-            print("⚠️ data_graph 尚未初始化，跳過繪圖流程")
-            return
+    def showprevision(self):                                                       # 預覽＋繪圖（依運動別限制張數）
+        # === 安全檢查 ===
+        if not hasattr(self, "data_graph") or self.data_graph.get("axes") is None: # 無圖表物件
+            print("⚠️ data_graph 尚未初始化，跳過繪圖流程")                          # 訊息
+            return                                                                 # 結束
 
-        if self.videos:
-            for i, video in enumerate(self.videos):
-                temp_cap = cv2.VideoCapture(video)
-                if self.ocv:
-                    _ , frame = temp_cap.read()
-                    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                    image = QtGui.QImage(frame_rgb.data, frame_rgb.shape[1], frame_rgb.shape[0], QtGui.QImage.Format_RGB888)
-                    self.rp_qpixmaps[i] = QtGui.QPixmap.fromImage(image)
-                    scaled_pixmap = self.rp_qpixmaps[i].scaled(self.rp_Vision_labels[i].size(), QtCore.Qt.IgnoreAspectRatio)
-                    self.rp_Vision_labels[i].setPixmap(scaled_pixmap)
-        if self.datas:
-            for i, data in enumerate(self.info_data):
-                x_data = data['frames']
-                y_data = data['values']
-                min_length = min(len(x_data), len(y_data))
-                x_data = x_data[:min_length]
-                y_data = y_data[:min_length]
-                y_min = data['y_min']
-                y_max = data['y_max']
-                
-                self.data_graph['axes'][i].clear()
-                self.data_graph['axes'][i].set_ylim(y_min, y_max)
-                self.data_graph['axes'][i].plot(x_data, y_data, label = f"{data['title']}")
-                self.data_graph['axes'][i].set_ylabel(f"{data['y_label']}")
-                self.data_graph['axes'][i].legend()
-                
-            self.data_graph['axes'][-1].set_xlabel('frames')
-            self.data_graph['canvas'].draw()
-            self.data_graph['graphicscene'].addWidget(self.data_graph['canvas'])
-            confs = []
-            for NoSet, info in self.pred_data['results'].items():
-                score = info[0]
-                item = QtWidgets.QTableWidgetItem(f"{str(round(float(score)*100, 1))}")
-                # Set font properties (e.g., bold, size 12)
-                font = QtGui.QFont("Arial", 24, QtGui.QFont.Bold)
-                item.setFont(font)
-                # Set the alignment (e.g., center)
-                item.setTextAlignment(QtCore.Qt.AlignCenter)
-                self.table.setItem(0, int(NoSet), item)
-                temp = []
-                for conf in info[1]:
-                    temp.append(round(conf[1]*100))
-                confs = confs + temp
-            for i, panel in enumerate(self.conf_panels):
-                label = QtWidgets.QLabel(f"{str(confs[i])}%")
-                label.setStyleSheet("font-size:20px; color: #070807; border: none;")
-                # Allow the label to resize automatically
-                label.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
-                font = QtGui.QFont("Arial", 24, QtGui.QFont.Bold)  # Set font to Arial, size 14, bold
-                label.setFont(font)
-                label.setAlignment(QtCore.Qt.AlignCenter)  # Center-align the text
+        # === 讀資料 ===
+        sport  = getattr(self, "currentsport", "") or ""                           # 運動別
+        folder = getattr(self, "folder", None)                                     # 選取資料夾
+        max_charts = self._plot_count_for(sport)                                   # 本次最大圖數
+        self.info_data, self.pred_data = self._load_info_from_folder(sport, folder)# 讀入資料
+        self.datas = bool(self.info_data)                                          # 有資料才畫
 
-                panel_layout = QtWidgets.QVBoxLayout()
-                panel_layout.addWidget(label)
-                panel.setLayout(panel_layout)
-        else:
-            for ax in self.data_graph['axes']:
-                ax.clear()
-            self.data_graph['canvas'].draw()
-                
+        # === 顯示影片第一幀（略，維持原本流程） ===
+        if getattr(self, "videos", None):                                          # 有影片時
+            for i, video in enumerate(self.videos):                                # 逐檔
+                temp_cap = cv2.VideoCapture(video)                                 # 開檔
+                if self.ocv and temp_cap.isOpened():                               # 可讀
+                    _, frame = temp_cap.read()                                     # 讀第一幀
+                    if frame is not None:                                          # 有畫面
+                        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)         # BGR→RGB
+                        image = QtGui.QImage(frame_rgb.data, frame_rgb.shape[1],
+                                            frame_rgb.shape[0], QtGui.QImage.Format_RGB888)  # QImage
+                        self.rp_qpixmaps[i] = QtGui.QPixmap.fromImage(image)       # 建 Pixmap
+                        scaled = self.rp_qpixmaps[i].scaled(self.rp_Vision_labels[i].size(),
+                                                            QtCore.Qt.IgnoreAspectRatio)      # 縮放
+                        self.rp_Vision_labels[i].setPixmap(scaled)                 # 顯示
+                temp_cap.release()                                                 # 關檔
+
+        # === 畫資料曲線或清空 ===
+        axes = self.data_graph['axes']                                             # 取得子圖列
+        for ax in axes:                                                            # 先清空全部
+            ax.clear()                                                             # 清空
+
+        if self.datas:                                                             # 有資料
+            # 只畫到 max_charts 或 axes 長度的較小者
+            n_plot = min(max_charts, len(axes), len(self.info_data))               # 本次實際繪製數
+            for i, data in enumerate(self.info_data[:n_plot]):                     # 逐條畫
+                x_data = data['frames']                                            # X
+                y_data = data['values']                                            # Y
+                min_len = min(len(x_data), len(y_data))                            # 對齊
+                x_data = x_data[:min_len]                                          # 截斷
+                y_data = y_data[:min_len]                                          # 截斷
+
+                ax = axes[i]                                                       # 目標子圖
+                ax.set_ylim(data['y_min'], data['y_max'])                          # 設 y 範圍
+                if isinstance(y_data[0], (list, tuple)) and len(y_data[0]) == 2:   # 雙路資料
+                    r_vals = [v[0] for v in y_data]                                # 右側
+                    l_vals = [v[1] for v in y_data]                                # 左側
+                    ax.plot(x_data, r_vals, label=f"{data['title']}-R")            # 畫線 R
+                    ax.plot(x_data, l_vals, label=f"{data['title']}-L")            # 畫線 L
+                else:                                                              # 一維
+                    ax.plot(x_data, y_data, label=f"{data['title']}")              # 畫線
+                ax.set_ylabel(f"{data['y_label']}")                                # y 標籤
+                ax.legend()                                                        # 圖例
+
+            # 清理多餘子圖（若 axes 比 n_plot 多）
+            for j in range(n_plot, len(axes)):                                     # 其餘子圖
+                axes[j].clear()                                                    # 清空
+                axes[j].set_visible(False)                                         # 暫時隱藏
+
+            # 讓用到的子圖可見並補上 x 標籤
+            for j in range(n_plot):                                                # 已繪製區塊
+                axes[j].set_visible(True)                                          # 顯示
+            if n_plot > 0:                                                         # 有圖才加 x 標
+                axes[n_plot-1].set_xlabel('frames')                                # 最底下一張加 x 標
+
+            self.data_graph['canvas'].draw()                                       # 重繪
+            self.data_graph['graphicscene'].addWidget(self.data_graph['canvas'])   # 掛回場景
+
+            # === 若有 Score.json 的 results，就更新表格/面板 ===
+            if isinstance(self.pred_data, dict) and 'results' in self.pred_data:   # 有預測
+                confs = []                                                         # 累積 conf%
+                for NoSet, info in self.pred_data['results'].items():              # 逐 set
+                    score = info[0]                                                # 取 score
+                    item = QtWidgets.QTableWidgetItem(f"{str(round(float(score)*100, 1))}")  # 表格 cell
+                    font = QtGui.QFont("Arial", 24, QtGui.QFont.Bold)              # 字體
+                    item.setFont(font)                                             # 套字體
+                    item.setTextAlignment(QtCore.Qt.AlignCenter)                   # 置中
+                    self.table.setItem(0, int(NoSet), item)                        # 放入第 0 列
+                    temp = [round(c[1]*100) for c in info[1]]                      # 類別置信度%
+                    confs.extend(temp)                                             # 收集
+                for i, panel in enumerate(getattr(self, 'conf_panels', [])):       # 逐 panel
+                    lbl = QtWidgets.QLabel(f"{str(confs[i])}%") if i < len(confs) else QtWidgets.QLabel("")  # 有值才顯示
+                    lbl.setStyleSheet("font-size:20px; color:#070807; border:none;")# 樣式
+                    lbl.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)      # 自適應
+                    font = QtGui.QFont("Arial", 24, QtGui.QFont.Bold)              # 字體
+                    lbl.setFont(font)                                              # 套字體
+                    lbl.setAlignment(QtCore.Qt.AlignCenter)                        # 置中
+                    lay = QtWidgets.QVBoxLayout()                                  # 佈局
+                    lay.addWidget(lbl)                                             # 加入
+                    panel.setLayout(lay)                                           # 掛上
+        else:                                                                      # 沒資料
+            for ax in axes:                                                        # 全部子圖
+                ax.clear()                                                         # 清空
+                ax.set_visible(True)                                               # 顯示（避免下次仍隱藏）
+            self.data_graph['canvas'].draw()                                       # 重繪空畫布
+
+
+    def _load_info_from_folder(self, sport, folder):                              # 僅從選到的資料夾載入 JSON（含上限）
+        """
+        只在 `folder` 內尋找 JSON，不回退；依運動別限制曲線數量（Benchpress=3，其它=4）。      # 行為說明
+        """
+        import os, json, numpy as np                                              # 近域匯入
+        if not sport or not folder or not os.path.isdir(folder):                  # 基本健檢
+            return [], {}                                                         # 無效就回空
+
+        max_charts = self._plot_count_for(sport)                                  # 本次允許的曲線上限
+        wanted_names = list(self.data_path.get(sport, []))                        # 既有宣告清單
+        if not wanted_names:                                                      # 若未宣告
+            wanted_names = [f for f in os.listdir(folder)                         # 掃描資料夾
+                            if f.lower().endswith('.json')]                      # 只收 json
+
+        info_data, pred_data, seen_titles = [], {}, set()                         # 容器
+        for name in wanted_names:                                                 # 逐檔名
+            if len(info_data) >= max_charts:                                      # 已達上限
+                break                                                             # 停止載入
+            file_path = os.path.join(folder, name)                                # 組路徑
+            if not (name.lower().endswith('.json') and os.path.isfile(file_path)):# 檔案檢查
+                continue                                                          # 跳過
+
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:                 # 開檔
+                    j = json.load(f)                                              # 解析
+            except Exception as e:
+                print(f"⚠️ 讀檔失敗：{file_path} -> {e}")                            # 記錄錯誤
+                continue                                                          # 跳過
+
+            base_title = os.path.splitext(os.path.basename(name))[0]              # 取標題
+            if base_title in seen_titles:                                         # 去重
+                continue                                                          # 跳過
+            seen_titles.add(base_title)                                           # 登記
+
+            if base_title.lower() == 'score' and isinstance(j, dict) and 'results' in j:  # Score 特案
+                pred_data = j                                                     # 存評分資料
+                continue                                                          # 不當曲線畫
+
+            frames = j.get('frames', None) if isinstance(j, dict) else None       # 標準 x 欄
+            values = j.get('values', None) if isinstance(j, dict) else None       # 標準 y 欄
+
+            if frames is None or values is None:                                  # 缺欄位→嘗試自動抽取
+                candidate_vals = None                                             # 候選 y
+                if isinstance(j, dict):                                           # 掃 dict
+                    for k, v in j.items():                                        # 每鍵
+                        if k.lower() in ('frames','frame','index','idx'):         # 排除 x 類鍵
+                            continue                                              # 繼續
+                        if isinstance(v, list) and len(v) > 1:                    # 有長度
+                            if isinstance(v[0], (int,float)) or (isinstance(v[0], list) and len(v[0]) in (2,)):  # 1D 或 pair
+                                candidate_vals = v                                 # 接受為 y
+                                break                                              # 停止找
+                if candidate_vals is None and isinstance(j, list) and j and isinstance(j[0], dict):  # list[dict] 形
+                    xs, ys = [], []                                               # 暫存
+                    for row in j:                                                 # 逐筆
+                        if 'value' in row:                                        # 有 y
+                            ys.append(row['value'])                                # 收 y
+                            xs.append(row.get('frame', len(xs)+1))                 # 無 frame 用流水號
+                    if ys:                                                         # 有資料
+                        frames, values = xs, ys                                    # 指派
+
+            if values is None or frames is None:                                   # 還是沒有
+                continue                                                           # 跳過
+
+            # 計算 y 範圍（容錯）
+            try:
+                arr = np.array(values, dtype=float)                                # 轉陣列
+                y_min = float(np.nanmin(arr))                                      # 最小
+                y_max = float(np.nanmax(arr))                                      # 最大
+            except Exception:                                                      # 混雜非數值
+                flatted = []                                                       # 扁平收集
+                if isinstance(values, list) and values and isinstance(values[0], (list,tuple)) and len(values[0]) == 2:  # pair
+                    for v0, v1 in values:
+                        try: flatted += [float(v0), float(v1)]
+                        except: pass
+                else:
+                    for v in values:
+                        try: flatted.append(float(v))
+                        except: pass
+                if not flatted:                                                    # 無可用
+                    continue                                                       # 跳過
+                y_min, y_max = min(flatted), max(flatted)                          # 重新取得
+
+            yr  = y_max - y_min if y_max > y_min else 1.0                          # 範圍
+            pad = max(yr * 0.05, 1e-3)                                             # 邊界
+            y_lo, y_hi = y_min - pad, y_max + pad                                  # 帶 padding
+
+            min_len = min(len(frames), len(values))                                # 對齊長度
+            if min_len <= 0:                                                       # 無資料
+                continue                                                           # 跳過
+
+            y_label = j.get('y_label', base_title) if isinstance(j, dict) else base_title  # y 標籤
+            info_data.append({                                                     # 累積曲線
+                'title': base_title,                                               # 標題
+                'frames': list(frames)[:min_len],                                  # X 資料（裁齊）
+                'values': list(values)[:min_len],                                  # Y 資料（裁齊）
+                'y_min': y_lo,                                                     # y 下界
+                'y_max': y_hi,                                                     # y 上界
+                'y_label': y_label                                                 # y 標籤
+            })                                                                     # 追加一條
+
+        return info_data, pred_data                                                # 回傳
+
+
+    def _plot_count_for(self, sport):                                             # 傳回該運動欲顯示的圖數
+        return 3 if str(sport).lower() == 'benchpress' else 4                     # Benchpress=3, 其他=4
+
+
     def creat_vision_labels_pixmaps(self, labelsize, parentlayout, sublayout, sport, num, type ='rc'):
         vertical_sliders = []
         horizontal_sliders = []
@@ -624,44 +764,53 @@ class Replaybackend():
         if sport == 'Benchpress':
             if type == 'rc':
                 for _ in range(num):
-                    qpixmap = QtGui.QPixmap()
-                    qpixmaps.append(qpixmap)
-                    Vision_label = QtWidgets.QLabel(parentlayout)
-                    Vision_label.setFrameShape(QtWidgets.QFrame.Panel)
-                    Vision_label.setMinimumSize(labelsize[0], labelsize[1])
-                    Vision_label.setMaximumSize(labelsize[0], labelsize[1])
-                    Vision_label.setPixmap(qpixmap)
-                    Vision_label.setText('')
-                    sublayout.addWidget(Vision_label)
-                    sublayout.setAlignment(Vision_label, QtCore.Qt.AlignCenter)
-                    Vision_labels.append(Vision_label)
-                return Vision_labels, qpixmaps
+                    qpixmap = QtGui.QPixmap()                                                                 # 建立空白 QPixmap
+                    qpixmaps.append(qpixmap)                                                                  # 收集 pixmap
+                    Vision_label = QtWidgets.QLabel(parentlayout)                                             # 影像顯示 QLabel
+                    Vision_label.setFrameShape(QtWidgets.QFrame.Panel)                                        # 外框樣式
+                    Vision_label.setMinimumSize(labelsize[0], labelsize[1])                                   # 固定大小（寬, 高）
+                    Vision_label.setMaximumSize(labelsize[0], labelsize[1])                                   # 固定大小（寬, 高）
+                    Vision_label.setPixmap(qpixmap)                                                           # 指定 pixmap
+                    Vision_label.setText('')                                                                  # 清空文字
+                    sublayout.addWidget(Vision_label)                                                         # 佈局加入
+                    sublayout.setAlignment(Vision_label, QtCore.Qt.AlignCenter)                               # 置中
+                    Vision_labels.append(Vision_label)                                                        # 收集 label
+                return Vision_labels, qpixmaps                                                                # 回傳
+
             if type == 'rp':   
                 if num == 1:
-                    vertical_slider = QtWidgets.QSlider(orientation = QtCore.Qt.Vertical, parent = parentlayout)
-                    horizontal_slider = QtWidgets.QSlider(orientation = QtCore.Qt.Horizontal, parent = parentlayout)
-                    qpixmap = QtGui.QPixmap()
-                    qpixmaps.append(qpixmap)
-                    Vision_label = LineLabel(parentlayout)
-                    Vision_label.setFrameShape(QtWidgets.QFrame.Panel)
-                    Vision_label.setMinimumSize(labelsize[0], labelsize[1])
-                    Vision_label.setMaximumSize(labelsize[0], labelsize[1])
-                    Vision_label.setPixmap(qpixmap)
-                    sublayout.addWidget(Vision_label, 0, 0)
-                    sublayout.addWidget(vertical_slider, 0, 1)
-                    horizontal_slider.setFixedWidth(labelsize[0])
-                    horizontal_slider.setValue(0)
-                    horizontal_slider.setMaximum(labelsize[0])
-                    horizontal_slider.valueChanged.connect(Vision_label.set_horizontal_line)
-                    vertical_slider.setFixedHeight(labelsize[1])
-                    vertical_slider.setMaximum(labelsize[1])
-                    vertical_slider.setInvertedAppearance(True)
-                    vertical_slider.setValue(0)
-                    vertical_slider.valueChanged.connect(Vision_label.set_vertical_line)
-                    sublayout.addWidget(horizontal_slider, 1, 0)
-                    Vision_labels.append(Vision_label)
-                    return Vision_label, vertical_slider, horizontal_slider
-                
+                    vertical_slider = QtWidgets.QSlider(orientation=QtCore.Qt.Vertical, parent=parentlayout)  # 垂直 slider（沿 Y 方向擺放）
+                    horizontal_slider = QtWidgets.QSlider(orientation=QtCore.Qt.Horizontal, parent=parentlayout)  # 水平 slider（沿 X 方向擺放）
+                    qpixmap = QtGui.QPixmap()                                                                 # 建立空白 QPixmap
+                    qpixmaps.append(qpixmap)                                                                  # 收集 pixmap
+
+                    Vision_label = LineLabel(parentlayout)                                                    # 自訂 LineLabel：能畫水平/垂直線
+                    Vision_label.setFrameShape(QtWidgets.QFrame.Panel)                                        # 外框樣式
+                    Vision_label.setMinimumSize(labelsize[0], labelsize[1])                                   # 固定大小（寬, 高）
+                    Vision_label.setMaximumSize(labelsize[0], labelsize[1])                                   # 固定大小（寬, 高）
+                    Vision_label.setPixmap(qpixmap)                                                           # 指定 pixmap
+
+                    sublayout.addWidget(Vision_label, 0, 0)                                                   # 影像放左上格
+                    sublayout.addWidget(vertical_slider, 0, 1)                                                # 垂直 slider 放影像右側
+
+                    horizontal_slider.setFixedWidth(labelsize[0])                                             # 水平 slider 寬度=影像寬
+                    horizontal_slider.setValue(0)                                                             # 初值 0
+                    horizontal_slider.setMaximum(labelsize[0])                                                # 最大值=影像寬（對應 X）→ 控制垂直線 X
+
+                    vertical_slider.setFixedHeight(labelsize[1])                                              # 垂直 slider 高度=影像高
+                    vertical_slider.setMaximum(labelsize[1])                                                  # 最大值=影像高（對應 Y）→ 控制水平線 Y
+                    vertical_slider.setInvertedAppearance(True)                                               # 由上往下數值增
+
+                    # === 只有這兩行交換：讓「水平 slider 控制垂直線 (X)」、「垂直 slider 控制水平線 (Y)」 ===
+                    horizontal_slider.valueChanged.connect(Vision_label.set_vertical_line)                    # 交換後：水平 slider → 垂直線（X）
+                    vertical_slider.setValue(0)                                                               # 初值 0
+                    vertical_slider.valueChanged.connect(Vision_label.set_horizontal_line)                    # 交換後：垂直 slider → 水平線（Y）
+
+                    sublayout.addWidget(horizontal_slider, 1, 0)                                              # 水平 slider 放影像下方
+                    Vision_labels.append(Vision_label)                                                        # 收集 label
+                    return Vision_label, vertical_slider, horizontal_slider                                   # 回傳
+
+                        
                 if  num == 2:
                     for _ in range(num):
                         # ✅ 創建新元件，避免重複使用舊的
@@ -678,11 +827,11 @@ class Replaybackend():
                         vertical_slider.setMaximum(labelsize[1])
                         vertical_slider.setInvertedAppearance(True)
                         vertical_slider.setValue(0)
-                        vertical_slider.valueChanged.connect(Vision_label.set_vertical_line)
+                        vertical_slider.valueChanged.connect(Vision_label.set_horizontal_line)
                         horizontal_slider.setFixedWidth(labelsize[0])  # 限制水平 Slider 寬度
                         horizontal_slider.setMaximum(labelsize[0])
                         horizontal_slider.setValue(0)
-                        horizontal_slider.valueChanged.connect(Vision_label.set_horizontal_line)
+                        horizontal_slider.valueChanged.connect(Vision_label.set_vertical_line)
 
                         # ✅ 建立 GridLayout
                         vis_layout = QtWidgets.QGridLayout()
@@ -825,20 +974,24 @@ class Replaybackend():
             os.system(f'python ./tools/Deadlift_tool/predict.py {folder} --out ./config')                               # predict
 
         if sport == 'Benchpress':                                                   # Benchpress 流程
-            
+            os.system(f'python ./tools/Benchpress_tool/offline_benchpress_head.py "{folder}"')                       # 接著跑頭部/槓端流程           
             os.system(f'python ./tools/Benchpress_tool/interpolate.py "{folder}"')                                 # 若要做骨架/槓端內插再開
-            os.system(f'python ./tools/Benchpress_tool/offline_benchpress_head.py "{folder}"')                       # 接著跑頭部/槓端流程
+
             os.system(f'python ./tools/Benchpress_tool/step0_hampel_bar.py "{folder}"')                              # 先做 Hampel 濾波
-            os.system(f'python ./tools/Benchpress_tool/bar_data_produce.py {folder} --out ./config --sport benchpress')  # bar            
+            os.system(f'python ./tools/Benchpress_tool/bar_data_produce.py {folder} --out ./config --sport benchpress')  # bar         
+               
             os.system(f'python ./tools/Benchpress_tool/step0_hampel_yolo_ske_rear.py {folder}')
             os.system(f'python ./tools/Benchpress_tool/step0_hampel_yolo_ske_top.py {folder} ')
             os.system(f'python ./tools/Benchpress_tool/step1_interpolate_bar.py {folder}')
             os.system(f'python ./tools/Benchpress_tool/step2_interpolate_yolo_ske.py {folder}')
+
+
+            os.system(f'python ./tools/Benchpress_tool/torsor_angle_produce.py {folder}')
             os.system(f'python ./tools/Benchpress_tool/step3_autocutting_0801.py {folder}')
             os.system(f'python ./tools/Benchpress_tool/step5_calculate_angle_new_feature_test.py {folder}')
-            # os.system(f'python ./tools/Benchpress_tool/step6_cut.py {folder} ')
-            # os.system(f'python ./tools/Benchpress_tool/step7_length_100.py {folder}')
-            # os.system(f'python ./tools/Benchpress_tool/step8_normalize.py {folder}')
+            os.system(f'python ./tools/Benchpress_tool/step6_cut.py {folder} ')
+            os.system(f'python ./tools/Benchpress_tool/step7_length_100.py {folder}')
+            os.system(f'python ./tools/Benchpress_tool/step8_normalize.py {folder}')
 
         if sport == 'Squat':                                                        # Squat 流程
             pass                                                                    # 目前無動作（保留）

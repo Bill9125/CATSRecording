@@ -102,7 +102,7 @@ def deadlift_bone_loop(i, frame, label, save_sig, recording_sig, folder,
     results = list(model(source=frame, stream=True, verbose=False))
     frame_count_for_detect += 1
 
-    if results and results[0].keysegment_filespoints:  # ✅ 確保有偵測到人
+    if results and results[0].keypoints:  # ✅ 確保有偵測到人
         r2 = results[0]  # ✅ 只取第一個偵測結果
         keypoints = r2.keypoints
         kpts = keypoints[0]  # ✅ 只取第一個人的骨架點

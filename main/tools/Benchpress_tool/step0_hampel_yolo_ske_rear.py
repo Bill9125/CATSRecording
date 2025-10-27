@@ -77,30 +77,6 @@ def process_skeleton_file(input_path, output_path):
 
     return True
 
-# def process_all_skeletons(root_dir):
-#     processed_files = []
-#     for folder, _, files in os.walk(root_dir):
-#         for file in files:
-#             if file == "yolo_skeleton.txt":
-#                 input_path = os.path.join(folder, file)
-#                 output_path = os.path.join(folder, "yolo_skeleton_hampel.txt")
-
-#                 # 👉 加入這段：若已存在就跳過
-#                 if os.path.exists(output_path):
-#                     print(f"⏭️ 已存在，跳過：{output_path}")
-#                     continue
-
-#                 success = process_skeleton_file(input_path, output_path)
-#                 if success:
-#                     print(f"✅ 已處理：{output_path}")
-#                     processed_files.append(output_path)
-
-#     # === 處理報告 ===
-#     print("\n📋 處理完成列表：")
-#     for path in processed_files:
-#         print(f"  ➤ {path}")
-#     print(f"\n✅ 共處理 {len(processed_files)} 個檔案")
-
 def process_all_skeletons(root_dir):
     processed_files = []
 
@@ -131,22 +107,24 @@ def process_all_skeletons(root_dir):
 
 
 
-if __name__ == "__main__":
-    USE_LATEST = True  # ❗️切換手動指定資料夾還是自動判定最新的
+if __name__ == "__main__":                                                                                               # 入口
+    import sys                                                                                                           # 取參數
+    recordings_dir = r"C:/Users/92A27/benchpress/recordings"                                                             # 預設根目錄
+    # 用法：python this_script.py <folder_path>                                                                           # 說明
 
-    if USE_LATEST:
-        recordings_dir = r"C:/Users/92A27/benchpress/recordings"
-        all_folders = [os.path.join(recordings_dir, d) for d in os.listdir(recordings_dir) if os.path.isdir(os.path.join(recordings_dir, d))]
-        base_path = os.path.join(max(all_folders, key=os.path.getmtime), '')
-    else:
-        base_path = r"E:/DATASET/abc"  # 手動指定
+    if len(sys.argv) >= 2:                                                                                               # 有傳入路徑
+        base_path = sys.argv[1]                                                                                          # 取第一參數
+        if not os.path.isdir(base_path):                                                                                 # 確認是資料夾
+            raise FileNotFoundError(f"❌ 指定的資料夾不存在：{base_path}")                                                # 拋錯
+    else:                                                                                                                # 無參數 → 退回找最新
+        if not os.path.isdir(recordings_dir):                                                                            # 根目錄要存在
+            raise FileNotFoundError(f"❌ recordings 根目錄不存在：{recordings_dir}")                                      # 拋錯
+        subs = [os.path.join(recordings_dir, d) for d in os.listdir(recordings_dir)                                      # 列子資料夾
+                if os.path.isdir(os.path.join(recordings_dir, d))]                                                       # 只要資料夾
+        if not subs:                                                                                                     # 無子資料夾
+            raise FileNotFoundError("❌ recordings 資料夾下沒有任何子資料夾，且未提供參數")                                # 拋錯
+        base_path = max(subs, key=os.path.getmtime)                                                                      # 取最新一個
 
-    # 🔍 取得 recordings 下所有子資料夾，並找出最新的
-    all_folders = [os.path.join(recordings_dir, d) for d in os.listdir(recordings_dir) if os.path.isdir(os.path.join(recordings_dir, d))]
-    if not all_folders:
-        raise FileNotFoundError("❌ recordings 資料夾下沒有任何子資料夾")
+    print(f"▶ 處理資料夾：{base_path}")                                                                                   # 顯示實際處理對象
+    process_all_skeletons(base_path)                                                                                     # 執行主流程
 
-    latest_folder = max(all_folders, key=os.path.getmtime)  # 依建立時間找最新資料夾
-    base_path = os.path.join(latest_folder, '')  # base_path 最後補上斜線
-
-    process_all_skeletons(base_path)

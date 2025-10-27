@@ -109,28 +109,23 @@ def process_all_folders(base_root):
             if os.path.isdir(subject_path):
                 process_subject_folder(subject_path)
 
-# if __name__ == "__main__":
-#     base_dir = r"F:\DATASET"
-#     process_all_folders(base_dir)
-#     print("✅ 所有 yolo_skeleton 檔案已補齊內插（如尚未存在）")
 
-if __name__ == "__main__":
-    USE_LATEST = True  # ❗️切換手動指定資料夾還是自動判定最新的
+if __name__ == "__main__":                                                                                       # 程式入口
+    import sys, os                                                                                               # 匯入模組
+    recordings_dir = r"C:/Users/92A27/benchpress/recordings"                                                     # 預設 recordings 根目錄
+    if len(sys.argv) >= 2:                                                                                       # 有傳入參數
+        base_path = sys.argv[1]                                                                                  # 指定目標資料夾
+        if not os.path.isdir(base_path):                                                                         # 檢查有效性
+            raise FileNotFoundError(f"❌ 指定的資料夾不存在：{base_path}")                                          # 拋錯
+    else:                                                                                                        # 無參數 → 退回找最新
+        if not os.path.isdir(recordings_dir):                                                                    # 檢查根目錄
+            raise FileNotFoundError(f"❌ recordings 根目錄不存在：{recordings_dir}")                              # 拋錯
+        subs = [os.path.join(recordings_dir, d) for d in os.listdir(recordings_dir)                              # 列子資料夾
+                if os.path.isdir(os.path.join(recordings_dir, d))]                                               # 過濾
+        if not subs:                                                                                             # 沒有子資料夾
+            raise FileNotFoundError("❌ recordings 資料夾下沒有任何子資料夾，且未提供參數")                         # 拋錯
+        base_path = max(subs, key=os.path.getmtime)                                                             # 取最新資料夾
+    print(f"interpolate ske process folder : {base_path}")                                                       # 顯示實際處理資料夾（骨架內插）
+    process_subject_folder(base_path)                                                                            # 執行主流程
+    print("✅ 所有 yolo_skeleton 檔案已補齊內插（如尚未存在）")                                                      # 完成訊息
 
-    if USE_LATEST:
-        recordings_dir = r"C:/Users/92A27/benchpress/recordings"
-        all_folders = [os.path.join(recordings_dir, d) for d in os.listdir(recordings_dir) if os.path.isdir(os.path.join(recordings_dir, d))]
-        base_path = os.path.join(max(all_folders, key=os.path.getmtime), '')
-    else:
-        base_path = r"E:/DATASET/abc"  # 手動指定
-
-    # 🔍 取得 recordings 下所有子資料夾，並找出最新的
-    all_folders = [os.path.join(recordings_dir, d) for d in os.listdir(recordings_dir) if os.path.isdir(os.path.join(recordings_dir, d))]
-    if not all_folders:
-        raise FileNotFoundError("❌ recordings 資料夾下沒有任何子資料夾")
-
-    latest_folder = max(all_folders, key=os.path.getmtime)  # 依建立時間找最新資料夾
-    base_path = os.path.join(latest_folder, '')  # base_path 最後補上斜線
-
-    process_subject_folder(base_path)
-    print("✅ 所有 yolo_skeleton 檔案已補齊內插（如尚未存在）")

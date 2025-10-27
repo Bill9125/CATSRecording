@@ -119,7 +119,8 @@ save_to_config(
     title='Left Knee Angle Over Time',
     y_label='Angle (degrees)',
     y_data=left_knee_angles,
-    output_file=os.path.join(out, 'Deadlift_data', 'Knee_Angle.json'),
+    # output_file=os.path.join(out, 'Deadlift_data', 'Knee_Angle.json'),
+    output_file=os.path.join(dir, 'Knee_Angle.json'), #輸出到原本資料夾
     skeleton_frames=skeleton_frames
 )
 
@@ -127,7 +128,8 @@ save_to_config(
     title='Left Hip Angle Over Time',
     y_label='Angle (degrees)',
     y_data=left_hip_angles,
-    output_file=os.path.join(out, 'Deadlift_data', 'Hip_Angle.json'),
+    # output_file=os.path.join(out, 'Deadlift_data', 'Hip_Angle.json'),
+    output_file=os.path.join(dir, 'Hip_Angle.json'), #輸出到原本資料夾
     skeleton_frames=skeleton_frames
 )
 
@@ -135,7 +137,8 @@ save_to_config(
     title='Knee-to-Hip Angle Ratio Over Time',
     y_label='Ratio (Knee / Hip)',
     y_data=knee_to_hip_ratios,
-    output_file=os.path.join(out, 'Deadlift_data', 'Knee_to_Hip.json'),
+    # output_file=os.path.join(out, 'Deadlift_data', 'Knee_to_Hip.json'),
+    output_file=os.path.join(dir, 'Knee_to_Hip.json'), #輸出到原本資料夾
     skeleton_frames=skeleton_frames
 )
 

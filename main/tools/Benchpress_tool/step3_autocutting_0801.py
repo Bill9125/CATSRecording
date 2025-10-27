@@ -1027,62 +1027,61 @@ def fill_edges(series):
 
 
 
-if __name__ == "__main__":
-    results = []  # 放在 __main__ 區塊內最上方
+if __name__ == "__main__":                                                                                         # 入口
+    import sys, os                                                                                                  # 匯入基礎模組
+    results = []                                                                                                    # 結果容器（若上層需要彙整可用）
 
-    USE_LATEST = True  # ❗️切換手動指定資料夾還是自動判定最新的
+    recordings_dir = r"C:/Users/92A27/benchpress/recordings"                                                        # 預設 recordings 根目錄
+    # 用法範例（UI 會這樣呼叫）：python this_script.py C:\Users\92A27\benchpress\recordings\recording_YYYYMMDD_HHMMSS   # 說明
 
-    if USE_LATEST:
-        recordings_dir = r"C:/Users/92A27/benchpress/recordings"
-        all_folders = [os.path.join(recordings_dir, d) for d in os.listdir(recordings_dir) if os.path.isdir(os.path.join(recordings_dir, d))]
-        base_path = os.path.join(max(all_folders, key=os.path.getmtime), '')
-    else:
-        base_path = r"E:/DATASET/abc"  # 手動指定
+    if len(sys.argv) >= 2:                                                                                          # 有傳入資料夾參數
+        base_path = sys.argv[1]                                                                                     # 取第一個參數
+        if not os.path.isdir(base_path):                                                                            # 檢查是否為有效資料夾
+            raise FileNotFoundError(f"❌ 指定的資料夾不存在：{base_path}")                                             # 拋錯
+    else:                                                                                                           # 沒有傳參數 → 退回找最新
+        if not os.path.isdir(recordings_dir):                                                                       # recordings 根目錄要存在
+            raise FileNotFoundError(f"❌ recordings 根目錄不存在：{recordings_dir}")                                   # 拋錯
+        subs = [os.path.join(recordings_dir, d) for d in os.listdir(recordings_dir)                                 # 列出子資料夾
+                if os.path.isdir(os.path.join(recordings_dir, d))]                                                  # 過濾出資料夾
+        if not subs:                                                                                                # 沒有任何子資料夾
+            raise FileNotFoundError("❌ recordings 資料夾下沒有任何子資料夾，且未提供參數")                              # 拋錯
+        base_path = max(subs, key=os.path.getmtime)                                                                 # 取最後修改時間最新的資料夾
 
-    # 🔍 取得 recordings 下所有子資料夾，並找出最新的
-    all_folders = [os.path.join(recordings_dir, d) for d in os.listdir(recordings_dir) if os.path.isdir(os.path.join(recordings_dir, d))]
-    if not all_folders:
-        raise FileNotFoundError("❌ recordings 資料夾下沒有任何子資料夾")
+    # --- 路徑組裝統一用 os.path.join，避免手動加斜線帶來的錯誤 ---                                                     # 說明
+    input_file = os.path.join(base_path, "yolo_skeleton_interpolated_hampel.txt")                                   # 骨架檔
+    input_file_bar = os.path.join(base_path, "yolo_coordinates_interpolated_hampel.txt")                            # 槓端檔
+    output_plot = os.path.join(base_path, "elbow_shoulder_angles_plot.png")                                         # 輸出圖
+    output_excel = os.path.join(base_path, "peak_analysis.xlsx")                                                     # 輸出 Excel
+    output_txt = os.path.join(base_path, "elbow_shoulder_angles_cut.txt")                                           # 切段結果
+    video_file = os.path.join(base_path, "original_vision3.avi")                                                    # 原始影片
+    merged_video = os.path.join(base_path, "merged_segments_with_labels.avi")                                       # 合成帶標籤影片
 
-    latest_folder = max(all_folders, key=os.path.getmtime)  # 依建立時間找最新資料夾
-    base_path = os.path.join(latest_folder, '')  # base_path 最後補上斜線
-    
-    input_file = f"{base_path}yolo_skeleton_interpolated_hampel.txt"   #yolo_skeleton_interpolated_hampel.txt  vision3_new_skeleton_interpolated.txt
-    input_file_bar = f"{base_path}yolo_coordinates_interpolated_hampel.txt"
-    output_plot = f"{base_path}elbow_shoulder_angles_plot.png"
-    output_excel = f"{base_path}peak_analysis.xlsx"
-    output_txt = f"{base_path}elbow_shoulder_angles_cut.txt"
-    video_file = os.path.join(base_path, "original_vision3.avi")
-    merged_video = os.path.join(base_path, "merged_segments_with_labels.avi")
+    print(f"▶ 實際處理資料夾：{base_path}")                                                                            # 確認本次處理對象
 
+    # 檢查主要輸入檔案是否存在                                                                                           # 註解
+    if not os.path.exists(input_file):                                                                              # 檢查骨架檔
+        print(f"❌ 找不到骨架檔案：{input_file}")                                                                     # 警示
+        sys.exit(1)                                                                                                  # 結束（回傳非零碼）
 
+    # 呼叫分析函式                                                                                                      # 註解
+    result = analyze_elbow_motion(                                                                                  # 執行分析
+        input_file=input_file,                                                                                       # 傳入骨架檔
+        output_plot=output_plot,                                                                                     # 輸出圖路徑
+        output_excel=output_excel,                                                                                   # 輸出 Excel
+        output_txt=output_txt,                                                                                       # 輸出切段 txt
+        base_path=base_path,                                                                                         # 基底資料夾
+        input_file_bar=input_file_bar                                                                               # 槓端檔路徑
+    )                                                                                                                # 結束呼叫
 
-    # 檢查主要輸入檔案是否存在
-    if not os.path.exists(input_file):
-        print(f"❌ 找不到骨架檔案: {input_file}")
-        exit()  # 直接結束程式執行
+    # 呼叫影片組合函式（如果影片存在才執行）                                                                              # 註解
+    if os.path.exists(video_file):                                                                                   # 檢查原始影片是否存在
+        create_merged_video_with_labels(                                                                             # 合併片段並上標籤
+            video_path=video_file,                                                                                   # 輸入影片
+            segments_file=output_txt,                                                                                # 切段文字檔
+            output_file=merged_video                                                                                 # 合成輸出
+        )                                                                                                            # 結束呼叫
+    else:                                                                                                            # 影片不存在
+        print(f"⚠️ 找不到影片檔案，略過合成：{video_file}")                                                             # 提示
 
+    print(f"✅ 已完成處理：{base_path}")                                                                               # 完成訊息
 
-
-    # 呼叫分析函式
-    result = analyze_elbow_motion(
-        input_file=input_file,
-        output_plot=output_plot,
-        output_excel=output_excel,
-        output_txt=output_txt,
-        base_path=base_path,
-        input_file_bar=input_file_bar
-    )
-
-    # 呼叫影片組合函式
-    if os.path.exists(video_file):  # 確保影片存在再處理
-        create_merged_video_with_labels(
-            video_path=video_file,
-            segments_file=output_txt,
-            output_file=merged_video
-        )
-
-    print(f"✅ 已完成處理: {base_path}")
-
-
-    

@@ -108,81 +108,6 @@ def cut_video_to_intervals(video_path, intervals, output_dir, video_prefix):
         out.release()
     print(f"🎬 {video_prefix} 裁切完成，共 {len(intervals)} 段")
 
-# 加入影片處理的總整合
-# def process_all_cut4_with_video(folder_path, category_name, subject_id, output_root):
-#     cut_files = [f for f in os.listdir(folder_path) if f.startswith("cut4_") and f.endswith(".txt")]
-#     if not cut_files:
-#         print(f"⚠️ 找不到任何 cut4 檔案於 {folder_path}")
-#         return
-
-#     for cut_file in cut_files:
-#         print(f"\n📁 處理: {category_name}/{subject_id} ({cut_file})")
-#         cut_path = os.path.join(folder_path, cut_file)
-#         intervals = read_cut_file(cut_path)
-#         cut_name = os.path.splitext(cut_file)[0]
-#         output_dir = os.path.join(output_root, category_name, subject_id, cut_name)
-#         os.makedirs(output_dir, exist_ok=True)
-
-#         # ✅ 特徵裁切（每個檔案只在所有 rep_* 檔案都缺少時才會處理）
-#         for file in target_files:
-#             file_path = os.path.join(folder_path, file)
-#             if not os.path.exists(file_path):
-#                 print(f"❌ 檔案不存在: {file_path}")
-#                 continue
-
-#             # 檢查是否所有 rep 檔案都已存在
-#             all_exist = True
-#             for idx in range(len(intervals)):
-#                 rep_out_path = os.path.join(output_dir, f"{file[:-4]}_{idx+1}.txt")
-#                 if not os.path.exists(rep_out_path):
-#                     all_exist = False
-#                     break
-#             if all_exist:
-#                 continue  # ✅ 全部 rep 存在就跳過這個特徵檔案
-
-#             # 開始處理這份特徵檔案
-#             data = pd.read_csv(file_path, header=None)
-#             for idx, (start, end) in enumerate(intervals):
-#                 if end >= len(data):
-#                     print(f"⚠️ 區間超出範圍: {file} ({start}-{end})")
-#                     continue
-
-#                 sliced = data.iloc[start-1:end]
-#                 out_path = os.path.join(output_dir, f"{file[:-4]}_{idx+1}.txt")
-#                 sliced.to_csv(out_path, index=False, header=False)
-
-#         # ✅ 裁切影片（每個視角只在所有切片都缺少時才會處理）
-#         for vision_idx in [1, 2, 3]:
-#             video_path = os.path.join(folder_path, f"original_vision{vision_idx}.avi")
-
-#             # 檢查是否所有影片片段都存在
-#             all_exist = all(
-#                 os.path.exists(os.path.join(output_dir, f"vision{vision_idx}_{i+1}.avi"))
-#                 for i in range(len(intervals))
-#             )
-#             if all_exist:
-#                 print(f"⏭️ 所有 vision{vision_idx} 的影片已存在，跳過")
-#                 continue
-
-#             # 若有缺少，就裁切
-#             cut_video_to_intervals(video_path, intervals, output_dir, f"vision{vision_idx}")
-
-#     print(f"\n✅ 全部 cut4 檔案處理完成: {category_name}/{subject_id}")
-
-
-# def process_entire_dataset(dataset_root, output_root):
-#     for category in os.listdir(dataset_root):
-#         category_path = os.path.join(dataset_root, category)
-#         if not os.path.isdir(category_path):
-#             continue
-
-#         for subject_id in os.listdir(category_path):
-#             subject_path = os.path.join(category_path, subject_id)
-#             if not os.path.isdir(subject_path):
-#                 continue
-
-#             process_all_cut4_with_video(subject_path, category, subject_id, output_root)
-
 
 def process_all_cut4_with_video(folder_path):
     output_root = os.path.join(folder_path, "feature")  # 自動建立 feature 子資料夾
@@ -224,40 +149,41 @@ def process_all_cut4_with_video(folder_path):
                 sliced = data.iloc[start-1:end]
                 out_path = os.path.join(output_dir, f"{file[:-4]}_{idx+1}.txt")
                 sliced.to_csv(out_path, index=False, header=False)
+        print(f"\n✅ 特徵裁切完成: {folder_path}")
 
-        # ✅ 裁切影片
-        for vision_idx in [1, 2, 3]:
-            video_path = os.path.join(folder_path, f"original_vision{vision_idx}.avi")
-            all_exist = all(
-                os.path.exists(os.path.join(output_dir, f"vision{vision_idx}_{i+1}.avi"))
-                for i in range(len(intervals))
-            )
-            if all_exist:
-                print(f"⏭️ 所有 vision{vision_idx} 的影片已存在，跳過")
-                continue
+    #     # ✅ 裁切影片
+    #     for vision_idx in [1, 2, 3]:
+    #         video_path = os.path.join(folder_path, f"original_vision{vision_idx}.avi")
+    #         all_exist = all(
+    #             os.path.exists(os.path.join(output_dir, f"vision{vision_idx}_{i+1}.avi"))
+    #             for i in range(len(intervals))
+    #         )
+    #         if all_exist:
+    #             print(f"⏭️ 所有 vision{vision_idx} 的影片已存在，跳過")
+    #             continue
 
-            cut_video_to_intervals(video_path, intervals, output_dir, f"vision{vision_idx}")
+    #         cut_video_to_intervals(video_path, intervals, output_dir, f"vision{vision_idx}")
 
-    print(f"\n✅ 全部 cut4 檔案處理完成: {folder_path}")
+    # print(f"\n✅ 全部 cut4 檔案處理完成: {folder_path}")
 
 
+if __name__ == "__main__":                                                                                  # 入口
+    import sys, os                                                                                           # 匯入
+    recordings_dir = r"C:/Users/92A27/benchpress/recordings"                                                 # 預設 recordings 根目錄
 
-if __name__ == "__main__":
-    USE_LATEST = True  # ❗️切換手動指定資料夾還是自動判定最新的
+    if len(sys.argv) >= 2:                                                                                   # 有傳入資料夾參數
+        base_path = sys.argv[1]                                                                              # 取第一個參數
+        if not os.path.isdir(base_path):                                                                     # 檢查有效性
+            raise FileNotFoundError(f"❌ 指定的資料夾不存在：{base_path}")                                      # 拋錯
+    else:                                                                                                    # 沒傳參數 → 退回最新
+        if not os.path.isdir(recordings_dir):                                                                # 根目錄存在
+            raise FileNotFoundError(f"❌ recordings 根目錄不存在：{recordings_dir}")                          # 拋錯
+        subs = [os.path.join(recordings_dir, d) for d in os.listdir(recordings_dir)
+                if os.path.isdir(os.path.join(recordings_dir, d))]                                           # 列子資料夾
+        if not subs:                                                                                         # 無子資料夾
+            raise FileNotFoundError("❌ recordings 下沒有任何子資料夾，且未提供參數")                          # 拋錯
+        base_path = max(subs, key=os.path.getmtime)                                                          # 取最新
 
-    if USE_LATEST:
-        recordings_dir = r"C:/Users/92A27/benchpress/recordings"
-        all_folders = [os.path.join(recordings_dir, d) for d in os.listdir(recordings_dir) if os.path.isdir(os.path.join(recordings_dir, d))]
-        base_path = os.path.join(max(all_folders, key=os.path.getmtime), '')
-    else:
-        base_path = r"E:/DATASET/abc"  # 手動指定
-
-    # 🔍 取得 recordings 下所有子資料夾，並找出最新的
-    all_folders = [os.path.join(recordings_dir, d) for d in os.listdir(recordings_dir) if os.path.isdir(os.path.join(recordings_dir, d))]
-    if not all_folders:
-        raise FileNotFoundError("❌ recordings 資料夾下沒有任何子資料夾")
-
-    latest_folder = max(all_folders, key=os.path.getmtime)  # 依建立時間找最新資料夾
-    base_path = os.path.join(latest_folder, '')  # base_path 最後補上斜線
-
-    process_all_cut4_with_video(base_path)
+    print(f"▶ step6 process folder : {base_path}")                                                           # 顯示實際處理資料夾
+    process_all_cut4_with_video(base_path)                                                                   # 執行主流程
+    print("✅ Done")                                                                                         # 完成提示

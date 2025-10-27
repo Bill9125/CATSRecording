@@ -53,25 +53,36 @@ def process_cut_folder(folder_path, data_root_path):
         else:
             print(f"⚠️ 缺少檔案: {in_file}")
 
-if __name__ == "__main__":
-    USE_LATEST = True
 
-    if USE_LATEST:
-        recordings_dir = r"C:/Users/92A27/benchpress/recordings"
-        all_folders = [os.path.join(recordings_dir, d) for d in os.listdir(recordings_dir) if os.path.isdir(os.path.join(recordings_dir, d))]
-        latest_folder = max(all_folders, key=os.path.getmtime)
-        base_path = os.path.join(latest_folder, "feature")  # 切割資料夾路徑
-        data_root = latest_folder  # ✅ 真正資料來源（.txt 檔所在處）
-    else:
-        base_path = r"E:/DATASET/abc/feature"
-        data_root = r"E:/DATASET/abc"
+if __name__ == "__main__":                                                                                  # 入口
+    import sys, os                                                                                           # 匯入
+    recordings_dir = r"C:/Users/92A27/benchpress/recordings"                                                 # 預設 recordings 根目錄
 
-    cut_folders = [os.path.join(base_path, f) for f in os.listdir(base_path) if f.startswith("cut4_") and os.path.isdir(os.path.join(base_path, f))]
-    if not cut_folders:
-        raise FileNotFoundError("❌ 找不到任何 cut4 資料夾")
+    if len(sys.argv) >= 2:                                                                                   # 有傳入資料夾參數（預期是 recording_* 目錄）
+        data_root = sys.argv[1]                                                                              # .txt 真實來源於 recording_* 根目錄
+        if not os.path.isdir(data_root):                                                                     # 檢查有效性
+            raise FileNotFoundError(f"❌ 指定的資料夾不存在：{data_root}")                                      # 拋錯
+    else:                                                                                                    # 沒傳參數 → 退回最新
+        if not os.path.isdir(recordings_dir):                                                                # 根目錄存在
+            raise FileNotFoundError(f"❌ recordings 根目錄不存在：{recordings_dir}")                          # 拋錯
+        subs = [os.path.join(recordings_dir, d) for d in os.listdir(recordings_dir)
+                if os.path.isdir(os.path.join(recordings_dir, d))]                                           # 列子資料夾
+        if not subs:                                                                                         # 無子資料夾
+            raise FileNotFoundError("❌ recordings 下沒有任何子資料夾，且未提供參數")                          # 拋錯
+        data_root = max(subs, key=os.path.getmtime)                                                          # 取最新 recording_* 作為 data_root
 
-    for cut_folder in cut_folders:
-        print(f"\n🔍 處理資料夾: {cut_folder}")
-        process_cut_folder(cut_folder, data_root)  # ✅ 多傳入一個參數
+    base_path = os.path.join(data_root, "feature")                                                           # 切割輸出所在的 feature 目錄
+    if not os.path.isdir(base_path):                                                                         # 檢查 feature 目錄
+        raise FileNotFoundError(f"❌ 找不到 feature 目錄：{base_path}")                                       # 拋錯
 
-    print("✅ Done")
+    cut_folders = [os.path.join(base_path, f) for f in os.listdir(base_path)
+                   if f.startswith("cut4_") and os.path.isdir(os.path.join(base_path, f))]                   # 收集 cut4_* 目錄
+    if not cut_folders:                                                                                      # 空集合
+        raise FileNotFoundError("❌ 找不到任何 cut4 資料夾")                                                  # 拋錯
+
+    for cut_folder in cut_folders:                                                                           # 逐一處理
+        print(f"\n🔍 處理資料夾: {cut_folder}")                                                               # 顯示進度
+        process_cut_folder(cut_folder, data_root)                                                            # 帶入 data_root 執行
+
+    print("✅ Done")                                                                                         # 完成提示
+

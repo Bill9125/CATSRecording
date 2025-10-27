@@ -161,23 +161,23 @@ def process_all_subjects(root_path):
                 continue
             process_subject_folder(subject_path)
 
-if __name__ == "__main__":
-    USE_LATEST = True  # ❗️切換手動指定資料夾還是自動判定最新的
+if __name__ == "__main__":                                                                                  # 入口
+    import sys, os                                                                                           # 匯入
+    recordings_dir = r"C:/Users/92A27/benchpress/recordings"                                                 # 預設 recordings 根目錄
 
-    if USE_LATEST:
-        recordings_dir = r"C:/Users/92A27/benchpress/recordings"
-        all_folders = [os.path.join(recordings_dir, d) for d in os.listdir(recordings_dir) if os.path.isdir(os.path.join(recordings_dir, d))]
-        base_path = os.path.join(max(all_folders, key=os.path.getmtime), '')
-    else:
-        base_path = r"E:/DATASET/abc"  # 手動指定
+    if len(sys.argv) >= 2:                                                                                   # 有傳入資料夾參數
+        base_path = sys.argv[1]                                                                              # 取第一個參數
+        if not os.path.isdir(base_path):                                                                     # 檢查有效性
+            raise FileNotFoundError(f"❌ 指定的資料夾不存在：{base_path}")                                      # 拋錯
+    else:                                                                                                    # 沒傳參數 → 退回最新
+        if not os.path.isdir(recordings_dir):                                                                # 根目錄存在
+            raise FileNotFoundError(f"❌ recordings 根目錄不存在：{recordings_dir}")                          # 拋錯
+        subs = [os.path.join(recordings_dir, d) for d in os.listdir(recordings_dir)
+                if os.path.isdir(os.path.join(recordings_dir, d))]                                           # 列子資料夾
+        if not subs:                                                                                         # 無子資料夾
+            raise FileNotFoundError("❌ recordings 下沒有任何子資料夾，且未提供參數")                          # 拋錯
+        base_path = max(subs, key=os.path.getmtime)                                                          # 取最新
 
-    # 🔍 取得 recordings 下所有子資料夾，並找出最新的
-    all_folders = [os.path.join(recordings_dir, d) for d in os.listdir(recordings_dir) if os.path.isdir(os.path.join(recordings_dir, d))]
-    if not all_folders:
-        raise FileNotFoundError("❌ recordings 資料夾下沒有任何子資料夾")
-
-    latest_folder = max(all_folders, key=os.path.getmtime)  # 依建立時間找最新資料夾
-    base_path = os.path.join(latest_folder, '')  # base_path 最後補上斜線
-
-    process_subject_folder(base_path)
-    print("✅ Done")
+    print(f"▶ step5 process folder : {base_path}")                                                           # 顯示實際處理資料夾
+    process_subject_folder(base_path)                                                                        # 執行主流程
+    print("✅ Done")                                                                                         # 完成提示

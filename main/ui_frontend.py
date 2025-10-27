@@ -402,7 +402,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
             # 左半邊labels
             self.ui.head_vis_layout.setContentsMargins(230, 0, 250, 70)
             self.head_Vis_label, vertical_slider, horizontal_slider = self.rpbf.creat_vision_labels_pixmaps([x * 1.5 for x in label_size], self.ui.Replay_tab, self.ui.head_vis_layout, sport, 1, type = 'rp')
-            self.bottom_Vis_labels, vertical_sliders, horizontal_sliders = self.rpbf.creat_vision_labels_pixmaps([x * 1.2 for x in label_size], self.ui.Replay_tab, self.ui.bottom_vis_layout, sport, 2, type = 'rp')
+            self.bottom_Vis_labels, vertical_sliders, horizontal_sliders = self.rpbf.creat_vision_labels_pixmaps([x * 1 for x in label_size], self.ui.Replay_tab, self.ui.bottom_vis_layout, sport, 2, type = 'rp')
             self.V_sliders = vertical_sliders + [vertical_slider]
             self.H_sliders = horizontal_sliders + [horizontal_slider]
             

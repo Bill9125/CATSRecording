@@ -11,9 +11,10 @@ sport = args.sport
 # 讀取 yolo 檔案
 yolo_txt_path = os.path.join(dir, "yolo_coordinates_interpolated.txt")  # 你的 txt 檔案路徑
 if sport == 'deadlift':
-    output_json_path = os.path.join(out, 'Deadlift_data', "Bar_Position.json")  # 輸出的 JSON 檔案
+    output_json_path = os.path.join(dir, "Bar_Position.json")  # 輸出的 JSON 檔案
 elif sport == 'benchpress':
     output_json_path = os.path.join(dir, "Bar_Position.json")  # 輸出的 JSON 檔案
+    print("Bar_Position.json exported finished ")
 
 # 初始化數據存儲
 frames = []

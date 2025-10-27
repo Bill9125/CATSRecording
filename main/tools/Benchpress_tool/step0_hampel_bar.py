@@ -68,55 +68,20 @@ def walk_through_subjects_and_process(base_dir):
         process_yolo_file(root)  # 直接將每個資料夾丟進主處理函數
 
 
-
-# def process_yolo_file(file_path):
-#     try:
-#         # 強制轉換成 float，非數字一律轉成 NaN
-#         df = pd.read_csv(file_path, header=None, names=["frame", "x_center", "y_center", "width", "height"], dtype=str)
-#         df[["frame", "x_center", "y_center", "width", "height"]] = df[["frame", "x_center", "y_center", "width", "height"]].apply(pd.to_numeric, errors='coerce')
-
-#         x_outliers = hampel_filter_for_outliers(df["x_center"].values)
-#         y_outliers = hampel_filter_for_outliers(df["y_center"].values)
-
-#         outlier_frames = x_outliers | y_outliers
-#         df_filtered = df.copy()
-#         df_filtered.loc[outlier_frames, ["x_center", "y_center", "width", "height"]] = np.nan
-
-#         # 儲存為新檔案
-#         output_file = os.path.join(os.path.dirname(file_path), "yolo_coordinates_hampel.txt")
-#         df_filtered.to_csv(output_file, header=False, index=False, float_format="%.8f")
-#         print(f"✅ 已儲存：{output_file}")
-#     except Exception as e:
-#         print(f"❌ 處理失敗：{file_path}\n錯誤原因：{e}")
-
-# def walk_through_subjects_and_process(base_dir):
-#     for root, dirs, files in os.walk(base_dir):
-#         for file in files:
-#             if file == "yolo_coordinates.txt":
-#                 file_path = os.path.join(root, file)
-#                 process_yolo_file(file_path)
-
-# if __name__ == "__main__":
-#     base_dir = r"D:\benchpress data\舊資料_新分類"
-#     walk_through_subjects_and_process(base_dir)
-
-
-if __name__ == "__main__":
-    USE_LATEST = True  # ❗️切換手動指定資料夾還是自動判定最新的
-
-    if USE_LATEST:
-        recordings_dir = r"C:/Users/92A27/benchpress/recordings"
-        all_folders = [os.path.join(recordings_dir, d) for d in os.listdir(recordings_dir) if os.path.isdir(os.path.join(recordings_dir, d))]
-        base_path = max(all_folders, key=os.path.getmtime)
-    else:
-        base_path = r"E:/DATASET/abc"  # 手動指定
-
-    # 🔍 取得 recordings 下所有子資料夾，並找出最新的
-    all_folders = [os.path.join(recordings_dir, d) for d in os.listdir(recordings_dir) if os.path.isdir(os.path.join(recordings_dir, d))]
-    if not all_folders:
-        raise FileNotFoundError("❌ recordings 資料夾下沒有任何子資料夾")
-
-    latest_folder = max(all_folders, key=os.path.getmtime)  # 依建立時間找最新資料夾
-    base_path = os.path.join(latest_folder, '')  # base_path 最後補上斜線
-    print(f"hampel bar process folder : {base_path}")
-    process_yolo_file(base_path)
+if __name__ == "__main__":                                                                                       # 程式入口
+    import sys, os                                                                                               # 匯入模組
+    recordings_dir = r"C:/Users/92A27/benchpress/recordings"                                                     # 預設 recordings 根目錄
+    if len(sys.argv) >= 2:                                                                                       # 有傳入參數
+        base_path = sys.argv[1]                                                                                  # 取第一個參數作為目標資料夾
+        if not os.path.isdir(base_path):                                                                         # 防呆：必須存在而且是資料夾
+            raise FileNotFoundError(f"❌ 指定的資料夾不存在：{base_path}")                                          # 拋錯
+    else:                                                                                                        # 無參數 → 退回找最新
+        if not os.path.isdir(recordings_dir):                                                                    # 檢查 recordings 根目錄
+            raise FileNotFoundError(f"❌ recordings 根目錄不存在：{recordings_dir}")                              # 拋錯
+        subs = [os.path.join(recordings_dir, d) for d in os.listdir(recordings_dir)                              # 列出子資料夾
+                if os.path.isdir(os.path.join(recordings_dir, d))]                                               # 僅取資料夾
+        if not subs:                                                                                             # 沒有任何子資料夾
+            raise FileNotFoundError("❌ recordings 資料夾下沒有任何子資料夾，且未提供參數")                         # 拋錯
+        base_path = max(subs, key=os.path.getmtime)                                                             # 依最後修改時間取最新
+    print(f"hampel bar process folder : {base_path}")                                                            # 顯示實際處理資料夾
+    process_yolo_file(base_path)                                                                                 # 執行主流程
