@@ -112,13 +112,30 @@ class Recordingbackend():
         self.models = self.model_select(sport)
         self.creat_threads(sport, labels)
     
-    def auto_recording_btn_clicked(self, sport, data_btn, source_btn, back_btn):                  # AUTO錄影按鈕事件
-        if sport != 'Benchpress':                                                                  # 僅限 Benchpress
-            return                                                                                # 其他運動不處理 
-        with self.shared_lock:                                                                     # 進入臨界區  
-            cur = self.shared_state.get("auto_recording_sig", False)                               # 讀目前自動錄影旗標 
-            self.shared_state["auto_recording_sig"] = (not cur)                                    # 反轉旗標  
-        # 你也可以在這裡更新 UI 樣式或文字提示，例如：data_btn.setText(...) 等                          # UI 提示  
+    def auto_recording_btn_clicked(self, sport, data_btn, source_btn, back_btn, recording_btn=None):  # 新增 recording_btn 參數
+        if sport != 'Benchpress':                                               # 僅處理 Benchpress
+            return                                                              # 其他運動直接返回
+
+        with self.shared_lock:                                                  # 保護共享狀態
+            cur = self.shared_state.get("auto_recording_sig", False)            # 目前自動錄影旗標
+            new_state = not cur                                                 # 反轉
+            self.shared_state["auto_recording_sig"] = new_state                 # 寫回
+
+        if new_state:                                                           # 若啟用自動錄影
+            data_btn.setEnabled(False)                                          # 鎖資料產生
+            source_btn.setEnabled(False)                                        # 鎖來源控制
+            back_btn.setEnabled(False)                                          # 鎖返回
+            if recording_btn is not None:                                       # 若有帶入手動錄影按鈕
+                recording_btn.setEnabled(False)                                 # 鎖手動錄影
+            print("🟢 自動錄影模式：啟動（按鈕已鎖定）")                             # 訊息
+        else:                                                                   # 關閉自動錄影
+            data_btn.setEnabled(True)                                           # 解鎖資料產生
+            source_btn.setEnabled(True)                                         # 解鎖來源控制
+            back_btn.setEnabled(True)                                           # 解鎖返回
+            if recording_btn is not None:                                       # 若有帶入手動錄影按鈕
+                recording_btn.setEnabled(True)                                  # 解鎖手動錄影
+            print("⚪ 自動錄影模式：關閉（按鈕已解鎖）")                             # 訊息
+
 
     def source_get(self, sport):
         # 讀取來源順序與啟用設定（-1 代表停用）                       # 功能說明

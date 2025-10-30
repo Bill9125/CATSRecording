@@ -215,7 +215,8 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.recording_ctrl_btn.setIconSize(QtCore.QSize(140, 140))
         self.recording_ctrl_btn.setFixedSize(180, 180)  # ✅ 可加這行
         self.ctrl_layout.addWidget(self.recording_ctrl_btn)
-
+        self.recording_ctrl_btn.setEnabled(False)  # ❌ 停用按鈕（灰階、無法點擊）
+        
         self.auto_recording_btn = QtWidgets.QPushButton(self.ui.Recording_tab)
         self.auto_recording_btn.setText("AUTO RECORDING")
         self.auto_recording_btn.setEnabled(True)
@@ -278,9 +279,13 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
             lambda: self.rcbf.recording_ctrl_btn_clicked('Benchpress', self.data_produce_btn, self.source_ctrl_btn, self.back_toolbtn)
         )  # 手動錄影：維持既有綁定，對應 shared_state["recording_sig"]  #
         # --- 新增：把 AUTO 鈕綁到「自動錄影切換」(設定 shared_state["auto_recording_sig"]) ---
-        self.auto_recording_btn.clicked.connect(
-            lambda: self.rcbf.auto_recording_btn_clicked('Benchpress', self.data_produce_btn, self.source_ctrl_btn, self.back_toolbtn)
-        )  # 自動錄影：切換 shared_state["auto_recording_sig"]  
+        self.auto_recording_btn.clicked.connect(                                   # 綁定 AUTO 按鈕點擊事件
+            lambda: self.rcbf.auto_recording_btn_clicked(                          # 呼叫後端處理
+                'Benchpress', self.data_produce_btn, self.source_ctrl_btn,         # 傳入資料產生/來源控制
+                self.back_toolbtn, self.recording_ctrl_btn                         # 傳入返回按鈕與「手動錄影」按鈕
+            )
+        ) # 自動錄影：切換 shared_state["auto_recording_sig"]  
+
 
     def apply_big_yellow_button(widget, font_size=64):
         widget.setStyleSheet(f"font-size: {font_size}px; color: yellow;")
