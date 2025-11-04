@@ -471,6 +471,23 @@ def _qt_show(label, frame, fps):                                                
     label.setPixmap(pix.scaled(label.width(), label.height(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation))  # 顯示
     return None                                                                               # 無回傳
 
+def _draw_rec_if_needed(frame, shared_state, shared_lock):
+    import cv2, time                                      # 用 time 控制閃爍 #
+    if _shared_get(shared_state, shared_lock, "auto_recording_sig", False):  # AutoRecording 啟動 #
+        h, w = frame.shape[:2]                            # 取得影像寬高 #
+        text = "REC"                                      # 固定顯示字樣 #
+        font = cv2.FONT_HERSHEY_SIMPLEX                   # 字體 #
+        scale = 0.8                                       # 字體大小 #
+        thickness = 2                                     # 線條粗細 #
+        (text_w, text_h), _ = cv2.getTextSize(text, font, scale, thickness)  # 取得文字尺寸 #
+        x = w - text_w - 20                               # 右側留白 #
+        y = 30                                            # 上側留白 #
+        cv2.putText(frame, text, (x, y), font, scale, (0, 0, 255), thickness, cv2.LINE_AA)  # 固定顯示紅字 #
+        
+        # ---- 讓紅點閃爍 ----
+        if int(time.time() * 2) % 2 == 0:                 # 每0.5秒閃爍一次 #
+            cv2.circle(frame, (x - 14, y - 8), 6, (0, 0, 255), -1)  # 紅點（閃爍）
+
 def _shared_get(shared_state, shared_lock, key, default=None):                                # 讀單一 shared key
     with shared_lock:                                                                         # 進入臨界區
         return shared_state.get(key, default)                                                 # 取值
@@ -803,6 +820,7 @@ def benchpress_bar_loop(i, frame, label, save_sig, folder,                      
             frame_count_for_detect = frame_reset                                              # 段內幀歸零  # 說明
 
     # -------- 顯示與同步 --------
+    _draw_rec_if_needed(frame, shared_state, shared_lock)  # AutoRecording 時在右上角疊 REC  #
     _qt_show(label, frame, fps)                                                               # 疊 FPS 並顯示  # 說明
     barrier.wait()                                                                            # 多執行緒同步  # 說明
 
@@ -1036,6 +1054,7 @@ def benchpress_body_loop(i, frame, label, save_sig, folder,                     
             frame_count_for_detect = frame_reset                                              # 重置  # 說明
 
     # ---- 顯示與同步 ----
+    _draw_rec_if_needed(frame, shared_state, shared_lock)  # AutoRecording 時在右上角疊 REC  #
     _qt_show(label, frame, fps)                                                               # UI 顯示  # 說明
     barrier.wait()                                                                            # 與其他相機同步  # 說明
     return start_time, frame_count, fps, out, frame_count_for_detect, save_sig, txt_file      # 回傳（介面一致）  # 說明
@@ -1111,6 +1130,7 @@ def benchpress_head_loop(i, frame, label, save_sig, folder,                     
             frame_count_for_detect = frame_reset                                             # 歸零
 
     # ---- 顯示與同步 ----------------------------------------------------------------
+    _draw_rec_if_needed(frame, shared_state, shared_lock)  # AutoRecording 時在右上角疊 REC  #
     _qt_show(label, frame, fps)                                                              # 疊 FPS 並顯示
     barrier.wait()                                                                           # 多執行緒同步
 

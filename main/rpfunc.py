@@ -19,36 +19,43 @@ class GraphUpdater(QObject):
     def update(self):
         self.update_signal.emit()
 
+
 class LineLabel(QtWidgets.QLabel):
     def __init__(self, parent=None):
         super().__init__(parent)                                         # 呼叫父類初始化
-        self.vertical_line_x = 0                                         # 垂直線 X 位置
-        self.horizontal_line_y = 0                                       # 水平線 Y 位置
+        self.vertical_line_x = 0                                         # 第1條垂直線 X
+        self.vertical_line_x2 = None                                     # 第2條垂直線 X（None 表示不畫）
+        self.horizontal_line_y = 0                                       # 水平線 Y
 
-    def set_vertical_line(self, value):
-        self.vertical_line_x = value                                     # ✅ 應該更新 X（原本寫成 horizontal）
+    def set_vertical_line(self, value: int):
+        self.vertical_line_x = int(value)                                # 更新第1條垂直線 X
         self.update()                                                    # 重新觸發繪製
 
-    def set_horizontal_line(self, value):
-        self.horizontal_line_y = value                                   # ✅ 應該更新 Y（原本寫成 vertical）
+    def set_vertical_line2(self, value: int):
+        self.vertical_line_x2 = int(value)                               # 更新第2條垂直線 X
+        self.update()                                                    # 重新觸發繪製
+
+    def set_horizontal_line(self, value: int):
+        self.horizontal_line_y = int(value)                              # 更新水平線 Y
         self.update()                                                    # 重新觸發繪製
 
     def paintEvent(self, event):
-        super().paintEvent(event)  # 保持 QLabel 原本的行為
+        super().paintEvent(event)                                        # 保持 QLabel 原本的行為
+        painter = QPainter(self)                                         # 建立畫筆
+        painter.setRenderHint(QPainter.Antialiasing)                     # 抗鋸齒
+        pen = QPen(QtCore.Qt.red, 3, QtCore.Qt.SolidLine)                # 紅色 3px
+        painter.setPen(pen)                                              # 套用畫筆
 
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
+        # 垂直線（第1條）
+        painter.drawLine(self.vertical_line_x, 0, self.vertical_line_x, self.height())  # 畫第1條垂直線
 
-        pen = QPen(QtCore.Qt.red, 3, QtCore.Qt.SolidLine)  # 設定紅色 3px 的線條
-        painter.setPen(pen)
+        # 垂直線（第2條，如有設定）
+        if self.vertical_line_x2 is not None:                            # 有設定才畫
+            painter.drawLine(self.vertical_line_x2, 0, self.vertical_line_x2, self.height())  # 畫第2條垂直線
 
-        # 畫垂直線
-        painter.drawLine(self.vertical_line_x, 0, self.vertical_line_x, self.height())
-
-        # 畫水平線
-        painter.drawLine(0, self.horizontal_line_y, self.width(), self.horizontal_line_y)
-
-        painter.end()
+        # 水平線
+        painter.drawLine(0, self.horizontal_line_y, self.width(), self.horizontal_line_y)      # 畫水平線
+        painter.end()                                                     # 結束畫圖
 
         
 class MyThread(threading.Thread):
@@ -136,8 +143,11 @@ class MyThread(threading.Thread):
     def stop(self):
         self._stop_event.set()
 
+# class Thread_data(threading.Thread):
+#     def __init__(self, index, gragh, data, barrier, fast_forward_combobox, Frameslider, framenumber):
 class Thread_data(threading.Thread):
-    def __init__(self, index, gragh, data, barrier, fast_forward_combobox, Frameslider, framenumber):
+    def __init__(self, index, gragh, data, barrier, fast_forward_combobox, Frameslider, framenumber, sport):
+
         threading.Thread.__init__(self, daemon=True)
         self._pause_event = threading.Event()
         self._pause_event.set()
@@ -177,6 +187,16 @@ class Thread_data(threading.Thread):
         self.ax.set_ylim(self.data['y_min'], self.data['y_max'])
         self.ax.set_ylabel(f"{self.data['y_label']}")
         self.ax.legend()
+
+        # ✅ Benchpress 的 Bar_Position 顯示「起槓位置」(y=300~350)
+        self.sport = sport  # 記住運動類型  #
+        if (str(self.sport).lower() == 'benchpress' 
+            and str(self.data.get('title', '')).lower() == 'bar_position'):
+            self.ax.axhspan(300, 350, alpha=0.18, color='orange', zorder=0)  # 起槓帶狀區  #
+            # 用 y 軸混合座標：x 用座標系(0~1)、y 用資料座標
+            self.ax.text(0.98, 300, "Top position", transform=self.ax.get_yaxis_transform(),
+                         va='bottom', ha='right', fontsize=20, color="#ff9a3c")  # 文字標註  #
+
 
     def run(self):
         start_time = time.time()
@@ -460,9 +480,10 @@ class Replaybackend():
                 # 建立資料曲線 threads（只有在 self.datas / info_data 有內容時）
                 if getattr(self, "datas", False) and info_count > 0:                              # 有資料才跑
                     for i, data in enumerate(self.info_data):                                     # 逐筆資料
-                        data_thread = Thread_data(                                                # 建立資料執行緒
-                            i, self.data_graph, data, self.barrier_data,                          # 圖表/資料/同步點
-                            fast_forward_combobox, Frameslider, framenumber                       # 控制/同步幀
+                        data_thread = Thread_data(
+                            i, self.data_graph, data, self.barrier_data,
+                            fast_forward_combobox, Frameslider, framenumber,
+                            self.currentsport  # ✅ 傳入當前運動別（Benchpress/Deadlift/Squat）
                         )
                         data_thread.start()                                                       # 啟動
                         self.threads.append(data_thread)                                          # 收執行緒
@@ -575,6 +596,14 @@ class Replaybackend():
                     ax.plot(x_data, y_data, label=f"{data['title']}")              # 畫線
                 ax.set_ylabel(f"{data['y_label']}")                                # y 標籤
                 ax.legend()                                                        # 圖例
+
+                # ✅ Benchpress 的 Bar_Position 顯示「起槓位置」(y=300~350)
+                if (str(self.currentsport).lower() == 'benchpress'
+                    and str(data.get('title', '')).lower() == 'bar_position'):
+                    ax.axhspan(300, 350, alpha=0.18, color='orange', zorder=0)   # 起槓帶狀區  #
+                    ax.text(0.98, 300, "start position", transform=ax.get_yaxis_transform(),
+                            va='bottom', ha='right', fontsize=20, color="#ff9a3c")                 # 文字標註  #
+
 
             # 清理多餘子圖（若 axes 比 n_plot 多）
             for j in range(n_plot, len(axes)):                                     # 其餘子圖
@@ -779,36 +808,47 @@ class Replaybackend():
 
             if type == 'rp':   
                 if num == 1:
-                    vertical_slider = QtWidgets.QSlider(orientation=QtCore.Qt.Vertical, parent=parentlayout)  # 垂直 slider（沿 Y 方向擺放）
-                    horizontal_slider = QtWidgets.QSlider(orientation=QtCore.Qt.Horizontal, parent=parentlayout)  # 水平 slider（沿 X 方向擺放）
-                    qpixmap = QtGui.QPixmap()                                                                 # 建立空白 QPixmap
-                    qpixmaps.append(qpixmap)                                                                  # 收集 pixmap
+                    vertical_slider = QtWidgets.QSlider(orientation=QtCore.Qt.Vertical, parent=parentlayout)  # 垂直 slider（沿 Y 方向擺放）  #
+                    horizontal_slider = QtWidgets.QSlider(orientation=QtCore.Qt.Horizontal, parent=parentlayout)  # 水平 slider（沿 X 方向擺放）  #
+                    qpixmap = QtGui.QPixmap()                                                                 # 建立空白 QPixmap  #
+                    qpixmaps.append(qpixmap)                                                                  # 收集 pixmap  #
 
-                    Vision_label = LineLabel(parentlayout)                                                    # 自訂 LineLabel：能畫水平/垂直線
-                    Vision_label.setFrameShape(QtWidgets.QFrame.Panel)                                        # 外框樣式
-                    Vision_label.setMinimumSize(labelsize[0], labelsize[1])                                   # 固定大小（寬, 高）
-                    Vision_label.setMaximumSize(labelsize[0], labelsize[1])                                   # 固定大小（寬, 高）
-                    Vision_label.setPixmap(qpixmap)                                                           # 指定 pixmap
+                    Vision_label = LineLabel(parentlayout)                                                    # 自訂 LineLabel：能畫多條垂直線＋水平線  #
+                    Vision_label.setFrameShape(QtWidgets.QFrame.Panel)                                        # 外框樣式  #
+                    Vision_label.setMinimumSize(labelsize[0], labelsize[1])                                   # 固定大小（寬, 高）  #
+                    Vision_label.setMaximumSize(labelsize[0], labelsize[1])                                   # 固定大小（寬, 高）  #
+                    Vision_label.setPixmap(qpixmap)                                                           # 指定 pixmap  #
 
-                    sublayout.addWidget(Vision_label, 0, 0)                                                   # 影像放左上格
-                    sublayout.addWidget(vertical_slider, 0, 1)                                                # 垂直 slider 放影像右側
+                    sublayout.addWidget(Vision_label, 0, 0)                                                   # 影像放左上格  #
+                    sublayout.addWidget(vertical_slider, 0, 1)                                                # 垂直 slider 放影像右側  #
 
-                    horizontal_slider.setFixedWidth(labelsize[0])                                             # 水平 slider 寬度=影像寬
-                    horizontal_slider.setValue(0)                                                             # 初值 0
-                    horizontal_slider.setMaximum(labelsize[0])                                                # 最大值=影像寬（對應 X）→ 控制垂直線 X
+                    horizontal_slider.setFixedWidth(labelsize[0])                                             # 水平 slider 寬度=影像寬  #
+                    horizontal_slider.setValue(0)                                                             # 初值 0  #
+                    horizontal_slider.setMaximum(labelsize[0])                                                # 最大值=影像寬（對應 X）→ 控制「第1條垂直線 X」  #
 
-                    vertical_slider.setFixedHeight(labelsize[1])                                              # 垂直 slider 高度=影像高
-                    vertical_slider.setMaximum(labelsize[1])                                                  # 最大值=影像高（對應 Y）→ 控制水平線 Y
-                    vertical_slider.setInvertedAppearance(True)                                               # 由上往下數值增
+                    vertical_slider.setFixedHeight(labelsize[1])                                              # 垂直 slider 高度=影像高  #
+                    vertical_slider.setMaximum(labelsize[1])                                                  # 最大值=影像高（對應 Y）→ 控制水平線 Y  #
+                    vertical_slider.setInvertedAppearance(True)                                               # 由上往下數值增  #
 
-                    # === 只有這兩行交換：讓「水平 slider 控制垂直線 (X)」、「垂直 slider 控制水平線 (Y)」 ===
-                    horizontal_slider.valueChanged.connect(Vision_label.set_vertical_line)                    # 交換後：水平 slider → 垂直線（X）
-                    vertical_slider.setValue(0)                                                               # 初值 0
-                    vertical_slider.valueChanged.connect(Vision_label.set_horizontal_line)                    # 交換後：垂直 slider → 水平線（Y）
+                    # === 控制對應 ===
+                    horizontal_slider.valueChanged.connect(Vision_label.set_vertical_line)                    # 水平 slider1 → 垂直線1（X）  #
+                    vertical_slider.setValue(0)                                                               # 初值 0  #
+                    vertical_slider.valueChanged.connect(Vision_label.set_horizontal_line)                    # 垂直 slider → 水平線（Y）  #
 
-                    sublayout.addWidget(horizontal_slider, 1, 0)                                              # 水平 slider 放影像下方
-                    Vision_labels.append(Vision_label)                                                        # 收集 label
-                    return Vision_label, vertical_slider, horizontal_slider                                   # 回傳
+                    sublayout.addWidget(horizontal_slider, 1, 0)                                              # 水平 slider1 放影像下方  #
+
+                    # ---------- ★ 新增：第二個水平 slider，控制第2條垂直線 ----------
+                    horizontal_slider2 = QtWidgets.QSlider(orientation=QtCore.Qt.Horizontal, parent=parentlayout)  # ★ 第二條垂直線用的 slider  #
+                    horizontal_slider2.setFixedWidth(labelsize[0])                                           # ★ 寬度與影像一致  #
+                    horizontal_slider2.setValue(0)                                                           # ★ 初值 0  #
+                    horizontal_slider2.setMaximum(labelsize[0])                                              # ★ 最大值=影像寬  #
+                    horizontal_slider2.valueChanged.connect(Vision_label.set_vertical_line2)                 # ★ slider2 → 垂直線2（X）  #
+                    sublayout.addWidget(horizontal_slider2, 2, 0)                                            # ★ 放在第一個 slider 的下方  #
+                    # -------------------------------------------------------------
+
+                    Vision_labels.append(Vision_label)                                                        # 收集 label  #
+                    return Vision_label, vertical_slider, horizontal_slider                                   # 回傳（保持舊介面，避免動到其它呼叫點）  #
+
 
                         
                 if  num == 2:
