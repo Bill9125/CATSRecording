@@ -192,9 +192,9 @@ class Thread_data(threading.Thread):
         self.sport = sport  # 記住運動類型  #
         if (str(self.sport).lower() == 'benchpress' 
             and str(self.data.get('title', '')).lower() == 'bar_position'):
-            self.ax.axhspan(300, 350, alpha=0.18, color='orange', zorder=0)  # 起槓帶狀區  #
+            self.ax.axhspan(280, 330, alpha=0.18, color='orange', zorder=0)  # 起槓帶狀區  #
             # 用 y 軸混合座標：x 用座標系(0~1)、y 用資料座標
-            self.ax.text(0.98, 300, "Top position", transform=self.ax.get_yaxis_transform(),
+            self.ax.text(0.98, 280, "Top Position", transform=self.ax.get_yaxis_transform(),
                          va='bottom', ha='right', fontsize=20, color="#ff9a3c")  # 文字標註  #
 
 
@@ -600,8 +600,8 @@ class Replaybackend():
                 # ✅ Benchpress 的 Bar_Position 顯示「起槓位置」(y=300~350)
                 if (str(self.currentsport).lower() == 'benchpress'
                     and str(data.get('title', '')).lower() == 'bar_position'):
-                    ax.axhspan(300, 350, alpha=0.18, color='orange', zorder=0)   # 起槓帶狀區  #
-                    ax.text(0.98, 300, "start position", transform=ax.get_yaxis_transform(),
+                    ax.axhspan(280, 330, alpha=0.18, color='orange', zorder=0)   # 起槓帶狀區  #
+                    ax.text(0.98, 280, "Top Position", transform=ax.get_yaxis_transform(),
                             va='bottom', ha='right', fontsize=20, color="#ff9a3c")                 # 文字標註  #
 
 

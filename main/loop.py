@@ -694,7 +694,7 @@ def benchpress_bar_loop(i, frame, label, save_sig, folder,                      
 
     # -------- 小框設定（只在框內判定位移） --------
     GATE_X1, GATE_X2 = 420, 500                                                               # 觸發區 X 範圍  # 說明
-    GATE_Y1, GATE_Y2 = 160, 225                                                               # 觸發區 Y 範圍  # 說明
+    GATE_Y1, GATE_Y2 = 140, 285  #160 225                                                     # 觸發區 Y 範圍  # 說明
     cv2.rectangle(frame, (GATE_X1, GATE_Y1), (GATE_X2, GATE_Y2), (0, 0, 255), 2)              # 畫紅框供校對  # 說明
 
     # -------- session 狀態（出槓一路錄；回框穩定停住才關） --------

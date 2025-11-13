@@ -400,7 +400,7 @@ class Recordingbackend():
         
         self.recording_sig = True
         with self.shared_lock:                                                        # 進入臨界區
-            self.shared_state["recording_sig"] = True                                 # UI 開啟錄影 Gate
+            self.shared_state["recording_sig"] = False                                 # UI 開啟錄影 Gate
             self.shared_state["body_detected"] = False                                # 重置：開錄時重新蒐集
             self.shared_state["bar_y_changed"] = False                                # 重置：等待槓位移觸發
             self.shared_state["prev_bar_y"] = None                                    # 重置：上一幀 y 清空
