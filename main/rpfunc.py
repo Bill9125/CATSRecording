@@ -8,6 +8,120 @@ import json
 import numpy as np
 from PyQt5.QtCore import pyqtSignal, QObject
 
+from PyQt5.QtCore import pyqtSignal, QObject, pyqtSlot, QThread  # ✅ 加上QThread/pyqtSlot  # 匯入QThread與pyqtSlot供背景執行用
+
+class BusyOverlay(QtWidgets.QWidget):
+    def __init__(self, parent: QtWidgets.QWidget, text="資料處理中，請稍候…"):
+        super().__init__(parent)                                                                 # 蓋在父視窗上
+        self.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, False)                         # 攔截滑鼠以達到鎖定
+        self.setWindowFlags(QtCore.Qt.FramelessWindowHint | QtCore.Qt.Tool)                      # 無邊框、置於父視窗上層
+        self.setStyleSheet("background: rgba(0,0,0,120);")                                       # 半透明黑遮罩
+        self.setGeometry(parent.rect())                                                          # 尺寸覆蓋整個父視窗
+
+        lay = QtWidgets.QVBoxLayout(self)                                                        # 垂直置中容器
+        lay.setAlignment(QtCore.Qt.AlignCenter)                                                  # 內容置中
+        box = QtWidgets.QFrame(self)                                                             # 內部白色卡片
+        box.setStyleSheet("background: #222; color:#fff; border-radius:12px; padding:24px;")     # 卡片樣式
+        v = QtWidgets.QVBoxLayout(box)                                                           # 卡片內排版
+        lbl = QtWidgets.QLabel(text, box)                                                        # 文字
+        lbl.setAlignment(QtCore.Qt.AlignCenter)                                                  # 置中
+        bar = QtWidgets.QProgressBar(box)                                                        # 進度條
+        bar.setRange(0, 0)                                                                       # 不定進度（馬拉松條）
+        v.addWidget(lbl)                                                                         # 放入卡片
+        v.addWidget(bar)                                                                         # 放入卡片
+        lay.addWidget(box, 0, QtCore.Qt.AlignCenter)                                             # 卡片置中於遮罩
+
+    def showEvent(self, e):
+        self.setGeometry(self.parent().rect())                                                   # 顯示時再對齊尺寸
+        super().showEvent(e)                                                                     # 呼叫父類
+
+    def eventFilter(self, obj, event):
+        if obj is self.parent() and event.type() == QtCore.QEvent.Resize:                        # 父視窗調整大小
+            self.setGeometry(self.parent().rect())                                               # 跟著更新遮罩大小
+        return super().eventFilter(obj, event)                                                   # 交回預設行為
+
+
+class PendingDialog(QtWidgets.QDialog):  # ✅ 等待中的彈窗  # 提供處理中提示的模態對話框
+    def __init__(self, parent=None, text="資料處理中，請稍候…"):  # 建構子  # 設定提示文字
+        super().__init__(parent)  # 呼叫父類  # 初始化QDialog
+        self.setWindowTitle("處理中")  # 視窗標題  # 設定標題
+        self.setModal(True)  # 模態  # 阻擋其他操作
+        self.setWindowFlag(QtCore.Qt.WindowCloseButtonHint, False)  # 不可手動關閉  # 避免誤關
+        lay = QtWidgets.QVBoxLayout(self)  # 直向排版  # 安排子元件
+        self.label = QtWidgets.QLabel(text, self)  # 提示標籤  # 顯示訊息
+        self.label.setAlignment(QtCore.Qt.AlignCenter)  # 置中  # 美觀
+        self.bar = QtWidgets.QProgressBar(self)  # 進度條  # 表示進行中
+        self.bar.setRange(0, 0)  # 不定進度  # 轉圈效果
+        lay.addWidget(self.label)  # 加入版面  # 顯示文字
+        lay.addWidget(self.bar)  # 加入版面  # 顯示進度
+        
+
+class DataProduceWorker(QObject):  # ✅ 背景工作者  # 真正執行長任務的物件
+    finished = pyqtSignal()  # 完成訊號  # 任務結束通知UI
+    error = pyqtSignal(str)  # 錯誤訊號  # 任務中斷時通知錯誤
+    log = pyqtSignal(str)  # 紀錄訊號  # 回報即時指令
+
+    def __init__(self, sport: str, folder: str):  # 建構子  # 帶入運動別與資料夾
+        super().__init__()  # 呼叫父類  # 初始化QObject
+        self.sport = sport  # 存運動別  # Deadlift/Benchpress/Squat
+        self.folder = folder  # 存資料夾  # 當前選擇目錄
+
+    def _run_cmd(self, cmd: str) -> int:  # 回傳 exit code  # 方便後續記錄但不阻斷
+        self.log.emit(cmd)                # 回報正在執行     # 統一從這裡列印
+        code = os.system(cmd)             # 同步執行         # 等待完成
+        if code != 0:
+            self.log.emit(f"[warn] exit={code}: {cmd}")  # 僅記錄警告   # 不拋例外
+        return code                       # 回傳碼給上層     # 供統計或日後檢查
+
+
+    @pyqtSlot()
+    def run(self):                                          # 背景主流程       # 由 QThread 啟動
+        # 不使用 try/except 把流程整個包住以免提前 finished  # 改為只在最終 emit
+        folder = self.folder                                # 當前資料夾       # 簡化變數
+        sport  = self.sport                                 # 運動別
+
+        steps = []                                          # 預先組裝所有步驟 # 以便統一迭代
+        if sport == 'Deadlift':                             # Deadlift 流程
+            steps = [
+                f'python ./tools/Deadlift_tool/interpolate.py "{folder}"',
+                f'python ./tools/Benchpress_tool/bar_data_produce.py "{folder}" --out ./config --sport deadlift',
+                f'python ./tools/Deadlift_tool/data_produce.py "{folder}" --out ./config',
+                f'python ./tools/Deadlift_tool/data_split.py "{folder}"',
+                f'python ./tools/Deadlift_tool/predict.py "{folder}" --out ./config',
+            ]                                               # 依原順序
+        elif sport == 'Benchpress':                         # Benchpress 流程
+            steps = [
+                f'python ./tools/Benchpress_tool/offline_benchpress_head.py "{folder}"',
+                f'python ./tools/Benchpress_tool/interpolate.py "{folder}"',
+                f'python ./tools/Benchpress_tool/step0_hampel_bar.py "{folder}"',
+                f'python ./tools/Benchpress_tool/bar_data_produce.py "{folder}" --out ./config --sport benchpress',
+                f'python ./tools/Benchpress_tool/step0_hampel_yolo_ske_rear.py "{folder}"',
+                f'python ./tools/Benchpress_tool/step0_hampel_yolo_ske_top.py "{folder}"',
+                f'python ./tools/Benchpress_tool/step1_interpolate_bar.py "{folder}"',
+                f'python ./tools/Benchpress_tool/step2_interpolate_yolo_ske.py "{folder}"',
+                f'python ./tools/Benchpress_tool/torsor_angle_produce.py "{folder}"',
+                f'python ./tools/Benchpress_tool/step3_autocutting_0801.py "{folder}"',
+                f'python ./tools/Benchpress_tool/step5_calculate_angle_new_feature_test.py "{folder}"',
+                f'python ./tools/Benchpress_tool/step6_cut.py "{folder}"',
+                f'python ./tools/Benchpress_tool/step7_length_100.py "{folder}"',
+                f'python ./tools/Benchpress_tool/step8_normalize.py "{folder}"',
+            ]                                               # 依原順序
+        elif sport == 'Squat':
+            steps = []                                      # 目前無步驟         # 保留
+
+        # 執行清單（不中斷）
+        exit_codes = []                                     # 收集各步驟返回碼   # 日後需要可寫檔
+        for cmd in steps:
+            code = self._run_cmd(cmd)                       # 執行一步           # 永不丟例外
+            exit_codes.append(code)                         # 收集返回碼         # 僅記錄
+
+        # 統一在最後做後製軌跡，不論前面是否出錯
+        exit_codes.append(self._run_cmd(f'python ./tools/trajectory.py "{folder}"'))  # 視覺化  # 不中斷
+
+        print('執行完成')                                   # 只在最後輸出        # 對齊你的需求
+        self.finished.emit()                                # 通知 UI 解鎖        # 關閉 pending
+
+
 class GraphUpdater(QObject):
     update_signal = pyqtSignal()
 
@@ -244,6 +358,10 @@ class Thread_data(threading.Thread):
 
 class Replaybackend():
     def __init__(self):
+        # －－ 放在 Replaybackend.__init__ 內初始化一次 －－
+        self._overlay = None                               # 記錄遮罩物件  # 初始為 None
+        self._locked_parent = None                         # 記錄被鎖的父視窗  # 初始為 None
+
         super(Replaybackend, self).__init__()
         # init for replay
         self.firstclicked_D = True
@@ -343,6 +461,7 @@ class Replaybackend():
 
         File_comboBox.clear()
         self.all_items = os.listdir(self.folders[sport])
+        
         # 這裡combobox有變動
         for folder in self.all_items[::-1]:
             File_comboBox.addItems([folder])
@@ -352,8 +471,14 @@ class Replaybackend():
         Frameslider.setEnabled(True)
         fast_forward_combobox.setEnabled(True)
 
+        # === 新增：把之後 refresh 需要用到的 UI 參考存起來 ===
+        self._file_combo = File_comboBox       # 之後要重建清單並維持選項
+        self._play_btn = Play_btn              # 之後要呼叫 TextChanged 時需要
+        self._icons = icons                    # 同上
+        self._frameslider = Frameslider        # 同上
 
-    # 讀取combobox內的資料夾
+
+
     # 讀取combobox內的資料夾
     def File_combobox_TextChanged(self, file_comboBox, play_btn, icons, Frameslider):
         selected_subdir = file_comboBox.currentText()                                 # 目前選到的子資料夾名稱（純字串）
@@ -981,7 +1106,60 @@ class Replaybackend():
         filtered = [item for item in self.all_items if text in item.lower()]  # 兩邊都小寫
         comboBox.addItems(filtered)                                           # 加回符合項
 
-        
+    def _lock_ui(self, parent: QtWidgets.QWidget, text="資料處理中，請稍候…"):
+        """顯示半透明遮罩並鎖住 parent（不彈窗）。"""                             # 函式說明
+        if parent is None:                                                             # 保險：沒有父就找目前視窗
+            parent = QtWidgets.QApplication.activeWindow()                             # 取當前視窗
+            if parent is None:
+                return                                                                 # 找不到就放棄
+
+        # 若已經有舊遮罩，先清掉（避免重入）
+        self._unlock_ui()                                                               # 先嘗試解一次  # 保險
+
+        self._locked_parent = parent                                                   # 記住這次被鎖的 parent
+        self._overlay = BusyOverlay(parent, text)                                      # 建立遮罩
+        parent.installEventFilter(self._overlay)                                       # 讓遮罩跟隨尺寸
+        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)                 # 游標改沙漏
+        parent.setEnabled(False)                                                       # 真正鎖互動
+        self._overlay.show()                                                           # 顯示遮罩
+        self._overlay.raise_()                                                         # 置頂（確保在最上層）
+
+
+    def _unlock_ui(self):
+        """關閉遮罩並恢復互動與顏色。"""                                              # 函式說明
+        try:
+            QtWidgets.QApplication.restoreOverrideCursor()                             # 還原游標
+        except Exception:
+            pass
+
+        # 正確移除事件過濾器與刪除遮罩
+        if getattr(self, "_overlay", None) is not None:
+            try:
+                if getattr(self, "_locked_parent", None) is not None:
+                    self._locked_parent.removeEventFilter(self._overlay)               # 移除 filter（關鍵）
+            except Exception:
+                pass
+            try:
+                self._overlay.hide()                                                   # 先隱藏
+                self._overlay.setParent(None)                                          # 解除父子，避免殘影
+                self._overlay.deleteLater()                                            # 排程刪除
+            except Exception:
+                pass
+            self._overlay = None                                                       # 清引用
+
+        # 把同一個父視窗解鎖（不要用 activeWindow）
+        if getattr(self, "_locked_parent", None) is not None:
+            try:
+                self._locked_parent.setEnabled(True)                                   # 恢復互動（關鍵）
+                self._locked_parent.repaint()                                          # 立即重繪一次
+            except Exception:
+                pass
+            self._locked_parent = None                                                 # 清引用
+
+        QtWidgets.QApplication.processEvents()                                         # 沖一下事件，立刻生效
+
+
+
     # 遍歷 layout，清空所有子佈局和控件
     def clear_layout(self, layout):
         while layout.count():
@@ -996,45 +1174,64 @@ class Replaybackend():
         layout.update()  # 更新佈局，確保視圖刷新
 
 
-    def data_produce_btn_clicked_rp(self, sport):                                  # Replay 的 data produce 主流程
-        # === 檢查目前是否已選到有效資料夾（沿用 ui.on_data_produce_clicked 的保護） ===   # 說明
-        folder = getattr(self, "folder", None)                                      # 取目前儲存的資料夾路徑
-        if not folder or not os.path.isdir(folder):                                 # 檢查不存在或不是資料夾
-            QtWidgets.QMessageBox.warning(                                          # 跳提示視窗
-                None, "注意", "請先在下拉選單選擇一個有效的資料夾！"                       # 與原 UI 一致的訊息
-            )                                                                       
-            return                                                                  # 中止流程
+    def data_produce_btn_clicked_rp(self, sport):                                                    # 按下資料產出
+        folder = getattr(self, "folder", None)                                                       # 目前資料夾
+        if not folder or not os.path.isdir(folder):                                                  # 檢查有效性
+            QtWidgets.QMessageBox.warning(None, "注意", "請先在下拉選單選擇一個有效的資料夾！")          # 導引
+            return                                                                                   # 中止
+        if not sport:                                                                                # 檢查運動別
+            QtWidgets.QMessageBox.warning(None, "注意", "請先選擇運動類型（Deadlift/Benchpress/Squat）。")
+            return                                                                                   # 中止
 
-        # === 以下維持你原本的最小指令流程（僅把 self.folder 換成本地變數 folder 使用） === # 說明
-        if sport == 'Deadlift':                                                     # Deadlift 流程
-            os.system(f'python ./tools/Deadlift_tool/interpolate.py {folder}')      # 槓端與骨架內插
-            os.system(f'python ./tools/Benchpress_tool/bar_data_produce.py {folder} --out ./config --sport deadlift')  # bar
-            os.system(f'python ./tools/Deadlift_tool/data_produce.py {folder} --out ./config')                         # angle
-            os.system(f'python ./tools/Deadlift_tool/data_split.py {folder}')       # split
-            os.system(f'python ./tools/Deadlift_tool/predict.py {folder} --out ./config')                               # predict
+        parent = QtWidgets.QApplication.activeWindow()                                               # 找父視窗
+        if parent is None:                                                                           # 萬一找不到
+            parent = QtWidgets.QWidget()                                                             # 建立臨時父
+        self._lock_ui(parent, "資料處理中，請稍候…")                                                   # ★ 鎖定整個介面（不彈窗）
 
-        if sport == 'Benchpress':                                                   # Benchpress 流程
-            os.system(f'python ./tools/Benchpress_tool/offline_benchpress_head.py "{folder}"')                       # 接著跑頭部/槓端流程           
-            os.system(f'python ./tools/Benchpress_tool/interpolate.py "{folder}"')                                 # 若要做骨架/槓端內插再開
+        # === 建立背景執行緒與工作者（保持你原本的 DataProduceWorker，不動 interpolate） ===
+        self._dp_thread = QThread()                                                                  # 建 QThread
+        self._dp_worker = DataProduceWorker(sport, folder)                                           # 建 Worker
+        self._dp_worker.moveToThread(self._dp_thread)                                                # 移入執行緒
+        self._dp_thread.started.connect(self._dp_worker.run)                                         # 開始即執行
+        self._dp_worker.finished.connect(self._dp_thread.quit)                                       # 任務完畢→退出執行緒
+        self._dp_worker.finished.connect(self._dp_worker.deleteLater)                                # 釋放 Worker
+        self._dp_thread.finished.connect(self._dp_thread.deleteLater)                                # 釋放 Thread
 
-            os.system(f'python ./tools/Benchpress_tool/step0_hampel_bar.py "{folder}"')                              # 先做 Hampel 濾波
-            os.system(f'python ./tools/Benchpress_tool/bar_data_produce.py {folder} --out ./config --sport benchpress')  # bar         
-               
-            os.system(f'python ./tools/Benchpress_tool/step0_hampel_yolo_ske_rear.py {folder}')
-            os.system(f'python ./tools/Benchpress_tool/step0_hampel_yolo_ske_top.py {folder} ')
-            os.system(f'python ./tools/Benchpress_tool/step1_interpolate_bar.py {folder}')
-            os.system(f'python ./tools/Benchpress_tool/step2_interpolate_yolo_ske.py {folder}')
+        # ★ 建議改為：只接一次完成事件，統一在 slot 裡做解鎖＋刷新
+        # （若想保留原本保險也行，不會出錯）
+        self._dp_worker.finished.connect(self._refresh_after_produce)                                    # 完成後刷新當前資料夾 
 
+        self._dp_worker.error.connect(lambda msg: print(f"[data_produce][error] {msg}"))                 # 只記錄錯誤 
+        self._dp_worker.log.connect(lambda s: print(f"[data_produce] {s}"))                              # 即時 log 
+        self._dp_thread.start()                                            
 
-            os.system(f'python ./tools/Benchpress_tool/torsor_angle_produce.py {folder}')
-            os.system(f'python ./tools/Benchpress_tool/step3_autocutting_0801.py {folder}')
-            os.system(f'python ./tools/Benchpress_tool/step5_calculate_angle_new_feature_test.py {folder}')
-            os.system(f'python ./tools/Benchpress_tool/step6_cut.py {folder} ')
-            os.system(f'python ./tools/Benchpress_tool/step7_length_100.py {folder}')
-            os.system(f'python ./tools/Benchpress_tool/step8_normalize.py {folder}')
+    def _refresh_after_produce(self):                                                             # 背景任務完成後的刷新  #
+        self._unlock_ui()                                                                         # 先確保解鎖  #
+        try:
+            sport = self.currentsport or ''                                                       # 目前運動別  #
+            root = self.folders.get(sport, '')                                                    # 根路徑  #
+            current_subdir = os.path.basename(self.folder) if getattr(self, "folder", None) else ''  # 現行子資料夾  #
+            if not root or not os.path.isdir(root) or not getattr(self, "_file_combo", None):     # 健檢  #
+                return                                                                            # 無法刷新直接離開  #
 
-        if sport == 'Squat':                                                        # Squat 流程
-            pass                                                                    # 目前無動作（保留）
+            items = os.listdir(root)                                                              # 重新列出子資料夾  #
+            items_sorted = items[::-1]                                                            # 與原本一致（反向） #
+            combo = self._file_combo                                                              # 取回參考  #
+            combo.blockSignals(True)                                                              # 重建時先關閉訊號  #
+            combo.clear()                                                                         # 清空  #
+            combo.addItems(items_sorted)                                                          # 填入  #
+            combo.blockSignals(False)                                                             # 重新開啟訊號  #
 
-        os.system(f'python ./tools/trajectory.py {folder}')                         # 後製軌跡影片
-        print('執行完成')                                                            # 完成訊息
+            if current_subdir in items_sorted:                                                    # 原選項仍存在  #
+                idx = items_sorted.index(current_subdir)                                          # 找索引  #
+                combo.setCurrentIndex(idx)                                                        # 指回原選項  #
+            elif items_sorted:                                                                    # 原選項不在、但還有項目 #
+                combo.setCurrentIndex(0)                                                          # 指第一個  #
+                current_subdir = combo.currentText()                                              # 更新選擇  #
+                self.folder = os.path.join(root, current_subdir)                                  # 更新路徑  #
+
+            # 直接呼叫你既有的邏輯來重載影片/圖表  #
+            self.File_combobox_TextChanged(combo, self._play_btn, self._icons, self._frameslider) # 重新載入  #
+            self.showprevision()                                                                  # 立即重繪  #
+        except Exception as e:
+            print(f"[refresh] failed: {e}")        
