@@ -45,16 +45,54 @@ class Recordingbackend():
         self.save_path = {'Deadlift': os.path.join(dir, 'MOCAP', 'recordings'),
                           'Benchpress': os.path.join(dir, 'benchpress', 'recordings'),
                           'Squat': os.path.join(dir, 'barbell_squat', 'recordings')}
+        # COCO 17-keypoints skeleton 連線定義  # 說明用途
         self.skeleton_connections = [
-            (0, 1), (0, 2), (2, 4), (1, 3),  # Right arm
-            (5, 7), (5, 6), (7, 9), (6, 8),  # Left arm
-            (6, 12), (12, 14), (14, 16),  # Right leg
-            (5, 11), (11, 13), (13, 15)   # Left leg
-        ]
+            # --- 軀幹 / 身體主幹 ---  # 身體主幹
+            (5, 6),    # left_shoulder - right_shoulder  # 雙肩
+            (5, 11),   # left_shoulder - left_hip        # 左肩到左髖
+            (6, 12),   # right_shoulder - right_hip      # 右肩到右髖
+            (11, 12),  # left_hip - right_hip            # 雙髖
+
+            # --- 左手臂 (left arm) ---  # 左手
+            (5, 7),    # left_shoulder - left_elbow      # 左肩到左肘
+            (7, 9),    # left_elbow - left_wrist         # 左肘到左腕
+
+            # --- 右手臂 (right arm) ---  # 右手
+            (6, 8),    # right_shoulder - right_elbow    # 右肩到右肘
+            (8, 10),   # right_elbow - right_wrist       # 右肘到右腕 ← 你缺這條
+
+            # --- 左腳 (left leg) ---  # 左腳
+            (11, 13),  # left_hip - left_knee            # 左髖到左膝
+            (13, 15),  # left_knee - left_ankle          # 左膝到左踝
+
+            # --- 右腳 (right leg) ---  # 右腳
+            (12, 14),  # right_hip - right_knee          # 右髖到右膝
+            (14, 16),  # right_knee - right_ankle        # 右膝到右踝
+        ]  # skeleton_connections 結束
+
         self.POSE_CONNECTIONS_CUSTOM = [
             (11, 12), (11, 13), (13, 15), (12, 14), (14, 16),  # Upper body joints
             (11, 23), (12, 24), (23, 24),  # Torso connections
         ]
+
+        # 0: nose
+        # 1: left_eye
+        # 2: right_eye
+        # 3: left_ear
+        # 4: right_ear
+        # 5: left_shoulder
+        # 6: right_shoulder
+        # 7: left_elbow
+        # 8: right_elbow
+        # 9: left_wrist
+        # 10: right_wrist
+        # 11: left_hip
+        # 12: right_hip
+        # 13: left_knee
+        # 14: right_knee
+        # 15: left_ankle
+        # 16: right_ankle
+
         # Initialize MediaPipe Pose 
         self.mp_pose = mp.solutions.pose
         self.mp_drawing = mp.solutions.drawing_utils
