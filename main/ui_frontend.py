@@ -71,16 +71,19 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def rc_Deadlift_clicked(self):
         self.names.clear()
         self.rc_Deadlift_layout_set()
+        self.rcbf.currentsport = 'Deadlift'  
         self.rcbf.init_rc_backend('Deadlift', self.rc_Vision_labels)
 
     def rc_Squat_clicked(self):
         self.names.clear()
         self.rc_Squat_layout_set()
+        self.rcbf.currentsport = 'Squat'
         self.rcbf.init_rc_backend('Squat', self.rc_Vision_labels)
 
     def rc_Benchpress_clicked(self):
         self.names.clear()
         self.rc_Benchpress_layout_set()
+        self.rcbf.currentsport = 'Benchpress'
         self.rcbf.init_rc_backend('Benchpress', self.rc_Vision_labels)
 
     def back_toolbtn_clicked(self):
@@ -372,6 +375,7 @@ class Mainwindow(QtWidgets.QMainWindow, Ui_MainWindow):
        
 
     def rp_layout_set(self, sport):
+        self.rpbf.currentsport = sport
         self.layout_clear(self.ui.head_vis_layout)
         self.layout_clear(self.ui.bottom_vis_layout)
         self.layout_clear(self.ui.data_ctrl_layout_V)

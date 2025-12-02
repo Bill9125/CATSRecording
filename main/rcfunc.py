@@ -122,6 +122,7 @@ class Recordingbackend():
         self.head_skeleton_txt_file = str
         
         self.stop_event = threading.Event()
+        self.threads = []
         
         self.shared_state = {                         # 跨執行緒共享旗標                   # 初始化共享旗標
             "auto_recording_sig": False,              # 由 UI 控制是否允許錄影              # 初始 False
@@ -145,10 +146,48 @@ class Recordingbackend():
         self.init_rc_backend(sport, labels)
         
     def init_rc_backend(self, sport, labels):
-        self.source_get(sport)
-        self.cameras = self.initialize_cameras()
-        self.models = self.model_select(sport)
-        self.creat_threads(sport, labels)
+                # --- 1. 停止執行緒區塊 ---
+                self.stop_event.set()  # 發送停止訊號
+                
+                # 如果有舊的 barrier，先強制釋放
+                if self.barrier:
+                    try:
+                        self.barrier.abort()
+                    except:
+                        pass
+
+                # 等待舊執行緒結束
+                if hasattr(self, 'threads') and self.threads:
+                    for t in self.threads:
+                        if t.is_alive():
+                            t.join(timeout=0.5)
+                    self.threads = []
+                
+                # --- 2. 新增修正：強制釋放舊相機資源 ---
+                # 必須明確釋放，不能依賴 Garbage Collection
+                if hasattr(self, 'cameras') and self.cameras:
+                    print("Releasing old cameras...")
+                    for cam in self.cameras:
+                        try:
+                            # 呼叫 MyVideoCapture 內部的 vid.release()
+                            if cam.vid.isOpened():
+                                cam.vid.release()
+                        except Exception as e:
+                            print(f"Error releasing camera: {e}")
+                    self.cameras = [] # 清空舊列表
+                    
+                # 加入短暫延遲，讓作業系統有時間釋放 USB Handle (重要!)
+                time.sleep(0.5) 
+                # -----------------------------------------------
+
+                # --- 3. 初始化新環境 ---
+                self.source_get(sport)
+                
+                # 重新開啟相機
+                self.cameras = self.initialize_cameras()
+                self.models = self.model_select(sport)
+                
+                self.creat_threads(sport, labels)
     
     def auto_recording_btn_clicked(self, sport, data_btn, source_btn, back_btn, recording_btn=None):  # 新增 recording_btn 參數
         if sport != 'Benchpress':                                               # 僅處理 Benchpress
