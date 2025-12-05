@@ -448,16 +448,20 @@ class Recordingbackend():
             self.mbox.show()
 
     def recording_ctrl_btn_clicked(self, sport, button_1, button_2, button_3):
-        if not self.recording_sig:
-            self.start_recording(sport)
-            button_1.setEnabled(False)
-            button_2.setEnabled(False)
-            button_3.setEnabled(False)
-        else:
-            self.stop_recording()
-            button_1.setEnabled(True)
-            button_2.setEnabled(True)
-            button_3.setEnabled(True)
+            # 忽略傳入的 sport 參數 (來自 UI 的硬編碼)，改用 self.currentsport
+            active_sport = self.currentsport 
+
+            if not self.recording_sig:
+                # 將 sport 參數替換為 self.currentsport
+                self.start_recording(active_sport) 
+                button_1.setEnabled(False)
+                button_2.setEnabled(False)
+                button_3.setEnabled(False)
+            else:
+                self.stop_recording()
+                button_1.setEnabled(True)
+                button_2.setEnabled(True)
+                button_3.setEnabled(True)
             
     def player_reset(self, name):
         self.player = name.text()
