@@ -8,7 +8,18 @@ args = parser.parse_args()
 dir = args.dir
 
 # 載入影片和座標
-video_path = os.path.join(dir, 'vision1.avi')
+# 設定首選路徑
+primary_path = os.path.join(dir, 'original_vision1.avi')
+
+# 判斷檔案是否存在
+if os.path.exists(primary_path):
+    video_path = primary_path
+else:
+    # 如果找不到首選，就使用備選路徑
+    video_path = os.path.join(dir, 'vision1.avi')
+
+print(f"Selected video: {video_path}")
+
 coordinates_path = os.path.join(dir, 'yolo_coordinates_interpolated.txt')
 output_path = os.path.join(dir, 'vision1_drawed.avi')
 

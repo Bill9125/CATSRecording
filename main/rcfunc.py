@@ -500,54 +500,47 @@ class Recordingbackend():
 
         
     def data_produce_btn_clicked(self, sport):
-        # self.folder = 'C:/Users/92A27/MOCAP/recordings/recording_20250324_145044_BVT'
-        if sport == 'Deadlift':
-            # 對槓端及骨架做內插
-            os.system(f'python ./tools/Deadlift_tool/interpolate.py {self.folder}')
-            # bar
-            os.system(f'python ./tools/Benchpress_tool/bar_data_produce.py {self.folder} --out ./config --sport deadlift')
-            # angle
-            os.system(f'python ./tools/Deadlift_tool/data_produce.py {self.folder} --out ./config')
-            # split data
-            os.system(f'python ./tools/Deadlift_tool/data_split.py {self.folder}')
-            # modle predict
-            os.system(f'python ./tools/Deadlift_tool/predict.py {self.folder} --out ./config')
+            # 為了保險起見，印出目前接收到的運動類型
+            print(f"Data Produce Triggered: Sport={sport}, Path={self.folder}")
+
+            if sport == 'Deadlift':
+                os.system(f'python ./tools/Deadlift_tool/interpolate.py {self.folder}')
+                os.system(f'python ./tools/Benchpress_tool/bar_data_produce.py {self.folder} --out ./config --sport deadlift')
+                os.system(f'python ./tools/Deadlift_tool/data_produce.py {self.folder} --out ./config')
+                os.system(f'python ./tools/Deadlift_tool/data_split.py {self.folder}')
+                os.system(f'python ./tools/Deadlift_tool/predict.py {self.folder} --out ./config')
+                
+            elif sport == 'Benchpress':
+                os.system(f'python ./tools/Benchpress_tool/step0_hampel_bar.py {self.folder}')
+                os.system(f'python ./tools/Benchpress_tool/step0_hampel_yolo_ske_rear.py {self.folder}')
+                os.system(f'python ./tools/Benchpress_tool/step0_hampel_yolo_ske_top.py {self.folder} ')
+                os.system(f'python ./tools/Benchpress_tool/step1_interpolate_bar.py {self.folder}')
+                os.system(f'python ./tools/Benchpress_tool/step2_interpolate_yolo_ske.py {self.folder}')
+                os.system(f'python ./tools/Benchpress_tool/step3_autocutting_0801.py {self.folder}')
+                os.system(f'python ./tools/Benchpress_tool/step5_calculate_angle_new_feature_test.py {self.folder}')
+                os.system(f'python ./tools/Benchpress_tool/step6_cut.py {self.folder} ')
+                os.system(f'python ./tools/Benchpress_tool/step7_length_100.py {self.folder}')
+                os.system(f'python ./tools/Benchpress_tool/step8_normalize.py {self.folder}')
             
-        if sport == 'Benchpress':
-            # 
-            os.system(f'python ./tools/Benchpress_tool/step0_hampel_bar.py {self.folder}')
-            # 
-            os.system(f'python ./tools/Benchpress_tool/step0_hampel_yolo_ske_rear.py {self.folder}')
-            #
-            os.system(f'python ./tools/Benchpress_tool/step0_hampel_yolo_ske_top.py {self.folder} ')
-            # 
-            os.system(f'python ./tools/Benchpress_tool/step1_interpolate_bar.py {self.folder}')
-            # 
-            os.system(f'python ./tools/Benchpress_tool/step2_interpolate_yolo_ske.py {self.folder}')
-            #
-            os.system(f'python ./tools/Benchpress_tool/step3_autocutting_0801.py {self.folder}')
-            # 
-            os.system(f'python ./tools/Benchpress_tool/step5_calculate_angle_new_feature_test.py {self.folder}')
-            # 
-            os.system(f'python ./tools/Benchpress_tool/step6_cut.py {self.folder} ')
-            # 
-            os.system(f'python ./tools/Benchpress_tool/step7_length_100.py {self.folder}')
-            # 
-            os.system(f'python ./tools/Benchpress_tool/step8_normalize.py {self.folder}')
-        
-        if sport == 'Squat':
-            pass
-            # # 對槓端及骨架做內插
-            # os.system(f'python ./tools/Deadlift_tool/interpolate.py {self.folder}')
-            # # bar
-            # os.system(f'python ./tools/Benchpress_tool/bar_data_produce.py {self.folder} --out ./config --sport deadlift')
-            # # angle
-            # os.system(f'python ./tools/Deadlift_tool/data_produce.py {self.folder} --out ./config')
-            # # split data
-            # os.system(f'python ./tools/Deadlift_tool/data_split.py {self.folder}')
-            # # modle predict
-            # os.system(f'python ./tools/Deadlift_tool/predict.py {self.folder} --out ./config')
-            
-        # 後製軌跡影片
-        os.system(f'python ./tools/trajectory.py {self.folder}')
-        print('後製已完成')
+            elif sport == 'Squat':
+                # --- 修正重點開始 ---
+                print("執行 Squat 資料處理流程...")
+                
+                # 1. 內插 (補上缺失的步驟，產生 yolo_coordinates_interpolated.txt)
+                # 注意：這裡假設你共用 Deadlift 的工具，若有 Squat 專用請自行修改路徑
+                os.system(f'python ./tools/Deadlift_tool/interpolate.py {self.folder}')
+                
+                # 2. Bar 資料產生 (修正參數為 squat)
+                os.system(f'python ./tools/Benchpress_tool/bar_data_produce.py {self.folder} --out ./config --sport squat')
+                
+                # 3. 角度計算 (假設共用 Deadlift 工具)
+                os.system(f'python ./tools/Deadlift_tool/data_produce.py {self.folder} --out ./config')
+                
+                # 4. 資料切割
+                os.system(f'python ./tools/Deadlift_tool/data_split.py {self.folder}')
+                # --- 修正重點結束 ---
+
+            # 最後執行軌跡繪製
+            print(f"執行軌跡繪製: {self.folder}")
+            os.system(f'python ./tools/trajectory.py "{self.folder}"') # 加上引號避免路徑空白問題
+            print('後製已完成')

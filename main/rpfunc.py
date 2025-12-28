@@ -7,6 +7,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import json
 import numpy as np
 from PyQt5.QtCore import pyqtSignal, QObject
+import matplotlib.ticker as ticker
 
 from PyQt5.QtCore import pyqtSignal, QObject, pyqtSlot, QThread  # ✅ 加上QThread/pyqtSlot  # 匯入QThread與pyqtSlot供背景執行用
 
@@ -106,20 +107,22 @@ class DataProduceWorker(QObject):  # ✅ 背景工作者  # 真正執行長任�
                 f'python ./tools/Benchpress_tool/step7_length_100.py "{folder}"',
                 f'python ./tools/Benchpress_tool/step8_normalize.py "{folder}"',
             ]                                               # 依原順序
-        elif sport == 'Squat':
-            steps = []                                      # 目前無步驟         # 保留
+        elif sport == 'Squat':  # ✅ [修正] 補上 Squat 的執行步驟
+                    steps = [
+                        f'python ./tools/Deadlift_tool/interpolate.py "{folder}"',  # 執行內插 (共用 Deadlift 工具)
+                        f'python ./tools/Benchpress_tool/bar_data_produce.py "{folder}" --out ./config --sport squat',  # 產生 Bar 數據 (參數改為 squat)
+                        f'python ./tools/Deadlift_tool/data_produce.py "{folder}" --out ./config',  # 產生角度數據 (共用 Deadlift 工具)
+                        f'python ./tools/Deadlift_tool/data_split.py "{folder}"',  # 資料分割 (共用 Deadlift 工具)
+                    ]
 
-        # 執行清單（不中斷）
-        exit_codes = []                                     # 收集各步驟返回碼   # 日後需要可寫檔
-        for cmd in steps:
-            code = self._run_cmd(cmd)                       # 執行一步           # 永不丟例外
-            exit_codes.append(code)                         # 收集返回碼         # 僅記錄
+        for cmd in steps:  # 遍歷所有步驟
+            self._run_cmd(cmd)  # 執行指令
 
-        # 統一在最後做後製軌跡，不論前面是否出錯
-        exit_codes.append(self._run_cmd(f'python ./tools/trajectory.py "{folder}"'))  # 視覺化  # 不中斷
+        # 軌跡圖
+        self._run_cmd(f'python ./tools/trajectory.py "{folder}"')  # 最後執行軌跡繪製
 
-        print('執行完成')                                   # 只在最後輸出        # 對齊你的需求
-        self.finished.emit()                                # 通知 UI 解鎖        # 關閉 pending
+        print('執行完成')  # 印出完成訊息
+        self.finished.emit()  # 發送完成訊號，通知 UI 解鎖
 
 
 class GraphUpdater(QObject):
@@ -419,17 +422,17 @@ class Replaybackend():
             )
         
     def Squat_btn_pressed(
-        self, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons,
-        Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout,
-        head_label, bottom_labels, data_labels
-        ):
-        self.currentsport = 'Squat'
-        self.rp_Vision_labels = head_label + bottom_labels
-        self.data_labels = data_labels
-        self.rp_btn_press(
-            self.currentsport, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons,
+            self, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons,
             Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout,
-            )
+            head_label, bottom_labels, graph  # ✅ [修正] 參數名修正為 graph 以對應傳入物件
+            ):
+            self.currentsport = 'Squat'  # 設定當前運動為 Squat
+            self.rp_Vision_labels = head_label + bottom_labels  # 組合影像標籤
+            self.data_graph = graph  # ✅ [修正] 正確指派給 self.data_graph，圖表才能繪製
+            self.rp_btn_press(
+                self.currentsport, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons,
+                Stop_btn, Frameslider, fast_forward_combobox, File_comboBox, rp_tab, play_layout,
+                )  # 呼叫共用的按鈕處理函式
         
     def rp_btn_press(                                                           # 播放區共用的按鍵初始化與狀態設定
         self, sport, Deadlift_btn, Benchpress_btn, Squat_btn, Play_btn, icons,  # sport 與三個 sport 切換按鈕與圖示
@@ -666,111 +669,221 @@ class Replaybackend():
         self.del_mythreads()
         event.accept()
         
-    def showprevision(self):                                                       # 預覽＋繪圖（依運動別限制張數）
-        # === 安全檢查 ===
-        if not hasattr(self, "data_graph") or self.data_graph.get("axes") is None: # 無圖表物件
-            print("⚠️ data_graph 尚未初始化，跳過繪圖流程")                          # 訊息
-            return                                                                 # 結束
+    def showprevision(self):
+            # 1. 檢查圖表物件是否初始化
+            if not hasattr(self, "data_graph") or self.data_graph.get("axes") is None:  # 若無圖表物件
+                return  # 直接結束
 
-        # === 讀資料 ===
-        sport  = getattr(self, "currentsport", "") or ""                           # 運動別
-        folder = getattr(self, "folder", None)                                     # 選取資料夾
-        max_charts = self._plot_count_for(sport)                                   # 本次最大圖數
-        self.info_data, self.pred_data = self._load_info_from_folder(sport, folder)# 讀入資料
-        self.datas = bool(self.info_data)                                          # 有資料才畫
+            # 2. 讀取資料與路徑
+            sport  = getattr(self, "currentsport", "") or ""  # 取得當前運動類型
+            folder = getattr(self, "folder", None)  # 取得當前資料夾路徑
+            max_charts = self._plot_count_for(sport)  # 取得該運動允許的最大圖表數
+            self.info_data, self.pred_data = self._load_info_from_folder(sport, folder)  # 讀取 JSON 資料
+            self.datas = bool(self.info_data)  # 標記是否有資料
 
-        # === 顯示影片第一幀（略，維持原本流程） ===
-        if getattr(self, "videos", None):                                          # 有影片時
-            for i, video in enumerate(self.videos):                                # 逐檔
-                temp_cap = cv2.VideoCapture(video)                                 # 開檔
-                if self.ocv and temp_cap.isOpened():                               # 可讀
-                    _, frame = temp_cap.read()                                     # 讀第一幀
-                    if frame is not None:                                          # 有畫面
-                        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)         # BGR→RGB
-                        image = QtGui.QImage(frame_rgb.data, frame_rgb.shape[1],
-                                            frame_rgb.shape[0], QtGui.QImage.Format_RGB888)  # QImage
-                        self.rp_qpixmaps[i] = QtGui.QPixmap.fromImage(image)       # 建 Pixmap
-                        scaled = self.rp_qpixmaps[i].scaled(self.rp_Vision_labels[i].size(),
-                                                            QtCore.Qt.IgnoreAspectRatio)      # 縮放
-                        self.rp_Vision_labels[i].setPixmap(scaled)                 # 顯示
-                temp_cap.release()                                                 # 關檔
+            # 3. 顯示影片第一幀預覽
+            if getattr(self, "videos", None):  # 若有影片列表
+                for i, video in enumerate(self.videos):  # 逐一處理影片
+                    temp_cap = cv2.VideoCapture(video)  # 開啟影片檔案
+                    if self.ocv and temp_cap.isOpened():  # 若 OpenCV 啟用且開啟成功
+                        _, frame = temp_cap.read()  # 讀取第一幀
+                        if frame is not None:  # 若讀取成功
+                            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # BGR 轉 RGB
+                            image = QtGui.QImage(frame_rgb.data, frame_rgb.shape[1],
+                                                frame_rgb.shape[0], QtGui.QImage.Format_RGB888)  # 轉換為 QImage
+                            self.rp_qpixmaps[i] = QtGui.QPixmap.fromImage(image)  # 建立 QPixmap
+                            scaled = self.rp_qpixmaps[i].scaled(self.rp_Vision_labels[i].size(),
+                                                                QtCore.Qt.IgnoreAspectRatio)  # 縮放至 Label 大小
+                            self.rp_Vision_labels[i].setPixmap(scaled)  # 顯示圖片
+                    temp_cap.release()  # 釋放影片資源
 
-        # === 畫資料曲線或清空 ===
-        axes = self.data_graph['axes']                                             # 取得子圖列
-        for ax in axes:                                                            # 先清空全部
-            ax.clear()                                                             # 清空
+            # 4. 準備繪圖：清空舊圖
+            axes = self.data_graph['axes']  # 取得所有子圖 (Axes)
+            for ax in axes:  # 遍歷所有子圖
+                ax.clear()  # 清空內容
 
-        if self.datas:                                                             # 有資料
-            # 只畫到 max_charts 或 axes 長度的較小者
-            n_plot = min(max_charts, len(axes), len(self.info_data))               # 本次實際繪製數
-            for i, data in enumerate(self.info_data[:n_plot]):                     # 逐條畫
-                x_data = data['frames']                                            # X
-                y_data = data['values']                                            # Y
-                min_len = min(len(x_data), len(y_data))                            # 對齊
-                x_data = x_data[:min_len]                                          # 截斷
-                y_data = y_data[:min_len]                                          # 截斷
+            # 5. 開始繪製曲線
+            if self.datas:  # 若有資料
+                n_plot = min(max_charts, len(axes), len(self.info_data))  # 計算實際要畫幾張圖
+                for i, data in enumerate(self.info_data[:n_plot]):  # 逐一處理每一筆資料
+                                    # --- 準備資料 ---
+                                    x_data = data['frames']  # 取得 X 軸數據 (幀數)
+                                    y_data = data['values']  # 取得 Y 軸數據 (數值)
+                                    min_len = min(len(x_data), len(y_data))  # 確保長度一致
+                                    x_data = x_data[:min_len]  # 裁切 X
+                                    y_data = y_data[:min_len]  # 裁切 Y
 
-                ax = axes[i]                                                       # 目標子圖
-                ax.set_ylim(data['y_min'], data['y_max'])                          # 設 y 範圍
-                if isinstance(y_data[0], (list, tuple)) and len(y_data[0]) == 2:   # 雙路資料
-                    r_vals = [v[0] for v in y_data]                                # 右側
-                    l_vals = [v[1] for v in y_data]                                # 左側
-                    ax.plot(x_data, r_vals, label=f"{data['title']}-R")            # 畫線 R
-                    ax.plot(x_data, l_vals, label=f"{data['title']}-L")            # 畫線 L
-                else:                                                              # 一維
-                    ax.plot(x_data, y_data, label=f"{data['title']}")              # 畫線
-                ax.set_ylabel(f"{data['y_label']}")                                # y 標籤
-                ax.legend()                                                        # 圖例
+                                    ax = axes[i]  # 取得對應的子圖
+                                    title_lower = str(data.get('title', '')).lower()  # 取得標題並轉小寫
 
-                # ✅ Benchpress 的 Bar_Position 顯示「起槓位置」(y=300~350)
-                if (str(self.currentsport).lower() == 'benchpress'
-                    and str(data.get('title', '')).lower() == 'bar_position'):
-                    ax.axhspan(280, 330, alpha=0.18, color='orange', zorder=0)   # 起槓帶狀區  #
-                    ax.text(0.98, 280, "Top Position", transform=ax.get_yaxis_transform(),
-                            va='bottom', ha='right', fontsize=20, color="#ff9a3c")                 # 文字標註  #
+                                    # ==========================================
+                                    # ✅ [設定區域] 自定義 Y 軸上下限、刻度 與 字體大小
+                                    # ==========================================
+                                    
+                                    # 1. 設定預設值 (Default Values)
+                                    final_y_min = data['y_min']  # 預設最小值
+                                    final_y_max = data['y_max']  # 預設最大值
+                                    
+                                    # ✅ [字體設定] 定義預設字體大小 (您可以依需求微調這裡)
+                                    font_label_size = 10  # 預設 Y 軸標題大小
+                                    font_tick_size = 8    # 預設 刻度數字大小
+                                    font_legend_size = 8  # 預設 圖例文字大小
+                                    
+                                    # --- 針對不同檔案設定 ---
+                                    if 'bar_position' in title_lower:  # 若為槓鈴位置
+                                        # Bar_Position (像素座標)
+                                        final_y_min, final_y_max = 150, 500  # (您設定的參數)   #squat 50,600; bp 200, 400
+                                        ax.yaxis.set_major_locator(ticker.MultipleLocator(50)) # (您設定的參數)
 
+                                        # ✅ [修改] 針對此圖表加大字體
+                                        font_label_size = 16
+                                        font_tick_size = 14
+                                        font_legend_size = 16
+                                        
+                                    elif 'hip_angle' in title_lower:  # 若為髖關節角度
+                                        # Hip_Angle (角度)
+                                        final_y_min, final_y_max = 70, 180  # (您設定的參數)
+                                        ax.yaxis.set_major_locator(ticker.MultipleLocator(10))  # (您設定的參數)
 
-            # 清理多餘子圖（若 axes 比 n_plot 多）
-            for j in range(n_plot, len(axes)):                                     # 其餘子圖
-                axes[j].clear()                                                    # 清空
-                axes[j].set_visible(False)                                         # 暫時隱藏
+                                        # ✅ [修改] 針對此圖表加大字體
+                                        font_label_size = 16
+                                        font_tick_size = 14
+                                        font_legend_size = 16
 
-            # 讓用到的子圖可見並補上 x 標籤
-            for j in range(n_plot):                                                # 已繪製區塊
-                axes[j].set_visible(True)                                          # 顯示
-            if n_plot > 0:                                                         # 有圖才加 x 標
-                axes[n_plot-1].set_xlabel('frames')                                # 最底下一張加 x 標
+                                    elif 'knee_angle' in title_lower:  # 若為膝關節角度
+                                        # Knee_Angle (角度)
+                                        final_y_min, final_y_max = 120, 180  # (您設定的參數)
+                                        ax.yaxis.set_major_locator(ticker.MultipleLocator(10))  # (您設定的參數)
+                                        
+                                        # ✅ [修改] 針對此圖表加大字體
+                                        font_label_size = 16
+                                        font_tick_size = 14
+                                        font_legend_size = 16
 
-            self.data_graph['canvas'].draw()                                       # 重繪
-            self.data_graph['graphicscene'].addWidget(self.data_graph['canvas'])   # 掛回場景
+                                    elif 'knee_to_hip' in title_lower:  # 若為膝髖距離
+                                        # Knee_to_Hip (距離或比例)
+                                        final_y_min, final_y_max = 0.4, 2.2  # (您設定的參數)
+                                        ax.yaxis.set_major_locator(ticker.MultipleLocator(0.2))  # (您設定的參數)
+                                        
+                                        # ✅ [修改] 針對此圖表加大字體
+                                        font_label_size = 16
+                                        font_tick_size = 14
+                                        font_legend_size = 16
 
-            # === 若有 Score.json 的 results，就更新表格/面板 ===
-            if isinstance(self.pred_data, dict) and 'results' in self.pred_data:   # 有預測
-                confs = []                                                         # 累積 conf%
-                for NoSet, info in self.pred_data['results'].items():              # 逐 set
-                    score = info[0]                                                # 取 score
-                    item = QtWidgets.QTableWidgetItem(f"{str(round(float(score)*100, 1))}")  # 表格 cell
-                    font = QtGui.QFont("Arial", 24, QtGui.QFont.Bold)              # 字體
-                    item.setFont(font)                                             # 套字體
-                    item.setTextAlignment(QtCore.Qt.AlignCenter)                   # 置中
-                    self.table.setItem(0, int(NoSet), item)                        # 放入第 0 列
-                    temp = [round(c[1]*100) for c in info[1]]                      # 類別置信度%
-                    confs.extend(temp)                                             # 收集
-                for i, panel in enumerate(getattr(self, 'conf_panels', [])):       # 逐 panel
-                    lbl = QtWidgets.QLabel(f"{str(confs[i])}%") if i < len(confs) else QtWidgets.QLabel("")  # 有值才顯示
-                    lbl.setStyleSheet("font-size:20px; color:#070807; border:none;")# 樣式
-                    lbl.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)      # 自適應
-                    font = QtGui.QFont("Arial", 24, QtGui.QFont.Bold)              # 字體
-                    lbl.setFont(font)                                              # 套字體
-                    lbl.setAlignment(QtCore.Qt.AlignCenter)                        # 置中
-                    lay = QtWidgets.QVBoxLayout()                                  # 佈局
-                    lay.addWidget(lbl)                                             # 加入
-                    panel.setLayout(lay)                                           # 掛上
-        else:                                                                      # 沒資料
-            for ax in axes:                                                        # 全部子圖
-                ax.clear()                                                         # 清空
-                ax.set_visible(True)                                               # 顯示（避免下次仍隱藏）
-            self.data_graph['canvas'].draw()                                       # 重繪空畫布
+                                    elif 'right_elbow_torsor_angle_top' in title_lower: 
+                                        final_y_min, final_y_max = 30, 100  # (您設定的參數)
+                                        ax.yaxis.set_major_locator(ticker.MultipleLocator(10))  # (您設定的參數)
+                                        
+                                        # ✅ [修改] 針對此圖表加大字體
+                                        font_label_size = 16
+                                        font_tick_size = 14
+                                        font_legend_size = 16
+
+                                    elif 'left_elbow_torsor_angle_top' in title_lower:  
+                                        final_y_min, final_y_max = 30, 100  # (您設定的參數)
+                                        ax.yaxis.set_major_locator(ticker.MultipleLocator(10))  # (您設定的參數)
+                                        
+                                        # ✅ [修改] 針對此圖表加大字體
+                                        font_label_size = 16
+                                        font_tick_size = 14
+                                        font_legend_size = 16                                    
+                                    
+                                    else:  # 其他情況
+                                        ax.yaxis.set_major_locator(ticker.AutoLocator())  # 自動刻度
+                                        # ✅ [修改] 針對此圖表加大字體
+                                        font_label_size = 16
+                                        font_tick_size = 14
+                                        font_legend_size = 16
+
+                                    # ==========================================
+                                    # 6. 套用設定並繪圖
+                                    # ==========================================
+                                    
+                                    # 套用上下限
+                                    ax.set_ylim(final_y_min, final_y_max)  # 設定 Y 軸範圍
+                                    
+                                    # ✅ 套用刻度字體大小
+                                    ax.tick_params(axis='both', which='major', labelsize=font_tick_size)
+                                    
+                                    # 繪製格線 (讓刻度更清楚)
+                                    ax.grid(True, linestyle='--', alpha=0.5)  # 顯示虛線網格
+
+                                    # 繪製線條 (區分單線或雙線)
+                                    if isinstance(y_data[0], (list, tuple)) and len(y_data[0]) == 2:  # 若為雙線數據 (左右)
+                                        r_vals = [v[0] for v in y_data]  # 取右側數據
+                                        l_vals = [v[1] for v in y_data]  # 取左側數據
+                                        ax.plot(x_data, r_vals, label=f"{data['title']}-R")  # 繪製右線
+                                        ax.plot(x_data, l_vals, label=f"{data['title']}-L")  # 繪製左線
+                                    else:  # 若為單線數據
+                                        ax.plot(x_data, y_data, label=f"{data['title']}")  # 繪製線條
+                                    
+                                    # ✅ 套用 Y 軸標題與字體大小
+                                    ax.set_ylabel(f"{data['y_label']}", fontsize=font_label_size)
+                                    
+                                    # ✅ 套用 圖例與字體大小
+                                    ax.legend(fontsize=font_legend_size)
+
+                                    # # Benchpress 特殊標記 (保持原本邏輯)
+                                    # if (str(self.currentsport).lower() == 'benchpress'
+                                    #     and 'bar_position' in title_lower):  # 若為臥推且是 Bar Position
+                                    #     ax.axhspan(280, 330, alpha=0.18, color='orange', zorder=0)  # 標示 Top Position 區域
+                                    #     ax.text(0.98, 280, "Top Position", transform=ax.get_yaxis_transform(),
+                                    #             va='bottom', ha='right', fontsize=20, color="#ff9a3c")  # 標示文字
+
+                # 7. 清理多餘的子圖 (隱藏沒用到的)
+                for j in range(n_plot, len(axes)):  # 遍歷剩餘的子圖
+                    axes[j].clear()  # 清空
+                    axes[j].set_visible(False)  # 隱藏
+
+                # 確保用到的子圖是顯示的
+                for j in range(n_plot):  # 遍歷使用中的子圖
+                    axes[j].set_visible(True)  # 顯示
+                
+                # 最底下的圖加上 X 軸標籤
+                if n_plot > 0:  # 若有圖
+                    axes[n_plot-1].set_xlabel('frames')  # 設定 X 軸標籤
+
+                # 8. 更新畫布與場景
+                self.data_graph['canvas'].draw()  # 重繪畫布
+                self.data_graph['graphicscene'].addWidget(self.data_graph['canvas'])  # 將畫布加入場景
+
+                # 9. 更新分數表格 (如果有的話)
+                if isinstance(self.pred_data, dict) and 'results' in self.pred_data:  # 若有預測結果
+                    confs = []  # 初始化信心度列表
+                    for NoSet, info in self.pred_data['results'].items():  # 遍歷每一組結果
+                        score = info[0]  # 取得分數
+                        item = QtWidgets.QTableWidgetItem(f"{str(round(float(score)*100, 1))}")  # 建立表格項目
+                        font = QtGui.QFont("Arial", 24, QtGui.QFont.Bold)  # 設定字體
+                        item.setFont(font)  # 套用字體
+                        item.setTextAlignment(QtCore.Qt.AlignCenter)  # 文字置中
+                        if hasattr(self, 'table') and self.table:  # 若表格存在
+                            # 容錯：檢查 row/col 範圍
+                            if int(NoSet) < self.table.columnCount():  # 確保欄位不越界
+                                self.table.setItem(0, int(NoSet), item)  # 設定儲存格內容
+                        temp = [round(c[1]*100) for c in info[1]]  # 取得信心度
+                        confs.extend(temp)  # 加入列表
+                    
+                    if hasattr(self, 'conf_panels'):  # 若有信心度面板
+                        for i, panel in enumerate(getattr(self, 'conf_panels', [])):  # 逐一處理面板
+                            # 清空舊 layout
+                            if panel.layout():  # 若已有佈局
+                                QtWidgets.QWidget().setLayout(panel.layout())  # 透過替換 Widget 清除引用
+                            
+                            lbl = QtWidgets.QLabel(f"{str(confs[i])}%") if i < len(confs) else QtWidgets.QLabel("")  # 建立標籤
+                            lbl.setStyleSheet("font-size:20px; color:#070807; border:none;")  # 設定樣式
+                            lbl.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)  # 設定大小策略
+                            font = QtGui.QFont("Arial", 24, QtGui.QFont.Bold)  # 設定字體
+                            lbl.setFont(font)  # 套用字體
+                            lbl.setAlignment(QtCore.Qt.AlignCenter)  # 置中
+                            lay = QtWidgets.QVBoxLayout()  # 建立垂直佈局
+                            lay.addWidget(lbl)  # 加入標籤
+                            panel.setLayout(lay)  # 套用佈局
+            else:  # 若無資料
+                # 無資料時清空畫面
+                for ax in axes:  # 遍歷所有子圖
+                    ax.clear()  # 清空
+                    ax.set_visible(True)  # 顯示空圖
+                self.data_graph['canvas'].draw()  # 重繪畫布
 
 
     def _load_info_from_folder(self, sport, folder):                              # 僅從選到的資料夾載入 JSON（含上限）
@@ -1015,73 +1128,73 @@ class Replaybackend():
         
     
     def creat_graphic(self, parentlayout, sublayout, size, num):
-        figure = Figure(figsize=size)
-        canvas = FigureCanvas(figure)
-        axes = figure.subplots(num, 1, sharex=True)
-        with open(f'./config/Deadlift_data/Score.json', mode='r', encoding='utf-8') as file:
-            data = json.load(file)
-            for NoSet, info in data['results'].items():
-                pass
-        # 創建 QGraphicsView 和 QGraphicsScene
-        graphicview = QtWidgets.QGraphicsView(parentlayout)
-        graphicscene = QtWidgets.QGraphicsScene(parentlayout)
+            figure = Figure(figsize=size)  # 建立 Matplotlib 圖形物件
+            canvas = FigureCanvas(figure)  # 建立畫布
+            axes = figure.subplots(num, 1, sharex=True)  # 建立子圖，共用 X 軸
+            
+            # ✅ [修正] 增加讀取 JSON 的容錯機制
+            NoSet = 5  # 設定預設組數，避免讀檔失敗時變數未定義
+            try:
+                with open(f'./config/Deadlift_data/Score.json', mode='r', encoding='utf-8') as file:  # 嘗試開啟分數檔案
+                    data = json.load(file)  # 載入 JSON
+                    if 'results' in data:  # 確認有無 results 欄位
+                        for NoSet, info in data['results'].items():  # 遍歷取得最後一組的 Key
+                            pass  # 僅為了取得最後的 NoSet 值
+            except:
+                pass  # 若檔案不存在或格式錯誤，直接忽略，使用預設 NoSet
 
-        # **建立外部表格**
-        table = QtWidgets.QTableWidget(2, int(NoSet)+1)
-        table.setVerticalHeaderLabels(["Score", "Confidence"])
-        table.horizontalHeader().setDefaultAlignment(QtCore.Qt.AlignCenter)
-        table.verticalHeader().setDefaultAlignment(QtCore.Qt.AlignCenter)
-        table.horizontalHeader().hide()
-        table.verticalHeader().hide()
-        for row in range(table.rowCount()):
-            for column in range(table.columnCount()):
-                item = table.item(row, column)
-                if item:
-                    item.setTextAlignment(QtCore.Qt.AlignCenter)
-         # **將第 2 列的每一個儲存格內加入 QHBoxLayout 並分成 4 小區塊**
-        self.conf_panels = []
-        for col in range(int(NoSet)+1):  # 遍歷 A, B, C 欄
-            if col % 2 ==0:
-                font = 'background-color: #eaf0e9; border: 1px solid black;'
-            else:
-                font = 'background-color: #d0d4be; border: 1px solid black;'
-            cell_widget = QtWidgets.QWidget()  # 創建 QWidget 作為容器
-            layout_inside = QtWidgets.QHBoxLayout(cell_widget)  # 創建 QHBoxLayout
-            layout_inside.setContentsMargins(0, 0, 0, 0)  # 移除邊距
-            layout_inside.setSpacing(5)  # 設定間距
+            graphicview = QtWidgets.QGraphicsView(parentlayout)  # 建立圖表視圖
+            graphicscene = QtWidgets.QGraphicsScene(parentlayout)  # 建立圖表場景
 
-            # **建立 4 個 Panel**
-            for i in range(4):
-                panel = QtWidgets.QFrame()
-                panel.setStyleSheet(font)
-                panel.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
-                self.conf_panels.append(panel)
-                layout_inside.addWidget(panel)  # 加入 Layout
-            table.setCellWidget(1, col, cell_widget)  # **將 QWidget 設為 CellWidget**
+            table = QtWidgets.QTableWidget(2, int(NoSet)+1)  # 建立表格，根據 NoSet 決定欄數
+            table.setVerticalHeaderLabels(["Score", "Confidence"])  # 設定垂直表頭
+            table.horizontalHeader().setDefaultAlignment(QtCore.Qt.AlignCenter)  # 水平置中
+            table.verticalHeader().setDefaultAlignment(QtCore.Qt.AlignCenter)  # 垂直置中
+            table.horizontalHeader().hide()  # 隱藏水平表頭
+            table.verticalHeader().hide()  # 隱藏垂直表頭
+            for row in range(table.rowCount()):  # 遍歷列
+                for column in range(table.columnCount()):  # 遍歷欄
+                    item = table.item(row, column)  # 取得單元格
+                    if item:
+                        item.setTextAlignment(QtCore.Qt.AlignCenter)  # 設定文字置中
+            
+            self.conf_panels = []  # 初始化信心度面板列表
+            for col in range(int(NoSet)+1):  # 遍歷每一欄
+                if col % 2 ==0:
+                    font = 'background-color: #eaf0e9; border: 1px solid black;'  # 偶數欄樣式
+                else:
+                    font = 'background-color: #d0d4be; border: 1px solid black;'  # 奇數欄樣式
+                cell_widget = QtWidgets.QWidget()  # 建立儲存格內的 Widget
+                layout_inside = QtWidgets.QHBoxLayout(cell_widget)  # 建立內部水平佈局
+                layout_inside.setContentsMargins(0, 0, 0, 0)  # 移除邊距
+                layout_inside.setSpacing(5)  # 設定間距
 
-        # **外部表格自適應大小**
-        table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
-        table.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
-        table.setFixedSize(2500, 200)  # **設定表格大小**
-        
-        # **將圖表和表格加入場景**
-        canvas_proxy = graphicscene.addWidget(canvas)
-        table_proxy = graphicscene.addWidget(table)
+                for i in range(4):  # 建立 4 個小區塊
+                    panel = QtWidgets.QFrame()  # 建立 Frame
+                    panel.setStyleSheet(font)  # 套用樣式
+                    panel.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)  # 設定大小策略
+                    self.conf_panels.append(panel)  # 加入列表
+                    layout_inside.addWidget(panel)  # 加入佈局
+                table.setCellWidget(1, col, cell_widget)  # 將 Widget 設定到表格中
 
-        # **確保場景大小與 `graphicview` 一致**
-        graphicview.setScene(graphicscene) 
+            table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)  # 表格寬度自適應
+            table.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)  # 表格高度自適應
+            table.setFixedSize(2500, 200)  # 固定表格尺寸
+            
+            canvas_proxy = graphicscene.addWidget(canvas)  # 將畫布加入場景
+            table_proxy = graphicscene.addWidget(table)  # 將表格加入場景
 
-        # **讓表格置中**
-        scene_width = graphicview.sceneRect().width()
-        table_x = (scene_width - table.width()) / 2
-        table_proxy.setPos(table_x, 10)  # **表格放在上方**
-        canvas_proxy.setPos(10, table.height() + 20)  # **圖表放在表格下方**
+            graphicview.setScene(graphicscene)  # 視圖設定場景
 
-        # 設定 Layout
-        sublayout.setWidget(1, QtWidgets.QFormLayout.FieldRole, graphicview)
-        sublayout.setFormAlignment(QtCore.Qt.AlignCenter)
+            scene_width = graphicview.sceneRect().width()  # 取得場景寬度
+            table_x = (scene_width - table.width()) / 2  # 計算表格置中位置
+            table_proxy.setPos(table_x, 10)  # 設定表格位置
+            canvas_proxy.setPos(10, table.height() + 20)  # 設定畫布位置 (在表格下方)
 
-        return graphicview, graphicscene, canvas, axes, table
+            sublayout.setWidget(1, QtWidgets.QFormLayout.FieldRole, graphicview)  # 將視圖加入主佈局
+            sublayout.setFormAlignment(QtCore.Qt.AlignCenter)  # 設定佈局置中
+
+            return graphicview, graphicscene, canvas, axes, table  # 回傳建立的物件
 
 
 
