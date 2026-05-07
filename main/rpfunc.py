@@ -493,8 +493,8 @@ class Replaybackend():
         # 依運動類型定義候選影片組（會按序挑到完整的三支）
         if self.currentsport == 'Squat':
             desired_groups = [
-                ('original_vision2.avi', 'vision3.avi', 'vision6.avi'),                # 優先原始命名
-                ('vision2.avi', 'vision3.avi', 'vision6.avi'),                         # 次選一般命名
+                ('vision1_drawed.avi', 'vision5.avi', 'vision6.avi'),                # 優先原始命名
+                ('vision1.avi', 'vision5.avi', 'vision6.avi'),                         # 次選一般命名
             ]                                                                          # ← 你原本多打一個孤立的 0，已移除
         elif self.currentsport == 'Deadlift':
             desired_groups = [
@@ -732,7 +732,7 @@ class Replaybackend():
                                     # --- 針對不同檔案設定 ---
                                     if 'bar_position' in title_lower:  # 若為槓鈴位置
                                         # Bar_Position (像素座標)
-                                        final_y_min, final_y_max = 150, 500  # (您設定的參數)   #squat 50,600; bp 200, 400
+                                        final_y_min, final_y_max = 50, 550  # (您設定的參數)   #squat 50,600; bp 200, 400
                                         ax.yaxis.set_major_locator(ticker.MultipleLocator(50)) # (您設定的參數)
 
                                         # ✅ [修改] 針對此圖表加大字體
@@ -742,7 +742,7 @@ class Replaybackend():
                                         
                                     elif 'hip_angle' in title_lower:  # 若為髖關節角度
                                         # Hip_Angle (角度)
-                                        final_y_min, final_y_max = 70, 180  # (您設定的參數)
+                                        final_y_min, final_y_max = 80, 180  # (您設定的參數)
                                         ax.yaxis.set_major_locator(ticker.MultipleLocator(10))  # (您設定的參數)
 
                                         # ✅ [修改] 針對此圖表加大字體
@@ -752,7 +752,7 @@ class Replaybackend():
 
                                     elif 'knee_angle' in title_lower:  # 若為膝關節角度
                                         # Knee_Angle (角度)
-                                        final_y_min, final_y_max = 120, 180  # (您設定的參數)
+                                        final_y_min, final_y_max = 50, 180  # (您設定的參數)
                                         ax.yaxis.set_major_locator(ticker.MultipleLocator(10))  # (您設定的參數)
                                         
                                         # ✅ [修改] 針對此圖表加大字體
@@ -762,7 +762,7 @@ class Replaybackend():
 
                                     elif 'knee_to_hip' in title_lower:  # 若為膝髖距離
                                         # Knee_to_Hip (距離或比例)
-                                        final_y_min, final_y_max = 0.4, 2.2  # (您設定的參數)
+                                        final_y_min, final_y_max = 0.2, 2.2  # (您設定的參數)
                                         ax.yaxis.set_major_locator(ticker.MultipleLocator(0.2))  # (您設定的參數)
                                         
                                         # ✅ [修改] 針對此圖表加大字體

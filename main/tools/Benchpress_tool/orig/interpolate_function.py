@@ -107,7 +107,7 @@ args = parser.parse_args()
 dir = args.dir
 # 主流程
 # 1. 內插 MediaPipe 資料
-mediapipe_data = interpolate_landmarks(os.path.join(dir, 'mediapipe_landmarks.txt'))
+mediapipe_data = interpolate_landmarks(os.path.join(dir, 'yolo_skeleton.txt'))
 
 # 2. 內插 YOLO 資料
 yolo_data = load_yolo_data(os.path.join(dir, 'yolo_coordinates.txt'))
@@ -118,7 +118,7 @@ yolo_frames = interpolated_yolo_data[:, 0]
 interpolated_data_1 = interpolate_mediapipe_to_yolo(yolo_frames, mediapipe_data.values)
 
 # 4. 儲存結果到檔案
-np.savetxt(os.path.join(dir, 'mediapipe_landmarks_1st_interp.txt'), mediapipe_data, delimiter=',', fmt='%d,%d,%.8f,%.8f,%.8f')
+np.savetxt(os.path.join(dir, 'yolo_skeleton_interpolated.txt'), mediapipe_data, delimiter=',', fmt='%d,%d,%.8f,%.8f,%.8f')
 np.savetxt(os.path.join(dir, 'yolo_coordinates_interpolated.txt'), interpolated_yolo_data, delimiter=',', fmt='%d,%.8f,%.8f,%.8f,%.8f')
 np.savetxt(os.path.join(dir, 'interpolated_mediapipe_landmarks_1.txt'), interpolated_data_1, delimiter=',', fmt='%d,%d,%.8f,%.8f,%.8f')
 

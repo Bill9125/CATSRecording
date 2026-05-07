@@ -93,7 +93,7 @@ def deadlift_bone_loop(i, frame, label, save_sig, recording_sig, folder,
         out.write(frame)
 
         if txt_file is None:
-            txt_file_path = os.path.join(folder, 'mediapipe_landmarks.txt')
+            txt_file_path = os.path.join(folder, 'yolo_skeleton.txt')
             txt_file = open(txt_file_path, "w")
             frame_count_for_detect = 0
             print(f"Started writing data to {txt_file_path}")
@@ -325,7 +325,7 @@ def squat_bone_loop(i, frame, label, save_sig, recording_sig, folder,           
         out.write(clean_frame)                                                             # 先寫乾淨畫面
 
         if txt_file is None:                                                               # 初始化 txt（一次）
-            txt_path = os.path.join(folder, 'mediapipe_landmarks.txt')                     # 骨架輸出
+            txt_path = os.path.join(folder, 'yolo_skeleton.txt')                     # 骨架輸出
             txt_file = open(txt_path, "w", buffering=1)                                    # 行緩衝
             frame_count_for_detect = 0                                                     # 幀計數歸零
 
@@ -444,9 +444,9 @@ def squat_general_loop(i, frame, label, save_sig, recording_sig, folder,        
 
 # benchpress
 # ====== 緩衝常數（可依需求調整）======
-BODY_BUF_FRAMES = 20                     # 人體偵測命中/未命中緩衝幀數                       # 遲滯
-START_LATCH_FRAMES = 10                  # 三 Gate 必須連續命中 N 幀才允許『開始錄影』        # 防抖（只影響開段）
-BAR_LOSS_TOL_FRAMES = 20                 # 槓暫時偵測不到時可容忍的連續幀數                   # 偵測遺失容忍
+BODY_BUF_FRAMES = 100  #20                    # 人體偵測命中/未命中緩衝幀數                       # 遲滯
+START_LATCH_FRAMES = 5 #10                  # 三 Gate 必須連續命中 N 幀才允許『開始錄影』        # 防抖（只影響開段）
+BAR_LOSS_TOL_FRAMES = 40     #20             # 槓暫時偵測不到時可容忍的連續幀數                   # 偵測遺失容忍
 END_GRACE_FRAMES = 30                    # Gate 轉 False 後需連續幀數才真正結束分段           # 關檔緩衝
 # ============================== 共用工具（utils for loops） ==============================
 

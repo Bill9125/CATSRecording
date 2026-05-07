@@ -85,8 +85,8 @@ args = parser.parse_args()
 dir = args.dir
 
 # 設定要處理的文件
-input_files = [os.path.join(dir, 'mediapipe_landmarks.txt')]  # 請替換為你的輸入檔名
-output_files = [os.path.join(dir, 'mediapipe_landmarks_1st_interp.txt')]  # 對應的輸出檔名
+input_files = [os.path.join(dir, 'yolo_skeleton.txt')]  # 請替換為你的輸入檔名
+output_files = [os.path.join(dir, 'yolo_skeleton_interpolated.txt')]  # 對應的輸出檔名
 
 # 對每個文件進行內插處理
 for input_file, output_file in zip(input_files, output_files):
@@ -156,7 +156,7 @@ yolo_data = np.loadtxt(yolo_interpolated_path, delimiter=',')
 yolo_frames = yolo_data[:, 0]  # frame numbers
 
 # 讀取第一份 MediaPipe 的資料
-mediapipe_data_1 = np.loadtxt(os.path.join(dir, 'mediapipe_landmarks_1st_interp.txt'), delimiter=',')
+mediapipe_data_1 = np.loadtxt(os.path.join(dir, 'yolo_skeleton_interpolated.txt'), delimiter=',')
 landmarks_1 = np.unique(mediapipe_data_1[:, 1])  # unique landmark numbers
 
 def interpolate_mediapipe(yolo_frames, mediapipe_data, landmarks):
