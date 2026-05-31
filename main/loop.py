@@ -236,7 +236,10 @@ def squat_bar_loop(i, frame, label, save_sig, recording_sig, folder,            
     # ===== 錄影：只寫乾淨畫面 =====
     if recording_sig:                                                                     # 錄影中
         if out is None:                                                                   # 初始化 writer
-            path = os.path.join(folder, f'vision{i+1}.avi')                               # 檔名
+            # 檔名對應表
+            squat_video_names = ["RU.avi", "RR.avi", "RLU.avi", "FL.avi", "FR.avi", "RD.avi"]
+            file_name = squat_video_names[i] if 0 <= i < len(squat_video_names) else f"vision{i+1}.avi"
+            path = os.path.join(folder, file_name)                                        # 檔名
             h, w = frame.shape[:2]                                                        # 幀高寬
             out = cv2.VideoWriter(path, FOURCC_MJPG, REC_FPS, (w, h))                     # MJPG writer
         out.write(clean_frame)                                                            # 先寫乾淨畫面（不疊圖）
@@ -319,7 +322,10 @@ def squat_bone_loop(i, frame, label, save_sig, recording_sig, folder,           
     # ===== 錄影：只寫乾淨畫面 =====
     if recording_sig:                                                                      # 錄影中
         if out is None:                                                                    # 初始化 writer
-            path = os.path.join(folder, f'vision{i+1}.avi')                                # 檔名
+            # 檔名對應表
+            squat_video_names = ["RU.avi", "RR.avi", "RLU.avi", "FL.avi", "FR.avi", "RD.avi"]
+            file_name = squat_video_names[i] if 0 <= i < len(squat_video_names) else f"vision{i+1}.avi"
+            path = os.path.join(folder, file_name)                                         # 檔名
             h, w = frame.shape[:2]                                                         # 幀高寬
             out = cv2.VideoWriter(path, FOURCC_MJPG, REC_FPS, (w, h))                      # MJPG writer
         out.write(clean_frame)                                                             # 先寫乾淨畫面
@@ -414,7 +420,10 @@ def squat_general_loop(i, frame, label, save_sig, recording_sig, folder,        
     # ---- 錄影（MJPG） ----                                                                  # 錄影
     if recording_sig:                                                                    # 若在錄影
         if out is None:                                                                  # 初始化 writer
-            path = os.path.join(folder, f'vision{i+1}.avi')                              # 檔名
+            # 檔名對應表
+            squat_video_names = ["RU.avi", "RR.avi", "RLU.avi", "FL.avi", "FR.avi", "RD.avi"]
+            file_name = squat_video_names[i] if 0 <= i < len(squat_video_names) else f"vision{i+1}.avi"
+            path = os.path.join(folder, file_name)                                       # 檔名
             h, w = frame.shape[:2]                                                       # 高寬
             out = cv2.VideoWriter(path, FOURCC_MJPG, REC_FPS, (w, h))                    # 建立 writer
         out.write(frame)                                                                 # 寫一幀
@@ -531,7 +540,11 @@ def _start_segment_writers(folder, i, seg_no, frame, need_original, need_txt, tx
 def _close_io(out=None, original_out=None, txt_file=None):                                    # 關閉 I/O
     if txt_file is not None: txt_file.close()                                                 # 關 txt
     if out is not None: out.release()                                                         # 關疊圖
-    if original_out is not None: original_out.release()                                       # 關原始
+    if original_out is not None: original_out.release()              
+    
+    
+    
+                             # 關原始
     return None                                                                               # 無回傳
 
 def _end_and_move(folder, i, seg_no, tmp_paths, mapping):                                     # 結束段落、建立最終資料夾並搬檔  #
